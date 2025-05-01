@@ -34,3 +34,44 @@ code {
     display: none;
   }
 }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes spinSlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+@keyframes confetti {
+  0% { transform: translateY(-100vh) rotate(0deg); }
+  100% { transform: translateY(100vh) rotate(360deg); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+.animate-fade-in {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+.animate-spin-slow {
+  animation: spinSlow 8s linear infinite;
+}
+.animate-flash {
+  animation: flash 0.5s ease-in-out 3;
+}
+.animate-confetti {
+  animation: confetti 3s linear forwards;
+}
+.shadow-gold {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+}
