@@ -4,7 +4,7 @@ import { database } from '../firebase';
 
 const ClientInterface = ({ tableNumber }) => {
   const [cart, setCart] = useState([]);
-  const [orderStatus, setOrderStatus] = useState(null);
+  const [orderStatus, setOrderStatus] = useState('');
   const [activeCategory, setActiveCategory] = useState('semana');
   const [messages, setMessages] = useState([]);
 
@@ -136,7 +136,7 @@ const ClientInterface = ({ tableNumber }) => {
   };
 
   useEffect(() => {
-    const ordersRef = ref(database, `tables/${tableNumber}/orders`);
+    const ordersRef = ref(database, `tables/${tableNumber}/currentOrder`);
     onValue(ordersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -154,20 +154,31 @@ const ClientInterface = ({ tableNumber }) => {
   }, [tableNumber]);
 
   const addToCart = (item) => {
-    setCart([...cart, { ...item, id: Date.now() }]);
+    setCart([...cart, { ...item, cartId: Date.now() }]);
   };
 
-  const removeFromCart = (id) => {
-    setCart(cart.filter(item => item.id !== id));
+  const removeFromCart = (cartId) => {
+    setCart(cart.filter(item => item.cartId !== cartId));
   };
 
   const sendOrder = () => {
-    const orderRef = ref(database, `tables/${tableNumber}/orders`);
+    if (cart.length === 0) return;
+    
+    const orderRef = ref(database, `tables/${tableNumber}/currentOrder`);
     push(orderRef, {
       items: cart,
-      status: 'Em preparo',
+      status: 'Recebido',
+      timestamp: Date.now(),
+      table: tableNumber
+    });
+
+    const ordersHistoryRef = ref(database, `tables/${tableNumber}/ordersHistory`);
+    push(ordersHistoryRef, {
+      items: cart,
+      status: 'Recebido',
       timestamp: Date.now()
     });
+
     setCart([]);
     setOrderStatus('Pedido enviado com sucesso!');
   };
