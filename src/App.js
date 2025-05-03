@@ -1,7 +1,13 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
 import AdminPanel from './components/AdminPanel';
 import ClientInterface from './components/ClientInterface';
 import QRGenerator from './components/QRGenerator';
+
+// Wrapper para passar o parâmetro da URL como prop
+function ClientInterfaceWrapper() {
+  const { tableNumber } = useParams();
+  return <ClientInterface tableNumber={tableNumber} />;
+}
 
 function App() {
   return (
@@ -10,7 +16,7 @@ function App() {
         <Routes>
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/" element={<HomePage />} />
-          <Route path="/table/:tableNumber" element={<ClientInterface />} />
+          <Route path="/table/:tableNumber" element={<ClientInterfaceWrapper />} />
           <Route path="/qr-codes" element={<QRGenerator />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
