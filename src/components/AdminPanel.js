@@ -39,6 +39,9 @@ const AdminPanel = () => {
   const printerDeviceRef = useRef(null);
   const printerCharacteristicRef = useRef(null);
   const [printedItems, setPrintedItems] = useState({});
+  const [printerReconnectAttempted, setPrinterReconnectAttempted] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(0);
 
   const foodImages = {
     frangoCremoso,
@@ -53,7 +56,6 @@ const AdminPanel = () => {
     salgado,
     sobremesa
   };
-
   const menu = {
     semana: [
       { id: 1, name: 'Frango Cremoso', description: 'Strogonoff de frango, arroz branco, salada e batata palha', price: 12.90, veg: false, image: foodImages.frangoCremoso, rating: 4.5 },
@@ -167,17 +169,89 @@ const AdminPanel = () => {
     ]
   };
 
-  // Configurações da impressora Bluetooth
-  const PRINTER_CONFIG = {
+   // Configurações da impressora Bluetooth
+   const PRINTER_CONFIG = {
     deviceName: "BlueTooth Printer",
     serviceUUID: "0000ff00-0000-1000-8000-00805f9b34fb",
     characteristicUUID: "0000ff02-0000-1000-8000-00805f9b34fb",
     maxRetries: 3,
-    chunkSize: 200, // Reduzido para maior confiabilidade
-    delayBetweenChunks: 100 // Aumentado o delay entre chunks
+    chunkSize: 100,
+    delayBetweenChunks: 100
   };
 
-  // Conectar à impressora Bluetooth
+  const savePrinterState = (device, characteristic) => {
+    try {
+      const printerState = {
+        deviceId: device.id,
+        deviceName: device.name,
+        connected: device.gatt.connected,
+        lastConnected: Date.now()
+      };
+      localStorage.setItem('bluetoothPrinter', JSON.stringify(printerState));
+    } catch (err) {
+      console.error('Erro ao salvar estado da impressora:', err);
+    }
+  };
+
+  const clearPrinterState = () => {
+    localStorage.removeItem('bluetoothPrinter');
+    setPrinterConnected(false);
+  };
+
+  const tryReconnectPrinter = async () => {
+    try {
+      const savedPrinter = localStorage.getItem('bluetoothPrinter');
+      if (!savedPrinter) return false;
+
+      const printerState = JSON.parse(savedPrinter);
+      if (!printerState.deviceId || !printerState.connected) return false;
+
+      const isRecentConnection = Date.now() - printerState.lastConnected < 5 * 60 * 1000;
+      if (!isRecentConnection) {
+        clearPrinterState();
+        return false;
+      }
+
+      setIsPrinting(true);
+      console.log('Tentando reconectar à impressora...');
+
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: printerState.deviceName }],
+        optionalServices: [PRINTER_CONFIG.serviceUUID]
+      });
+
+      if (!device) {
+        clearPrinterState();
+        return false;
+      }
+
+      device.addEventListener('gattserverdisconnected', handleDisconnection);
+
+      console.log('Conectando ao servidor GATT...');
+      const server = await device.gatt.connect();
+      
+      console.log('Obtendo serviço...');
+      const service = await server.getPrimaryService(PRINTER_CONFIG.serviceUUID);
+      
+      console.log('Obtendo característica...');
+      const characteristic = await service.getCharacteristic(PRINTER_CONFIG.characteristicUUID);
+
+      printerDeviceRef.current = device;
+      printerCharacteristicRef.current = characteristic;
+      setPrinterConnected(true);
+      savePrinterState(device, characteristic);
+
+      console.log('Reconectado com sucesso à impressora');
+      return true;
+    } catch (err) {
+      console.error('Erro na reconexão Bluetooth:', err);
+      clearPrinterState();
+      return false;
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   const connectToPrinter = async () => {
     try {
       if (!navigator.bluetooth) {
@@ -187,7 +261,6 @@ const AdminPanel = () => {
       setIsPrinting(true);
       setError(null);
   
-      // Verifica se já está conectado
       if (printerDeviceRef.current?.gatt?.connected) {
         return true;
       }
@@ -202,7 +275,6 @@ const AdminPanel = () => {
         throw new Error('Nenhum dispositivo selecionado');
       }
   
-      // Armazena listeners para limpeza posterior
       device.addEventListener('gattserverdisconnected', handleDisconnection);
   
       console.log('Conectando ao servidor GATT...');
@@ -214,21 +286,18 @@ const AdminPanel = () => {
       console.log('Obtendo característica...');
       const characteristic = await service.getCharacteristic(PRINTER_CONFIG.characteristicUUID);
   
-      // Armazena referências
       printerDeviceRef.current = device;
       printerCharacteristicRef.current = characteristic;
       setPrinterConnected(true);
+      savePrinterState(device, characteristic);
   
       console.log('Conectado com sucesso à impressora');
       return true;
     } catch (err) {
       console.error('Erro na conexão Bluetooth:', err);
-      
-      // Limpa referências em caso de erro
       printerDeviceRef.current = null;
       printerCharacteristicRef.current = null;
       setPrinterConnected(false);
-      
       setError(`Falha na conexão: ${err.message}`);
       return false;
     } finally {
@@ -236,12 +305,61 @@ const AdminPanel = () => {
     }
   };
   
-  // Função para lidar com desconexões
   const handleDisconnection = () => {
     console.log('Impressora desconectada');
-    setPrinterConnected(false);
+    clearPrinterState();
     printerDeviceRef.current = null;
     printerCharacteristicRef.current = null;
+  };
+
+  const handleReconnectPrinter = async () => {
+    try {
+      const savedPrinter = localStorage.getItem('bluetoothPrinter');
+      if (!savedPrinter) return false;
+  
+      const printerState = JSON.parse(savedPrinter);
+      if (!printerState.deviceId || !printerState.connected) return false;
+  
+      const isRecentConnection = Date.now() - printerState.lastConnected < 5 * 60 * 1000;
+      if (!isRecentConnection) {
+        clearPrinterState();
+        return false;
+      }
+  
+      setIsPrinting(true);
+      console.log('Tentando reconectar à impressora...');
+  
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: printerState.deviceName }],
+        optionalServices: [PRINTER_CONFIG.serviceUUID]
+      });
+  
+      if (!device) {
+        clearPrinterState();
+        return false;
+      }
+  
+      device.addEventListener('gattserverdisconnected', handleDisconnection);
+  
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(PRINTER_CONFIG.serviceUUID);
+      const characteristic = await service.getCharacteristic(PRINTER_CONFIG.characteristicUUID);
+  
+      printerDeviceRef.current = device;
+      printerCharacteristicRef.current = characteristic;
+      setPrinterConnected(true);
+      savePrinterState(device, characteristic);
+  
+      console.log('Reconectado com sucesso à impressora');
+      return true;
+    } catch (err) {
+      console.error('Erro na reconexão Bluetooth:', err);
+      clearPrinterState();
+      return false;
+    } finally {
+      setIsPrinting(false);
+      setPrinterReconnectAttempted(true);
+    }
   };
 
   const sendToPrinter = async (data) => {
@@ -249,14 +367,12 @@ const AdminPanel = () => {
     
     while (retryCount < PRINTER_CONFIG.maxRetries) {
       try {
-        // Verifica conexão ou reconecta
         if (!printerDeviceRef.current?.gatt?.connected) {
           console.log(`Tentativa ${retryCount + 1}: Reconectando...`);
           const connected = await connectToPrinter();
           if (!connected) throw new Error('Falha ao reconectar');
         }
   
-        // Converte e divide os dados em chunks
         const encoder = new TextEncoder();
         const encodedData = encoder.encode(data);
         let offset = 0;
@@ -286,7 +402,6 @@ const AdminPanel = () => {
           return false;
         }
         
-        // Espera antes de tentar novamente
         await new Promise(resolve => 
           setTimeout(resolve, 1000 * retryCount)
         );
@@ -294,11 +409,9 @@ const AdminPanel = () => {
     }
   };
 
-  // Formatador de recibo
   const formatReceipt = (order) => {
     if (!order || !order.items || order.items.length === 0) return '';
   
-    // Comandos ESC/POS
     const ESC = '\x1B';
     const GS = '\x1D';
     const INIT = `${ESC}@`;
@@ -310,17 +423,12 @@ const AdminPanel = () => {
     const LF = '\x0A';
     const FEED = '\x1Bd';
   
-    let receipt = INIT; // Inicializa a impressora
-  
-    // Cabeçalho
+    let receipt = INIT;
     receipt += `${CENTER}${BOLD_ON}RESTAURANTE DELÍCIA${BOLD_OFF}${LF}`;
     receipt += `MESA: ${selectedTable}${LF}`;
     receipt += `${new Date().toLocaleString()}${LF}${LF}`;
-    
-    // Linha divisória
     receipt += '--------------------------------' + LF;
     
-    // Itens do pedido
     receipt += LEFT;
     order.items.forEach(item => {
       receipt += `${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
@@ -330,31 +438,25 @@ const AdminPanel = () => {
       receipt += `€ ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
     });
   
-    // Total
     receipt += '--------------------------------' + LF;
     receipt += `${BOLD_ON}TOTAL: € ${calculateOrderTotal(order).toFixed(2)}${BOLD_OFF}${LF}${LF}`;
     receipt += `${CENTER}Obrigado pela sua preferência!${LF}${LF}`;
     receipt += `${CENTER}Volte sempre${LF}${LF}`;
-    
-    // Cortar papel e alimentar
     receipt += `${FEED}${FEED}${CUT}`;
   
     return receipt;
   };
 
-  // Função para imprimir pedido
   const markItemsAsPrinted = async (tableId, orderId, items) => {
     try {
       const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
       
-      // Primeiro atualiza o estado local para otimização
       const newPrintedItems = {...printedItems};
       items.forEach(item => {
         newPrintedItems[`${tableId}-${item.id}-${item.addedAt}`] = true;
       });
       setPrintedItems(newPrintedItems);
   
-      // Depois atualiza o Firebase
       const currentOrderSnapshot = await get(orderRef);
       const currentOrder = currentOrderSnapshot.val();
       
@@ -372,7 +474,6 @@ const AdminPanel = () => {
   
     } catch (err) {
       console.error("Erro ao marcar itens como impressos:", err);
-      // Reverte a mudança local em caso de erro
       const revertedPrintedItems = {...printedItems};
       items.forEach(item => {
         delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
@@ -382,7 +483,6 @@ const AdminPanel = () => {
     }
   };
   
-  // 3. Função de impressão modificada
   const printOrder = async () => {
     if (!selectedTable || !selectedOrder?.id || !selectedOrder.items?.length) {
       setError('Nenhum pedido válido para imprimir');
@@ -393,7 +493,6 @@ const AdminPanel = () => {
       setIsPrinting(true);
       setError(null);
       
-      // Filtra apenas os itens não impressos
       const itemsToPrint = selectedOrder.items.filter(item => {
         const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
         return !printedItems[itemKey] && !item.printed;
@@ -404,23 +503,19 @@ const AdminPanel = () => {
         return;
       }
   
-      // Formata o recibo apenas com os novos itens
       const receipt = formatReceipt({
         ...selectedOrder,
         items: itemsToPrint
       });
   
-      // Envia para impressora
       const success = await sendToPrinter(receipt);
       
       if (success) {
-        // Marca os itens como impressos
         await markItemsAsPrinted(selectedTable, selectedOrder.id, itemsToPrint);
         
         setShowSuccessNotification(true);
         setTimeout(() => setShowSuccessNotification(false), 3000);
         
-        // Atualiza o pedido local com os itens marcados
         setSelectedOrder(prev => ({
           ...prev,
           items: prev.items.map(item => {
@@ -438,7 +533,7 @@ const AdminPanel = () => {
       setIsPrinting(false);
     }
   };
-  // Monitorar mesas e pedidos em tempo real
+
   useEffect(() => {
     const tablesRef = ref(database, 'tables');
     const unsubscribe = onValue(tablesRef, (snapshot) => {
@@ -464,12 +559,12 @@ const AdminPanel = () => {
       });
 
       setTables(tablesData);
+      setLastUpdate(new Date());
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Monitorar pedido da mesa selecionada
   useEffect(() => {
     if (!selectedTable) {
       setSelectedOrder(null);
@@ -486,7 +581,6 @@ const AdminPanel = () => {
           const [orderId, order] = orders[0];
           const loadedOrder = { id: orderId, ...order };
           
-          // Atualiza o estado local dos itens impressos
           const newPrintedItems = {...printedItems};
           let hasPrintedItems = false;
           
@@ -546,18 +640,13 @@ const AdminPanel = () => {
     
     setIsClosingOrder(true);
     try {
-      // 1. Mover para histórico
       const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
       await push(historyRef, selectedOrder);
       
-      // 2. Remover pedido atual
       const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       await remove(orderRef);
       
-      // 3. Atualizar estado local
       setSelectedOrder(null);
-      
-      // 4. Mostrar notificação
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);
     } catch (error) {
@@ -578,7 +667,6 @@ const AdminPanel = () => {
       let orderData;
       
       if (selectedOrder?.id) {
-        // Atualizar pedido existente
         orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
         const currentItems = selectedOrder.items || [];
         
@@ -586,18 +674,19 @@ const AdminPanel = () => {
           items: [...currentItems, {
             ...selectedMenuItem,
             quantity: newItemQuantity,
-            addedAt: Date.now()
+            addedAt: Date.now(),
+            printed: false
           }],
           updatedAt: Date.now()
         };
       } else {
-        // Criar novo pedido
         orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
         orderData = {
           items: [{
             ...selectedMenuItem,
             quantity: newItemQuantity,
-            addedAt: Date.now()
+            addedAt: Date.now(),
+            printed: false
           }],
           status: 'open',
           createdAt: Date.now(),
@@ -678,9 +767,209 @@ const AdminPanel = () => {
     setSelectedTable(tableStr);
   };
 
+  const hasUnprintedItems = (order) => {
+    if (!order?.items) return false;
+    return order.items.some(item => {
+      const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+      return !printedItems[itemKey] && !item.printed;
+    });
+  };
+
+  const filteredTables = () => {
+    if (activeTab === 'active') {
+      return tables.filter(t => t.currentOrder);
+    } else if (activeTab === 'vip') {
+      return tables.filter(t => {
+        const total = t.currentOrder ? calculateOrderTotal(t.currentOrder) : 0;
+        return total > 100;
+      });
+    }
+    return tables;
+  };
+
+  const tablesPerPage = 12;
+  const paginatedTables = () => {
+    const start = currentPage * tablesPerPage;
+    return filteredTables().slice(start, start + tablesPerPage);
+  };
+
+  const totalPages = Math.ceil(filteredTables().length / tablesPerPage);
+
+  const PremiumHeader = () => (
+    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-2 rounded-lg shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1>
+              <p className="text-xs text-gray-500">Controle total das comandas</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="hidden md:block text-sm text-gray-500">
+              Atualizado: {lastUpdate.toLocaleTimeString()}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={connectToPrinter}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium ${
+                  printerConnected 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : 'bg-red-100 text-red-800 border border-red-200 hover:bg-red-50'
+                } transition-colors`}
+              >
+                <div className={`w-2 h-2 rounded-full ${printerConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                {printerConnected ? 'Impressora Conectada' : 'Conectar Impressora'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+
+  const TableTabsView = () => (
+    <div className="bg-white border-r border-gray-200 md:h-[calc(100vh-4rem)] md:sticky md:top-16 overflow-y-auto">
+      <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Mesas</h2>
+            <p className="text-sm text-gray-500">Gerencie as comandas</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">
+              {tables.filter(t => t.currentOrder).length} ativas
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex space-x-2 mt-3 overflow-x-auto pb-2">
+          <button
+            onClick={() => { setActiveTab('all'); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === 'all' 
+                ? 'bg-blue-100 text-blue-800 font-medium' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Todas
+          </button>
+          <button
+            onClick={() => { setActiveTab('active'); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === 'active' 
+                ? 'bg-green-100 text-green-800 font-medium' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Ativas
+          </button>
+          <button
+            onClick={() => { setActiveTab('vip'); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === 'vip' 
+                ? 'bg-amber-100 text-amber-800 font-medium' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            VIP
+          </button>
+        </div>
+      </div>
+      
+      <div className="p-3">
+        {paginatedTables().length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {paginatedTables().map((table) => {
+                const hasOrder = table.currentOrder;
+                const orderTotal = hasOrder ? calculateOrderTotal(table.currentOrder) : 0;
+                const isVIP = orderTotal > 100;
+                
+                return (
+                  <button
+                    key={table.id}
+                    onClick={() => handleTableSelect(table.id)}
+                    className={`relative p-3 rounded-xl transition-all duration-200 ${
+                      selectedTable === table.id 
+                        ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-inner' 
+                        : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
+                    } flex flex-col items-center justify-center h-full min-h-[100px]`}
+                  >
+                    {isVIP && hasOrder && (
+                      <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        VIP
+                      </div>
+                    )}
+                    
+                    <span className="font-bold text-gray-800 text-lg mb-1">Mesa {table.id}</span>
+                    
+                    {hasOrder ? (
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500">
+                          {table.currentOrder.items?.length || 0} itens
+                        </div>
+                        <div className="text-sm font-semibold mt-1 text-blue-600">
+                          € {orderTotal.toFixed(2)}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 px-3 py-1 rounded-full bg-gray-50">Disponível</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center mt-4 gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="p-2 rounded-full bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                <span className="text-sm text-gray-600">
+                  Página {currentPage + 1} de {totalPages}
+                </span>
+                
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="p-2 rounded-full bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            Nenhuma mesa encontrada com este filtro
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Notificação de sucesso */}
       {showSuccessNotification && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -698,7 +987,6 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Loading overlay */}
       {(loading || isPrinting) && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-xl shadow-xl flex items-center gap-3">
@@ -708,46 +996,12 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Cabeçalho premium */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 text-white p-2 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1>
-                <p className="text-xs text-gray-500">Controle total das comandas</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={connectToPrinter}
-                className={`px-3 py-1 rounded-full flex items-center gap-1 text-sm ${printerConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-              >
-                <div className={`w-2 h-2 rounded-full ${printerConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                {printerConnected ? 'Impressora Conectada' : 'Conectar Impressora'}
-              </button>
-              <div className="hidden sm:block text-sm text-gray-500">
-                Atualizado: {lastUpdate.toLocaleTimeString()}
-              </div>
-              <div className="flex items-center space-x-1 bg-green-50 px-3 py-1 rounded-full">
-                <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span className="text-xs text-green-800">Online</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PremiumHeader />
 
-      {/* Mensagem de erro */}
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           {error}
           <button 
@@ -761,61 +1015,12 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Layout principal responsivo */}
       <div className="container mx-auto flex flex-col md:flex-row">
-        {/* Painel de mesas - Otimizado para touch */}
-        <div className="w-full md:w-64 lg:w-72 bg-white border-r border-gray-200 md:h-[calc(100vh-4rem)] md:sticky md:top-16 overflow-y-auto">
-          <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-            <h2 className="text-lg font-semibold text-gray-800">Mesas</h2>
-            <p className="text-sm text-gray-500">Toque para gerenciar</p>
-          </div>
-          
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
-            {Array.from({ length: 50 }, (_, i) => i + 1).map((tableNumber) => {
-              const table = tables.find(t => t.id === tableNumber.toString());
-              const hasOrder = table?.currentOrder;
-              const orderTotal = hasOrder ? calculateOrderTotal(table.currentOrder) : 0;
-              
-              return (
-                <button
-                  key={tableNumber}
-                  onClick={() => handleTableSelect(tableNumber)}
-                  className={`p-2 rounded-lg transition-all duration-150 ${
-                    selectedTable === tableNumber.toString() 
-                      ? 'bg-blue-50 border-2 border-blue-200 shadow-inner' 
-                      : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
-                  } flex flex-col items-center justify-center h-20`}
-                >
-                  <span className="font-bold text-gray-800 text-sm">Mesa {tableNumber}</span>
-                  
-                  {hasOrder ? (
-                    <>
-                      <span className="text-xs px-1 py-0.5 rounded-full bg-blue-100 text-blue-800 mt-1">
-                        {orderTotal > 100 ? 'VIP' : 'Ativa'}
-                      </span>
-                      <div className="text-center mt-1">
-                        <div className="text-xs text-gray-500">
-                          {table.currentOrder.items?.length || 0} itens
-                        </div>
-                        <div className="text-xs font-semibold text-blue-600">
-                          € {orderTotal.toFixed(2)}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="text-xs text-gray-400 mt-2">Livre</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Painel de detalhes - Design premium */}
+        <TableTabsView />
+        
         <main className="flex-1 p-4 bg-gray-50 min-h-[calc(100vh-4rem)]">
           {selectedTable ? (
             <div className="space-y-4">
-              {/* Cabeçalho da comanda */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 md:p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -836,7 +1041,7 @@ const AdminPanel = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setShowAddItemModal(true)}
-                        className="bg-blue-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm hover:bg-blue-700 transition-all hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm hover:from-blue-700 hover:to-indigo-700 transition-all hover:shadow-md flex items-center gap-2 whitespace-nowrap"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -847,284 +1052,283 @@ const AdminPanel = () => {
                   </div>
                 </div>
                 
-{/* Corpo da comanda */}
-<div className="p-4 md:p-6">
-  {selectedOrder ? (
-    <>
-      <div className="space-y-3 mb-6">
-        {selectedOrder.items?.length > 0 ? (
-          selectedOrder.items.map((item) => {
-            const isPrinted =
-              printedItems[
-                `${selectedTable}-${item.id}-${item.addedAt || ''}`
-              ] || item.printed;
+                <div className="p-4 md:p-6">
+                  {selectedOrder ? (
+                    <>
+                      <div className="space-y-3 mb-6">
+                        {selectedOrder.items?.length > 0 ? (
+                          selectedOrder.items.map((item) => {
+                            const isPrinted =
+                              printedItems[
+                                `${selectedTable}-${item.id}-${item.addedAt || ''}`
+                              ] || item.printed;
 
-            return (
-              <div
-                key={`${item.id}-${item.addedAt || ''}`}
-                className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border ${
-                  isPrinted
-                    ? 'bg-gray-50 border-gray-200'
-                    : 'bg-yellow-50 border-yellow-200 shadow-sm'
-                } transition-all duration-200`}
-              >
-                <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
-                  {!isPrinted && (
-                    <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
-                      Novo!
-                    </span>
+                            return (
+                              <div
+                                key={`${item.id}-${item.addedAt || ''}`}
+                                className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border ${
+                                  isPrinted
+                                    ? 'bg-gray-50 border-gray-200'
+                                    : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
+                                } transition-all duration-200`}
+                              >
+                                <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
+                                  {!isPrinted && (
+                                    <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap flex items-center">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                      </svg>
+                                      Novo!
+                                    </span>
+                                  )}
+                                  <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                    {item.image && (
+                                      <img
+                                        src={item.image}
+                                        alt={item.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p
+                                      className={`font-medium ${
+                                        isPrinted ? 'text-gray-600' : 'text-gray-800'
+                                      }`}
+                                    >
+                                      {item.name}
+                                    </p>
+                                    {item.description && (
+                                      <p className="text-xs text-gray-500 truncate">
+                                        {item.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between w-full sm:w-auto sm:gap-3">
+                                  <div className="flex items-center bg-white rounded-lg px-2 py-1 border border-gray-300">
+                                    <button
+                                      onClick={() =>
+                                        updateItemQuantity(item.id, (item.quantity || 1) - 1)
+                                      }
+                                      className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="text-sm font-medium w-6 text-center">
+                                      {item.quantity || 1}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        updateItemQuantity(item.id, (item.quantity || 1) + 1)
+                                      }
+                                      className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+
+                                  <span className="text-blue-600 font-semibold min-w-[60px] text-right">
+                                      € {(item.price * (item.quantity || 1)).toFixed(2)}
+                                  </span>
+
+                                  <button
+                                    onClick={() => removeItemFromOrder(item.id)}
+                                    className="text-red-500 hover:text-red-700 p-1 sm:p-2 rounded-full hover:bg-red-50 transition-colors ml-2"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-5 w-5"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-center py-8">
+                            <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-10 w-10 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1}
+                                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                                />
+                              </svg>
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-700 mb-2">
+                              Comanda vazia
+                            </h3>
+                            <p className="text-gray-500 mb-4">Adicione itens para começar</p>
+                            <button
+                              onClick={() => setShowAddItemModal(true)}
+                              className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-2 mx-auto"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                              </svg>
+                              Adicionar Itens
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {selectedOrder.items?.length > 0 && (
+                        <div className="border-t border-gray-200 pt-4">
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="text-lg font-bold text-gray-800">Total:</span>
+                            <span className="text-2xl font-bold text-blue-600">
+                              € {calculateOrderTotal(selectedOrder).toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <button
+                              onClick={() => setShowAddItemModal(true)}
+                              className="bg-white text-blue-600 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all hover:shadow-md flex items-center justify-center gap-2 border border-gray-200 font-medium"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                              </svg>
+                              Adicionar Mais
+                            </button>
+
+                            <button
+                              onClick={printOrder}
+                              disabled={isPrinting || !hasUnprintedItems(selectedOrder)}
+                              className={`px-4 py-3 rounded-lg transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium ${
+                                isPrinting || !hasUnprintedItems(selectedOrder)
+                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                  : 'bg-gradient-to-br from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+                              }`}
+                            >
+                              {isPrinting ? (
+                                <>
+                                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Imprimindo...
+                                </>
+                              ) : (
+                                <>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                  </svg>
+                                  Enviar para Cozinha
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={() => setShowCloseConfirmation(true)}
+                              className="bg-gradient-to-br from-red-500 to-pink-500 text-white px-4 py-3 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                              Fechar Comanda
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-10 w-10 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        Nenhum pedido ativo
+                      </h3>
+                      <p className="text-gray-500 mb-4">Comece criando um novo pedido</p>
+                      <button
+                        onClick={() => setShowAddItemModal(true)}
+                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-3 mx-auto text-lg"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Criar Novo Pedido
+                      </button>
+                    </div>
                   )}
-                  <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                    {item.image && (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`font-medium ${
-                        isPrinted ? 'text-gray-600' : 'text-gray-800'
-                      }`}
-                    >
-                      {item.name}
-                    </p>
-                    {item.description && (
-                      <p className="text-xs text-gray-500 truncate">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
                 </div>
-
-                <div className="flex items-center justify-between w-full sm:w-auto sm:gap-3">
-                  <div className="flex items-center bg-white rounded-lg px-2 py-1 border border-gray-300">
-                    <button
-                      onClick={() =>
-                        updateItemQuantity(item.id, (item.quantity || 1) - 1)
-                      }
-                      className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
-                    >
-                      -
-                    </button>
-                    <span className="text-sm font-medium w-6 text-center">
-                      {item.quantity || 1}
-                    </span>
-                    <button
-                      onClick={() =>
-                        updateItemQuantity(item.id, (item.quantity || 1) + 1)
-                      }
-                      className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <span className="text-blue-600 font-semibold min-w-[60px] text-right">
-                    € {(item.price * (item.quantity || 1)).toFixed(2)}
-                  </span>
-
-                  <button
-                    onClick={() => removeItemFromOrder(item.id)}
-                    className="text-red-500 hover:text-red-700 p-1 sm:p-2 rounded-full hover:bg-red-50 transition-colors ml-2"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="text-center py-8">
-            <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-10 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1}
-                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
-              Comanda vazia
-            </h3>
-            <p className="text-gray-500 mb-4">Adicione itens para começar</p>
-            <button
-              onClick={() => setShowAddItemModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Adicionar Itens
-            </button>
-          </div>
-        )}
-      </div>
-
-      {selectedOrder.items?.length > 0 && (
-        <div className="border-t border-gray-200 pt-4">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-lg font-bold text-gray-800">Total:</span>
-            <span className="text-2xl font-bold text-blue-600">
-              € {calculateOrderTotal(selectedOrder).toFixed(2)}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button
-              onClick={() => setShowAddItemModal(true)}
-              className="bg-white text-blue-600 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all hover:shadow-md flex items-center justify-center gap-2 border border-gray-200 font-medium"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Adicionar Mais
-            </button>
-
-            <button
-  onClick={printOrder}
-  disabled={isPrinting || selectedOrder.items?.every(item => 
-    printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed
-  )}
-  className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
->
-  {isPrinting ? (
-    <>
-      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      Imprimindo...
-    </>
-  ) : (
-    <>
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-      </svg>
-      Enviar para Cozinha (
-      {selectedOrder.items?.filter(item => 
-        !printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] && !item.printed
-      ).length || 0}
-      )
-    </>
-  )}
-</button>
-
-            <button
-              onClick={() => setShowCloseConfirmation(true)}
-              className="bg-gradient-to-br from-red-500 to-pink-500 text-white px-4 py-3 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Fechar Comanda
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  ) : (
-    <div className="text-center py-8">
-      <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-10 w-10 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-700 mb-2">
-        Nenhum pedido ativo
-      </h3>
-      <p className="text-gray-500 mb-4">Comece criando um novo pedido</p>
-      <button
-        onClick={() => setShowAddItemModal(true)}
-        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-3 mx-auto text-lg"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-          />
-        </svg>
-        Criar Novo Pedido
-      </button>
-    </div>
-  )}
-</div>
-
               </div>
             </div>
           ) : (
@@ -1146,205 +1350,212 @@ const AdminPanel = () => {
           )}
         </main>
       </div>
-
-      {/* Modal de confirmação para fechar comanda */}
-      {showCloseConfirmation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Fechar Comanda</h3>
-              <p className="text-gray-600 mb-6">Tem certeza que deseja fechar esta comanda? Esta ação não pode ser desfeita.</p>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setShowCloseConfirmation(false)}
-                  className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium flex-1"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={closeOrder}
-                  disabled={isClosingOrder}
-                  className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 flex items-center justify-center gap-2"
-                >
-                  {isClosingOrder ? (
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  
+        {/* Modal de confirmação para fechar comanda */}
+        {showCloseConfirmation && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-red-100 p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  Confirmar
-                </button>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">Fechar Comanda</h3>
+                </div>
+                <p className="text-gray-600 mb-6">Tem certeza que deseja fechar esta comanda? Esta ação não pode ser desfeita.</p>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => setShowCloseConfirmation(false)}
+                    className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium flex-1"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={closeOrder}
+                    disabled={isClosingOrder}
+                    className="px-4 py-3 bg-gradient-to-br from-red-600 to-pink-600 text-white rounded-lg hover:from-red-700 hover:to-pink-700 transition-colors font-medium flex-1 flex items-center justify-center gap-2"
+                  >
+                    {isClosingOrder ? (
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                    Confirmar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Modal de adicionar item - Otimizado para touch */}
-      {showAddItemModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">
-                {selectedMenuItem ? selectedMenuItem.name : 'Adicionar Item'}
-              </h3>
-              <button 
-                onClick={() => {
-                  setShowAddItemModal(false);
-                  setSelectedMenuItem(null);
-                }}
-                className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {!selectedMenuItem ? (
-              <div className="p-4">
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Pesquisar item..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div className="space-y-6">
-                  {Object.entries(menu).map(([category, items]) => (
-                    <div key={category}>
-                      <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
-                        {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {items.map(item => (
-                          <button
-                            key={item.id}
-                            onClick={() => setSelectedMenuItem(item)}
-                            className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
-                          >
-                            <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                              {item.image && (
-                                <img 
-                                  src={item.image} 
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-800">{item.name}</div>
-                              {item.description && (
-                                <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
-                              )}
-                              <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 md:p-6">
-                <button
-                  onClick={() => setSelectedMenuItem(null)}
-                  className="flex items-center text-blue-600 mb-4"
+        )}
+  
+        {/* Modal de adicionar item - Design Premium */}
+        {showAddItemModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-800">
+                  {selectedMenuItem ? selectedMenuItem.name : 'Adicionar Item'}
+                </h3>
+                <button 
+                  onClick={() => {
+                    setShowAddItemModal(false);
+                    setSelectedMenuItem(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Voltar para o menu
                 </button>
-                
-                <div className="flex flex-col md:flex-row gap-6 mb-6">
-                  <div className="w-full md:w-1/3">
-                    <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square">
-                      {selectedMenuItem.image && (
-                        <img 
-                          src={selectedMenuItem.image} 
-                          alt={selectedMenuItem.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
+              </div>
+              
+              {!selectedMenuItem ? (
+                <div className="p-4">
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Pesquisar item..."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
                   </div>
                   
-                  <div className="flex-1">
-                    <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
-                    {selectedMenuItem.description && (
-                      <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
-                    )}
-                    
-                    <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                      <label className="block text-gray-700 mb-3 font-medium">Quantidade:</label>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => setNewItemQuantity(prev => Math.max(1, prev - 1))}
-                          className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          value={newItemQuantity}
-                          onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="flex-1 text-center border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-medium"
-                        />
-                        <button 
-                          onClick={() => setNewItemQuantity(prev => prev + 1)}
-                          className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
-                        >
-                          +
-                        </button>
+                  <div className="space-y-6">
+                    {Object.entries(menu).map(([category, items]) => (
+                      <div key={category}>
+                        <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
+                          {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {items.map(item => (
+                            <button
+                              key={item.id}
+                              onClick={() => setSelectedMenuItem(item)}
+                              className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
+                            >
+                              <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-800">{item.name}</div>
+                                {item.description && (
+                                  <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
+                                )}
+                                <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 md:p-6">
+                  <button
+                    onClick={() => setSelectedMenuItem(null)}
+                    className="flex items-center text-blue-600 mb-4"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Voltar para o menu
+                  </button>
+                  
+                  <div className="flex flex-col md:flex-row gap-6 mb-6">
+                    <div className="w-full md:w-1/3">
+                      <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square">
+                        {selectedMenuItem.image && (
+                          <img 
+                            src={selectedMenuItem.image} 
+                            alt={selectedMenuItem.name}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
-                      <span className="font-medium text-gray-700">Subtotal:</span>
-                      <span className="text-xl font-bold text-blue-600">
-                        € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setSelectedMenuItem(null)}
-                        className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={addItemToOrder}
-                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
-                        disabled={loading}
-                      >
-                        {loading && (
-                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
-                        {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
-                      </button>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
+                      {selectedMenuItem.description && (
+                        <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
+                      )}
+                      
+                      <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                        <label className="block text-gray-700 mb-3 font-medium">Quantidade:</label>
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => setNewItemQuantity(prev => Math.max(1, prev - 1))}
+                            className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={newItemQuantity}
+                            onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="flex-1 text-center border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-medium"
+                          />
+                          <button 
+                            onClick={() => setNewItemQuantity(prev => prev + 1)}
+                            className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
+                        <span className="font-medium text-gray-700">Subtotal:</span>
+                        <span className="text-xl font-bold text-blue-600">
+                          € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          onClick={() => setSelectedMenuItem(null)}
+                          className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={addItemToOrder}
+                          className="px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+                          disabled={loading}
+                        >
+                          {loading && (
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          )}
+                          {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default AdminPanel;
+        )}
+      </div>
+    );
+  };
+  
+  export default AdminPanel;

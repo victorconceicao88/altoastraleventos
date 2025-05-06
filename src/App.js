@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
 import AdminPanel from './components/AdminPanel';
+
 import ClientInterface from './components/ClientInterface';
+
 import QRGenerator from './components/QRGenerator';
 
 // Wrapper para passar o parâmetro da URL como prop

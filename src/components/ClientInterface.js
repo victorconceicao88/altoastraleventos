@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
-import { onValue, push, update, ref, set, get,remove } from 'firebase/database';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { onValue, push, update, ref, set, get, remove } from 'firebase/database';
 import { database } from '../firebase';
-import frangoCremoso from '../assets/frango-cremoso.jpg';
-import picanhaPremium from '../assets/picanha-premium.jpg';
-import costelaRaiz from '../assets/costela-raiz.jpg';
-import feijoada from '../assets/feijoada.jpg';
-import hamburguer from '../assets/hamburguer.jpg';
-import batataFrita from '../assets/batata-frita.jpg';
-import pastel from '../assets/pastel.jpg';
-import cafe from '../assets/cafe.jpg';
-import bebida from '../assets/bebida.jpg';
-import salgado from '../assets/salgado.jpg';
-import sobremesa from '../assets/sobremesa.jpg';
+import { useWindowSize } from 'usehooks-ts'
+import { debounce } from 'lodash';
+import { AnimatePresence, motion } from 'framer-motion';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+
+
+// Import otimizado de imagens
+const foodImages = {
+  frangoCremoso: import('../assets/frango-cremoso.jpg'),
+  picanhaPremium: import('../assets/picanha-premium.jpg'),
+  costelaRaiz: import('../assets/costela-raiz.jpg'),
+  feijoada: import('../assets/feijoada.jpg'),
+  hamburguer: import('../assets/hamburguer.jpg'),
+  batataFrita: import('../assets/batata-frita.jpg'),
+  pastel: import('../assets/pastel.jpg'),
+  cafe: import('../assets/cafe.jpg'),
+  bebida: import('../assets/bebida.jpg'),
+  salgado: import('../assets/salgado.jpg'),
+  sobremesa: import('../assets/sobremesa.jpg')
+};
 
 const ClientInterface = ({ tableNumber }) => {
   const [cart, setCart] = useState([]);
@@ -25,21 +34,10 @@ const ClientInterface = ({ tableNumber }) => {
   const [activeOrder, setActiveOrder] = useState(null);
   const [billRequested, setBillRequested] = useState(false);
   const [showCart, setShowCart] = useState(false);
-
-
-  const foodImages = {
-    frangoCremoso,
-    picanhaPremium,
-    costelaRaiz,
-    feijoada,
-    hamburguer,
-    batataFrita,
-    pastel,
-    cafe,
-    bebida,
-    salgado,
-    sobremesa
-  };
+  const [isMobile, setIsMobile] = useState(false);
+  const [loadedImages, setLoadedImages] = useState({});
+  
+  const windowSize = useWindowSize();
 
   const menu = {
     semana: [
@@ -153,7 +151,6 @@ const ClientInterface = ({ tableNumber }) => {
       { id: 94, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: foodImages.sobremesa, rating: 4.8 }
     ]
   };
-
   const closeOrder = async () => {
     try {
       if (!currentOrderId) return;
