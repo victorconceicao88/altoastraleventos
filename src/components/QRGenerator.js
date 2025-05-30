@@ -272,15 +272,14 @@ const QRGenerator = () => {
           className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105"
         >
           <FaPrint className="text-lg" />
-          <span className="font-medium">Imprimir Comandas Premium</span>
+          <span className="font-medium">Imprimir</span>
         </button>
       </div>
 
       <header className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-800 tracking-tight mb-4">
-          HyperGram Ultra
+          Mesas & Comandas
         </h1>
-        <p className="text-lg text-gray-600 font-medium">Comandas Digitais Premium</p>
       </header>
 
       <div className="max-w-7xl mx-auto">
