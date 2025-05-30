@@ -14,7 +14,44 @@ import salgado from '../assets/salgado.jpg';
 import sobremesa from '../assets/sobremesa.jpg';
 
 const AdminPanel = () => {
-  const [tables, setTables] = useState([]);
+  // Configuração inicial das mesas e comandas
+  const initialTables = () => {
+    const tables = [];
+    
+    // Mesas internas (1-8)
+    for (let i = 1; i <= 8; i++) {
+      tables.push({
+        id: i.toString(),
+        type: 'interna',
+        capacity: i <= 4 ? 4 : 6, // Mesas 1-4: 4 lugares, 5-8: 6 lugares
+        location: 'Área interna'
+      });
+    }
+    
+    // Mesas externas (9-16)
+    for (let i = 9; i <= 16; i++) {
+      tables.push({
+        id: i.toString(),
+        type: 'externa',
+        capacity: i <= 12 ? 4 : 6, // Mesas 9-12: 4 lugares, 13-16: 6 lugares
+        location: 'Terraço'
+      });
+    }
+    
+    // Comandas adicionais (17-50) - para delivery/balcão
+    for (let i = 17; i <= 50; i++) {
+      tables.push({
+        id: i.toString(),
+        type: 'comanda',
+        capacity: 0,
+        location: i <= 30 ? 'Balcão' : 'Delivery'
+      });
+    }
+    
+    return tables;
+  };
+
+  const [tables, setTables] = useState(initialTables());
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState({ items: [] });
   const [loading, setLoading] = useState(false);
@@ -56,6 +93,7 @@ const AdminPanel = () => {
     salgado,
     sobremesa
   };
+  
   const menu = {
     semana: [
       { id: 1, name: 'Frango Cremoso', description: 'Strogonoff de frango, arroz branco, salada e batata palha', price: 12.90, veg: false, image: foodImages.frangoCremoso, rating: 4.5 },
@@ -169,8 +207,8 @@ const AdminPanel = () => {
     ]
   };
 
-   // Configurações da impressora Bluetooth
-   const PRINTER_CONFIG = {
+  // Configurações da impressora Bluetooth
+  const PRINTER_CONFIG = {
     deviceName: "BlueTooth Printer",
     serviceUUID: "0000ff00-0000-1000-8000-00805f9b34fb",
     characteristicUUID: "0000ff02-0000-1000-8000-00805f9b34fb",
@@ -539,10 +577,12 @@ const AdminPanel = () => {
     const unsubscribe = onValue(tablesRef, (snapshot) => {
       const data = snapshot.val() || {};
       
-      const tablesData = Object.entries(data).map(([id, table]) => {
+      const tablesData = initialTables().map(table => {
+        const tableData = data[table.id] || {};
         let currentOrder = null;
-        if (table.currentOrder) {
-          const orders = Object.entries(table.currentOrder);
+        
+        if (tableData.currentOrder) {
+          const orders = Object.entries(tableData.currentOrder);
           if (orders.length > 0) {
             currentOrder = {
               id: orders[0][0],
@@ -552,9 +592,9 @@ const AdminPanel = () => {
         }
 
         return { 
-          id, 
+          ...table,
           currentOrder,
-          ordersHistory: table.ordersHistory || {}
+          ordersHistory: tableData.ordersHistory || {}
         };
       });
 
@@ -783,6 +823,12 @@ const AdminPanel = () => {
         const total = t.currentOrder ? calculateOrderTotal(t.currentOrder) : 0;
         return total > 100;
       });
+    } else if (activeTab === 'internas') {
+      return tables.filter(t => t.type === 'interna');
+    } else if (activeTab === 'externas') {
+      return tables.filter(t => t.type === 'externa');
+    } else if (activeTab === 'comandas') {
+      return tables.filter(t => t.type === 'comanda');
     }
     return tables;
   };
@@ -794,6 +840,24 @@ const AdminPanel = () => {
   };
 
   const totalPages = Math.ceil(filteredTables().length / tablesPerPage);
+
+  const getTableBadgeColor = (table) => {
+    if (table.type === 'interna') return 'bg-blue-100 text-blue-800';
+    if (table.type === 'externa') return 'bg-green-100 text-green-800';
+    if (table.type === 'comanda') {
+      return table.location === 'Balcão' 
+        ? 'bg-purple-100 text-purple-800' 
+        : 'bg-orange-100 text-orange-800';
+    }
+    return 'bg-gray-100 text-gray-800';
+  };
+
+  const getTableIcon = (table) => {
+    if (table.type === 'interna') return '🏠';
+    if (table.type === 'externa') return '🌿';
+    if (table.type === 'comanda') return table.location === 'Balcão' ? '🍽️' : '🚴';
+    return '🪑';
+  };
 
   const PremiumHeader = () => (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
@@ -840,8 +904,8 @@ const AdminPanel = () => {
       <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">Mesas</h2>
-            <p className="text-sm text-gray-500">Gerencie as comandas</p>
+            <h2 className="text-lg font-semibold text-gray-800">Mesas & Comandas</h2>
+            <p className="text-sm text-gray-500">Total: {tables.length} disponíveis</p>
           </div>
           <div className="flex items-center gap-1">
             <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">
@@ -881,6 +945,36 @@ const AdminPanel = () => {
           >
             VIP
           </button>
+          <button
+            onClick={() => { setActiveTab('internas'); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === 'internas' 
+                ? 'bg-blue-100 text-blue-800 font-medium' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Internas
+          </button>
+          <button
+            onClick={() => { setActiveTab('externas'); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === 'externas' 
+                ? 'bg-green-100 text-green-800 font-medium' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Externas
+          </button>
+          <button
+            onClick={() => { setActiveTab('comandas'); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === 'comandas' 
+                ? 'bg-purple-100 text-purple-800 font-medium' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Comandas
+          </button>
         </div>
       </div>
       
@@ -892,6 +986,8 @@ const AdminPanel = () => {
                 const hasOrder = table.currentOrder;
                 const orderTotal = hasOrder ? calculateOrderTotal(table.currentOrder) : 0;
                 const isVIP = orderTotal > 100;
+                const badgeColor = getTableBadgeColor(table);
+                const tableIcon = getTableIcon(table);
                 
                 return (
                   <button
@@ -903,8 +999,12 @@ const AdminPanel = () => {
                         : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
                     } flex flex-col items-center justify-center h-full min-h-[100px]`}
                   >
+                    <div className={`absolute top-1 right-1 ${badgeColor} text-xs px-2 py-0.5 rounded-full flex items-center`}>
+                      {tableIcon} {table.location}
+                    </div>
+                    
                     {isVIP && hasOrder && (
-                      <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
+                      <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                         </svg>
@@ -912,7 +1012,9 @@ const AdminPanel = () => {
                       </div>
                     )}
                     
-                    <span className="font-bold text-gray-800 text-lg mb-1">Mesa {table.id}</span>
+                    <span className="font-bold text-gray-800 text-lg mb-1">
+                      {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
+                    </span>
                     
                     {hasOrder ? (
                       <div className="text-center">
@@ -1031,7 +1133,9 @@ const AdminPanel = () => {
                         </svg>
                       </div>
                       <div>
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">Comanda {selectedTable}</h2>
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                          {selectedTable <= 16 ? `Mesa ${selectedTable}` : `Comanda ${selectedTable}`}
+                        </h2>
                         <p className="text-sm text-gray-500">
                           {selectedOrder?.items?.length || 0} itens • € {selectedOrder ? calculateOrderTotal(selectedOrder).toFixed(2) : '0.00'}
                         </p>
@@ -1338,224 +1442,223 @@ const AdminPanel = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 5h18M3 12h18M3 19h18" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-700 mb-2">Selecione uma mesa</h3>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">Selecione uma mesa ou comanda</h3>
               <p className="text-gray-500 mb-6 max-w-md">
-                Escolha uma mesa no painel lateral para visualizar e gerenciar os pedidos
+                Escolha uma mesa ou comanda no painel lateral para visualizar e gerenciar os pedidos
               </p>
               <div className="w-12 h-1 bg-gray-200 rounded-full mb-6"></div>
               <p className="text-sm text-gray-400">
-                Toque em uma mesa para começar
+                Toque em uma mesa ou comanda para começar
               </p>
             </div>
           )}
         </main>
       </div>
   
-        {/* Modal de confirmação para fechar comanda */}
-        {showCloseConfirmation && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-red-100 p-2 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      {/* Modal de confirmação para fechar comanda */}
+      {showCloseConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-100 p-2 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Fechar Comanda</h3>
+              </div>
+              <p className="text-gray-600 mb-6">Tem certeza que deseja fechar esta comanda? Esta ação não pode ser desfeita.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowCloseConfirmation(false)}
+                  className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium flex-1"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={closeOrder}
+                  disabled={isClosingOrder}
+                  className="px-4 py-3 bg-gradient-to-br from-red-600 to-pink-600 text-white rounded-lg hover:from-red-700 hover:to-pink-700 transition-colors font-medium flex-1 flex items-center justify-center gap-2"
+                >
+                  {isClosingOrder ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800">Fechar Comanda</h3>
-                </div>
-                <p className="text-gray-600 mb-6">Tem certeza que deseja fechar esta comanda? Esta ação não pode ser desfeita.</p>
-                
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => setShowCloseConfirmation(false)}
-                    className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium flex-1"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={closeOrder}
-                    disabled={isClosingOrder}
-                    className="px-4 py-3 bg-gradient-to-br from-red-600 to-pink-600 text-white rounded-lg hover:from-red-700 hover:to-pink-700 transition-colors font-medium flex-1 flex items-center justify-center gap-2"
-                  >
-                    {isClosingOrder ? (
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                    Confirmar
-                  </button>
-                </div>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                  Confirmar
+                </button>
               </div>
             </div>
           </div>
-        )}
-  
-        {/* Modal de adicionar item - Design Premium */}
-        {showAddItemModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-800">
-                  {selectedMenuItem ? selectedMenuItem.name : 'Adicionar Item'}
-                </h3>
-                <button 
-                  onClick={() => {
-                    setShowAddItemModal(false);
-                    setSelectedMenuItem(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {!selectedMenuItem ? (
-                <div className="p-4">
-                  <div className="mb-4">
-                    <input
-                      type="text"
-                      placeholder="Pesquisar item..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div className="space-y-6">
-                    {Object.entries(menu).map(([category, items]) => (
-                      <div key={category}>
-                        <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
-                          {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {items.map(item => (
-                            <button
-                              key={item.id}
-                              onClick={() => setSelectedMenuItem(item)}
-                              className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
-                            >
-                              <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                {item.image && (
-                                  <img 
-                                    src={item.image} 
-                                    alt={item.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-semibold text-gray-800">{item.name}</div>
-                                {item.description && (
-                                  <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
-                                )}
-                                <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+        </div>
+      )}
+
+      {showAddItemModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-800">
+                {selectedMenuItem ? selectedMenuItem.name : 'Adicionar Item'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowAddItemModal(false);
+                  setSelectedMenuItem(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {!selectedMenuItem ? (
+              <div className="p-4">
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    placeholder="Pesquisar item..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
-              ) : (
-                <div className="p-4 md:p-6">
-                  <button
-                    onClick={() => setSelectedMenuItem(null)}
-                    className="flex items-center text-blue-600 mb-4"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Voltar para o menu
-                  </button>
+                
+                <div className="space-y-6">
+                  {Object.entries(menu).map(([category, items]) => (
+                    <div key={category}>
+                      <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
+                        {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {items.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => setSelectedMenuItem(item)}
+                            className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
+                          >
+                            <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                              {item.image && (
+                                <img 
+                                  src={item.image} 
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-800">{item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
+                              )}
+                              <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 md:p-6">
+                <button
+                  onClick={() => setSelectedMenuItem(null)}
+                  className="flex items-center text-blue-600 mb-4"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Voltar para o menu
+                </button>
+                
+                <div className="flex flex-col md:flex-row gap-6 mb-6">
+                  <div className="w-full md:w-1/3">
+                    <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square">
+                      {selectedMenuItem.image && (
+                        <img 
+                          src={selectedMenuItem.image} 
+                          alt={selectedMenuItem.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </div>
                   
-                  <div className="flex flex-col md:flex-row gap-6 mb-6">
-                    <div className="w-full md:w-1/3">
-                      <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square">
-                        {selectedMenuItem.image && (
-                          <img 
-                            src={selectedMenuItem.image} 
-                            alt={selectedMenuItem.name}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
+                  <div className="flex-1">
+                    <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
+                    {selectedMenuItem.description && (
+                      <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
+                    )}
+                    
+                    <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                      <label className="block text-gray-700 mb-3 font-medium">Quantidade:</label>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => setNewItemQuantity(prev => Math.max(1, prev - 1))}
+                          className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={newItemQuantity}
+                          onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="flex-1 text-center border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-medium"
+                        />
+                        <button 
+                          onClick={() => setNewItemQuantity(prev => prev + 1)}
+                          className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
                     
-                    <div className="flex-1">
-                      <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
-                      {selectedMenuItem.description && (
-                        <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
-                      )}
-                      
-                      <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                        <label className="block text-gray-700 mb-3 font-medium">Quantidade:</label>
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => setNewItemQuantity(prev => Math.max(1, prev - 1))}
-                            className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            value={newItemQuantity}
-                            onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="flex-1 text-center border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-medium"
-                          />
-                          <button 
-                            onClick={() => setNewItemQuantity(prev => prev + 1)}
-                            className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
-                        <span className="font-medium text-gray-700">Subtotal:</span>
-                        <span className="text-xl font-bold text-blue-600">
-                          € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button
-                          onClick={() => setSelectedMenuItem(null)}
-                          className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={addItemToOrder}
-                          className="px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-                          disabled={loading}
-                        >
-                          {loading && (
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          )}
-                          {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
-                        </button>
-                      </div>
+                    <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
+                      <span className="font-medium text-gray-700">Subtotal:</span>
+                      <span className="text-xl font-bold text-blue-600">
+                        € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setSelectedMenuItem(null)}
+                        className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={addItemToOrder}
+                        className="px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        disabled={loading}
+                      >
+                        {loading && (
+                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        )}
+                        {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
+                      </button>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
-  };
-  
-  export default AdminPanel;
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminPanel;
