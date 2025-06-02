@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ref, onValue, update, push, remove, set, get } from 'firebase/database';
 import { database } from '../firebase';
+import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
 import frangoCremoso from '../assets/frango-cremoso.jpg';
 import picanhaPremium from '../assets/picanha-premium.jpg';
 import costelaRaiz from '../assets/costela-raiz.jpg';
@@ -14,6 +15,46 @@ import salgado from '../assets/salgado.jpg';
 import sobremesa from '../assets/sobremesa.jpg';
 
 const AdminPanel = () => {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
+
+  // Admin panel state
+  const [tables, setTables] = useState([]);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState({ items: [] });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+  const [newOrders, setNewOrders] = useState([]);
+  const [showNewOrdersModal, setShowNewOrdersModal] = useState(false);
+  const [isClosingOrder, setIsClosingOrder] = useState(false);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [billRequests, setBillRequests] = useState([]);
+  const billRequestsRef = useRef(new Set());
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [consumptionItems, setConsumptionItems] = useState([]);
+  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
+  const [showConsumptionModal, setShowConsumptionModal] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printerConnected, setPrinterConnected] = useState(false);
+  const printerDeviceRef = useRef(null);
+  const printerCharacteristicRef = useRef(null);
+  const [printedItems, setPrintedItems] = useState({});
+  const [printerReconnectAttempted, setPrinterReconnectAttempted] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
   // Configuração inicial das mesas e comandas
   const initialTables = () => {
     const tables = [];
@@ -50,35 +91,6 @@ const AdminPanel = () => {
     
     return tables;
   };
-
-  const [tables, setTables] = useState(initialTables());
-  const [selectedTable, setSelectedTable] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState({ items: [] });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [editingItem, setEditingItem] = useState(null);
-  const [newItemQuantity, setNewItemQuantity] = useState(1);
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
-  const [newOrders, setNewOrders] = useState([]);
-  const [showNewOrdersModal, setShowNewOrdersModal] = useState(false);
-  const [isClosingOrder, setIsClosingOrder] = useState(false);
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [billRequests, setBillRequests] = useState([]);
-  const billRequestsRef = useRef(new Set());
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [consumptionItems, setConsumptionItems] = useState([]);
-  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
-  const [showConsumptionModal, setShowConsumptionModal] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
-  const [printerConnected, setPrinterConnected] = useState(false);
-  const printerDeviceRef = useRef(null);
-  const printerCharacteristicRef = useRef(null);
-  const [printedItems, setPrintedItems] = useState({});
-  const [printerReconnectAttempted, setPrinterReconnectAttempted] = useState(false);
-  const [activeTab, setActiveTab] = useState('all');
-  const [currentPage, setCurrentPage] = useState(0);
 
   const foodImages = {
     frangoCremoso,
@@ -206,6 +218,30 @@ const AdminPanel = () => {
       { id: 94, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: foodImages.sobremesa, rating: 4.8 }
     ]
   };
+
+  // Search functionality
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    const results = [];
+    const lowerCaseTerm = searchTerm.toLowerCase();
+
+    Object.values(menu).forEach(category => {
+      category.forEach(item => {
+        if (item.name.toLowerCase().includes(lowerCaseTerm) || 
+            (item.description && item.description.toLowerCase().includes(lowerCaseTerm))) {
+          results.push(item);
+        }
+      });
+    });
+
+    setSearchResults(results);
+    setShowSearchResults(results.length > 0);
+  }, [searchTerm]);
 
   // Configurações da impressora Bluetooth
   const PRINTER_CONFIG = {
@@ -462,7 +498,7 @@ const AdminPanel = () => {
     const FEED = '\x1Bd';
   
     let receipt = INIT;
-    receipt += `${CENTER}${BOLD_ON}RESTAURANTE DELÍCIA${BOLD_OFF}${LF}`;
+    receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
     receipt += `MESA: ${selectedTable}${LF}`;
     receipt += `${new Date().toLocaleString()}${LF}${LF}`;
     receipt += '--------------------------------' + LF;
@@ -573,6 +609,10 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
+    setTables(initialTables());
+    
     const tablesRef = ref(database, 'tables');
     const unsubscribe = onValue(tablesRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -603,10 +643,10 @@ const AdminPanel = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!selectedTable) {
+    if (!isAuthenticated || !selectedTable) {
       setSelectedOrder(null);
       return;
     }
@@ -646,7 +686,7 @@ const AdminPanel = () => {
     });
   
     return () => unsubscribe();
-  }, [selectedTable]);
+  }, [isAuthenticated, selectedTable]);
 
   const createNewOrder = async () => {
     if (!selectedTable) return;
@@ -680,8 +720,30 @@ const AdminPanel = () => {
     
     setIsClosingOrder(true);
     try {
+      // Calculate delivery fee if applicable
+      const table = tables.find(t => t.id === selectedTable);
+      let total = calculateOrderTotal(selectedOrder);
+      
+      if (table?.type === 'comanda' && table?.location === 'Delivery') {
+        // Count delivery items
+        const deliveryCount = selectedOrder.items.filter(item => 
+          item.category === 'delivery'
+        ).length;
+        
+        // Add R$2.50 fee if there are 2 or more delivery items
+        if (deliveryCount >= 2) {
+          total += 2.50;
+        }
+      }
+
+      const orderToClose = {
+        ...selectedOrder,
+        total: total,
+        closedAt: Date.now()
+      };
+
       const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-      await push(historyRef, selectedOrder);
+      await push(historyRef, orderToClose);
       
       const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       await remove(orderRef);
@@ -1069,6 +1131,95 @@ const AdminPanel = () => {
       </div>
     </div>
   );
+
+  // Login function
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoadingAuth(true);
+    setAuthError('');
+    
+    try {
+      const auth = getAuth();
+      await signInWithEmailAndPassword(auth, email, password);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setAuthError('Credenciais inválidas. Por favor, tente novamente.');
+      console.error('Login error:', error);
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  };
+
+  // If not authenticated, show login form
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Painel Administrativo</h1>
+            <p className="text-gray-600">Faça login para acessar o sistema</p>
+          </div>
+          
+          {authError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {authError}
+            </div>
+          )}
+          
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-gray-700 mb-2">Usuário</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="admin@example.com"
+                required
+              />
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="password" className="block text-gray-700 mb-2">Senha</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={isLoadingAuth}
+              className="w-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              {isLoadingAuth ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Carregando...
+                </>
+              ) : (
+                'Entrar'
+              )}
+            </button>
+            
+            <div className="mt-4 text-center text-sm text-gray-500">
+              <p>Usuário: admin</p>
+              <p>Senha: Gerencia22</p>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1486,7 +1637,7 @@ const AdminPanel = () => {
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                  </svg>
                   ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -1511,6 +1662,8 @@ const AdminPanel = () => {
                 onClick={() => {
                   setShowAddItemModal(false);
                   setSelectedMenuItem(null);
+                  setSearchTerm('');
+                  setShowSearchResults(false);
                 }}
                 className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
               >
@@ -1522,54 +1675,107 @@ const AdminPanel = () => {
             
             {!selectedMenuItem ? (
               <div className="p-4">
-                <div className="mb-4">
+                <div className="mb-4 relative">
                   <input
                     type="text"
                     placeholder="Pesquisar item..."
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setShowSearchResults(false);
+                      }}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
                 
-                <div className="space-y-6">
-                  {Object.entries(menu).map(([category, items]) => (
-                    <div key={category}>
-                      <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
-                        {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {items.map(item => (
-                          <button
-                            key={item.id}
-                            onClick={() => setSelectedMenuItem(item)}
-                            className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
-                          >
-                            <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                              {item.image && (
-                                <img 
-                                  src={item.image} 
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-800">{item.name}</div>
-                              {item.description && (
-                                <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
-                              )}
-                              <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
+                {showSearchResults ? (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-700 mb-2">
+                      Resultados para "{searchTerm}"
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {searchResults.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => setSelectedMenuItem(item)}
+                          className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
+                        >
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                            {item.image && (
+                              <img 
+                                src={item.image} 
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-800">{item.name}</div>
+                            {item.description && (
+                              <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
+                            )}
+                            <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(menu).map(([category, items]) => (
+                      <div key={category}>
+                        <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
+                          {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {items.map(item => (
+                            <button
+                              key={item.id}
+                              onClick={() => setSelectedMenuItem(item)}
+                              className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
+                            >
+                              <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-800">{item.name}</div>
+                                {item.description && (
+                                  <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
+                                )}
+                                <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="p-4 md:p-6">
                 <button
-                  onClick={() => setSelectedMenuItem(null)}
+                  onClick={() => {
+                    setSelectedMenuItem(null);
+                    setSearchTerm('');
+                    setShowSearchResults(false);
+                  }}
                   className="flex items-center text-blue-600 mb-4"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1631,7 +1837,11 @@ const AdminPanel = () => {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
-                        onClick={() => setSelectedMenuItem(null)}
+                        onClick={() => {
+                          setSelectedMenuItem(null);
+                          setSearchTerm('');
+                          setShowSearchResults(false);
+                        }}
                         className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
                       >
                         Cancelar
