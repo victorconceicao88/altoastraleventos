@@ -1,7 +1,7 @@
 import { QRCodeCanvas } from 'qrcode.react';
 import { FaReceipt, FaPrint } from 'react-icons/fa';
 import { useEffect, useRef, useState } from 'react';
-import logo from '../assets/logo-alto-astral.png';
+import logo from '../assets/logo-alto-astral.png'; // Verifique novamente o caminho do logo
 
 const QRGenerator = () => {
   const baseUrl = window.location.origin;
@@ -9,7 +9,7 @@ const QRGenerator = () => {
   const [logoBase64, setLogoBase64] = useState('');
   const canvasRefs = useRef(Array(50).fill(null));
 
-  // Converter logo para base64
+  // Converte o logo para base64
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
@@ -23,12 +23,12 @@ const QRGenerator = () => {
       setLogoBase64(canvas.toDataURL('image/png'));
     };
     img.onerror = () => {
-      console.error('Erro ao carregar o logo');
+      console.error('Erro ao carregar o logo. Verifique o caminho e as permissões.');
       setLogoBase64('');
     };
   }, []);
 
-  // Capturar QR Codes como imagens
+  // Captura os QR Codes como imagens Base64
   useEffect(() => {
     const timer = setTimeout(() => {
       const images = canvasRefs.current.map((ref) => {
@@ -40,9 +40,10 @@ const QRGenerator = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Função para lidar com a impressão das comandas
   const handlePrint = () => {
     if (!logoBase64 || qrImages.some(img => !img)) {
-      alert('Aguarde o carregamento completo dos QR Codes e logo...');
+      alert('Aguarde o carregamento completo dos QR Codes e do logo antes de imprimir.');
       return;
     }
 
@@ -50,71 +51,75 @@ const QRGenerator = () => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Comandas Premium - HyperGram Ultra</title>
+          <title>Comandas Digitais - Alto Astral</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
             
             body {
               font-family: 'Poppins', sans-serif;
               margin: 0;
-              padding: 20px;
+              padding: 5mm; /* Reduzi o padding da página para otimizar o espaço */
               background: #f8f9fa;
             }
             
             .print-header {
               text-align: center;
-              margin-bottom: 30px;
+              margin-bottom: 15px; /* Reduzi a margem do cabeçalho */
             }
             
             .cards-grid {
               display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 20px;
-              max-width: 1000px;
+              grid-template-columns: repeat(3, 1fr); /* 3 colunas para ter 9 por página (3x3) */
+              gap: 8mm; /* Ajustei o espaçamento entre as comandas */
+              max-width: 280mm; /* Aumentei a largura máxima para acomodar 3x3 em paisagem A4 */
               margin: 0 auto;
             }
             
             .credit-card {
-              background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-              border-radius: 16px;
-              padding: 25px;
-              color: white;
-              box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+              background: white;
+              border-radius: 8px;
+              padding: 8px; /* Reduzi o padding interno do cartão */
+              color: black;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.1);
               position: relative;
               overflow: hidden;
-              height: 200px;
+              width: 85.6mm; /* Largura padrão de cartão de crédito */
+              height: 53.98mm; /* Altura padrão de cartão de crédito */
               display: flex;
               flex-direction: column;
               justify-content: space-between;
               page-break-inside: avoid;
-              border: 1px solid rgba(255,255,255,0.2);
+              border: 2px solid #3b82f6;
+              box-sizing: border-box;
             }
             
             .card-header {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 15px;
+              margin-bottom: 2px; /* Margem reduzida */
             }
             
             .card-logo {
-              height: 40px;
-              max-width: 120px;
+              height: 32px; /* Levemente reduzido para melhor encaixe no 3x3 */
+              max-width: 85px; /* Levemente reduzido */
               object-fit: contain;
-              filter: brightness(0) invert(1) drop-shadow(0 0 5px rgba(255,255,255,0.3));
+              filter: none;
+              margin: 0 auto;
+              display: block;
             }
             
             .qr-container {
               background: white;
-              padding: 10px;
-              border-radius: 12px;
-              width: 100px;
-              height: 100px;
+              padding: 2px; /* Padding menor */
+              border-radius: 5px; /* Borda levemente menor */
+              width: 60px; /* Levemente menor para otimização do espaço */
+              height: 60px; /* Levemente menor */
               margin: 0 auto;
               display: flex;
               align-items: center;
               justify-content: center;
-              box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
             
             .qr-container img {
@@ -124,94 +129,89 @@ const QRGenerator = () => {
             }
             
             .card-type {
-              font-size: 16px;
-              letter-spacing: 1.5px;
+              font-size: 10px; /* Fonte menor */
+              letter-spacing: 0.5px;
               text-align: center;
-              margin-top: 15px;
-              font-weight: 700;
-              text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              margin-top: 2px;
+              font-weight: 600;
               text-transform: uppercase;
+              color: #333;
             }
             
             .card-number {
-              font-size: 24px;
+              font-size: 15px; /* Fonte levemente menor */
               text-align: center;
               font-weight: 700;
-              margin: 5px 0;
+              margin: 0; /* Margem zero */
+              color: #1a202c;
             }
-            
+
             .card-label {
-              font-size: 13px;
+              font-size: 8px; /* Fonte ainda menor */
               text-align: center;
-              opacity: 0.9;
-              margin-bottom: 8px;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            }
-            
-            .card-footer {
-              display: flex;
-              justify-content: space-between;
-              font-size: 11px;
-              margin-top: 15px;
               opacity: 0.8;
+              margin-bottom: 2px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: #555;
             }
-            
-            .card-corner {
-              position: absolute;
-              width: 80px;
-              height: 80px;
-              background: rgba(255,255,255,0.08);
-              border-radius: 50%;
-            }
-            
-            .corner-1 {
-              top: -30px;
-              left: -30px;
-            }
-            
-            .corner-2 {
-              bottom: -30px;
-              right: -30px;
-            }
-            
-            .card-stripe {
-              position: absolute;
-              top: 40px;
-              left: 0;
-              width: 100%;
-              height: 20px;
-              background: rgba(0,0,0,0.15);
+
+            .card-footer {
+              display: none; /* Continua escondido */
             }
             
             .card-id {
-              font-size: 12px;
+              font-size: 8px; /* Fonte do ID menor */
               opacity: 0.8;
               font-weight: 600;
+              color: #444;
+            }
+            
+            .card-icon {
+              position: absolute;
+              bottom: 6px; /* Ajustei a posição */
+              left: 6px; /* Ajustei a posição */
+              font-size: 12px; /* Ícone menor */
+              opacity: 0.6;
+              color: #3b82f6;
+            }
+
+            .card-corner, .card-stripe {
+                display: none;
             }
             
             @page {
-              size: A4 landscape;
-              margin: 15mm;
+              size: A4 landscape; /* Orientação da página: paisagem */
+              margin: 7mm; /* Margens mínimas para maximizar o espaço */
             }
             
             @media print {
               body {
                 background: white;
-                padding: 10px;
+                padding: 0; /* Removido padding do body na impressão para maior controle */
               }
               
               .cards-grid {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 15px !important;
+                grid-template-columns: repeat(3, 1fr) !important; /* Força 3 colunas na impressão */
+                gap: 7mm !important; /* Espaçamento menor na impressão */
+                margin: 0 auto; /* Centraliza a grade */
+                max-width: 280mm; /* Garante que a grade não seja cortada */
+                padding: 5mm; /* Adicionado padding à grade para garantir margem na página */
+              }
+              
+              .credit-card {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                width: 85.6mm;
+                height: 53.98mm;
               }
             }
           </style>
         </head>
         <body>
           <div class="print-header">
-            <h1 style="font-size: 28px; margin-bottom: 5px; color: #1e3c72;">HyperGram Ultra</h1>
-            <p style="font-size: 16px; color: #555;">Comandas Digitais Premium</p>
+            <h1 style="font-size: 18px; margin-bottom: 2px; color: #1e3c72;">Alto Astral</h1>
+            <p style="font-size: 10px; color: #555;">Comandas Digitais</p>
           </div>
           <div class="cards-grid">
             ${Array.from({ length: 50 }, (_, i) => {
@@ -219,13 +219,8 @@ const QRGenerator = () => {
               const cardType = tableNumber <= 18 ? 'MESA' : 'COMANDA';
               return `
                 <div class="credit-card">
-                  <div class="card-corner corner-1"></div>
-                  <div class="card-corner corner-2"></div>
-                  <div class="card-stripe"></div>
-                  
                   <div class="card-header">
                     <div class="card-id">#${String(tableNumber).padStart(2, '0')}</div>
-                    <img src="${logoBase64}" class="card-logo" alt="Logo" />
                   </div>
                   
                   <div class="qr-container">
@@ -235,12 +230,13 @@ const QRGenerator = () => {
                   <div class="card-type">${cardType}</div>
                   <div class="card-number">${tableNumber}</div>
                   
-                  <div class="card-label">Digital Menu</div>
-                  
-                  <div class="card-footer">
-                    <span>www.hypergram.com.br</span>
-                    <span>Scan Me</span>
+                  <div class="card-label">Menu Digital</div>
+
+                  <div style="text-align: center; margin-top: 3px;">
+                    <img src="${logoBase64}" class="card-logo" alt="Logo Alto Astral" />
                   </div>
+                  
+                  <div class="card-icon">🍽️</div>
                 </div>
               `;
             }).join('')}
@@ -248,7 +244,6 @@ const QRGenerator = () => {
           <script>
             setTimeout(() => {
               window.print();
-              window.close();
             }, 500);
           </script>
         </body>
@@ -272,14 +267,15 @@ const QRGenerator = () => {
           className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105"
         >
           <FaPrint className="text-lg" />
-          <span className="font-medium">Imprimir</span>
+          <span className="font-medium">Imprimir Comandas</span>
         </button>
       </div>
 
       <header className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-800 tracking-tight mb-4">
-          Mesas & Comandas
+          Comandas Digitais
         </h1>
+        <p className="text-lg text-gray-600">Escaneie o QR Code para acessar o menu digital</p>
       </header>
 
       <div className="max-w-7xl mx-auto">
@@ -292,31 +288,34 @@ const QRGenerator = () => {
             return (
               <div
                 key={tableNumber}
-                className="bg-white border-2 border-gray-100 p-5 rounded-2xl shadow-lg flex flex-col items-center transition-all hover:shadow-xl hover:-translate-y-1"
+                className="bg-white border-2 border-blue-500 p-3 rounded-xl shadow-lg flex flex-col items-center justify-between transition-all hover:shadow-xl hover:-translate-y-1"
+                style={{ width: '85.6mm', height: '53.98mm', boxSizing: 'border-box' }}
               >
-                <div className="mb-4 p-3 border-4 border-indigo-500 rounded-xl bg-white shadow-inner w-fit">
+                <div className="text-center w-full">
+                  <div className="flex items-center justify-between mb-1 text-gray-700">
+                    <span className="font-semibold text-sm">#{String(tableNumber).padStart(2, '0')}</span>
+                    <FaReceipt className="text-base text-blue-600" />
+                  </div>
+                </div>
+                
+                <div className="mb-2 p-1 border border-gray-200 rounded-lg bg-white shadow-sm w-fit">
                   <QRCodeCanvas
                     value={qrUrl}
-                    size={140}
+                    size={65}
                     level="H"
                     includeMargin={true}
                     ref={(el) => (canvasRefs.current[i] = el)}
                   />
                 </div>
 
-                <div className="text-center mt-2 w-full">
-                  <div className="flex items-center justify-center gap-2 mb-2 text-gray-700">
-                    <FaReceipt className="text-xl text-indigo-600" />
-                    <span className="font-semibold text-lg">{label}</span>
-                  </div>
-
-                  <div className="w-full flex justify-center">
-                    <img
-                      src={logo}
-                      alt="Logo do Restaurante"
-                      className="h-12 opacity-90"
-                    />
-                  </div>
+                <div className="text-center w-full">
+                  <p className="font-bold text-base text-gray-900 leading-tight">{label}</p>
+                  <p className="text-xs text-gray-600 mb-1">Menu Digital</p>
+                  <img
+                    src={logo}
+                    alt="Logo Alto Astral"
+                    className="h-10 mx-auto opacity-90 mt-1"
+                  />
                 </div>
               </div>
             );
