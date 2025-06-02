@@ -1428,7 +1428,7 @@ const AdminPanel = () => {
                             <h3 className="text-lg font-medium text-gray-700 mb-2">
                               Comanda vazia
                             </h3>
-                            <p className="text-gray-500 mb-4">Adicione itens para começar</p>
+                            <p className="text-gray-500 mb-4">Adicione itens para começa</p>
                             <button
                               onClick={() => setShowAddItemModal(true)}
                               className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-2 mx-auto"
