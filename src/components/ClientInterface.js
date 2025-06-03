@@ -118,7 +118,7 @@ const ClientInterface = ({ tableNumber }) => {
       },
       { 
         id: 2, 
-        name: 'Maminha Top', 
+        name: 'Maminha', 
         description: 'Picanha grelhada, arroz branco, feijão tropeiro e vinagrete', 
         price: 15.90, 
         veg: false, 
