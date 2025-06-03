@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { onValue, push, update, ref, set, get, remove } from 'firebase/database';
 import { database } from '../firebase';
@@ -6,7 +5,6 @@ import { useWindowSize } from 'usehooks-ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
-import Footer from './footer';
 import { 
   FaShoppingCart, 
   FaPlus, 
@@ -24,7 +22,7 @@ import {
   FaWineBottle,
   FaIceCream
 } from 'react-icons/fa';
-import { GiMeal, GiCupcake,GiHamburger } from 'react-icons/gi';
+import { GiMeal, GiCupcake, GiHamburger  } from 'react-icons/gi';
 import { BiDrink } from 'react-icons/bi';
 import { IoMdClose } from 'react-icons/io';
 
@@ -70,8 +68,6 @@ const ClientInterface = ({ tableNumber }) => {
   const [itemNotes, setItemNotes] = useState({});
   const [showItemAdded, setShowItemAdded] = useState(false);
   const [orderNotes, setOrderNotes] = useState('');
-  const [orderSent, setOrderSent] = useState(false);
-  const [showOrderDetails, setShowOrderDetails] = useState(false);
   const notesInputRef = useRef(null);
   
   const windowSize = useWindowSize();
@@ -164,7 +160,7 @@ const ClientInterface = ({ tableNumber }) => {
         veg: true, 
         image: 'frangoCremoso', 
         rating: 4.2,
-        available: dailySpecialId === 6
+        available: true // Sempre disponível
       }
     ],
     lanches: [
@@ -428,11 +424,9 @@ const ClientInterface = ({ tableNumber }) => {
       setCart([]);
       setOrderStatus('Pedido enviado');
       setShowConfirmation(false);
-      setOrderSent(true);
       setOrderNotes('');
       
       setTimeout(() => {
-        setOrderSent(false);
         if (isMobile) setShowCart(false);
       }, 3000);
 
@@ -493,7 +487,7 @@ const ClientInterface = ({ tableNumber }) => {
       case 'porcoes':
         return <FaBreadSlice className="h-5 w-5 mr-2" />;
       case 'pasteis':
-        return <GiHamburger className="h-5 w-5 mr-2" />;
+        return <GiHamburger  className="h-5 w-5 mr-2" />;
       case 'cafe':
         return <FaCoffee className="h-5 w-5 mr-2" />;
       case 'bebidas':
@@ -510,42 +504,49 @@ const ClientInterface = ({ tableNumber }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
-      <header className="bg-[#d5c8b6] text-black shadow-lg sticky top-0 z-50 pt-safe-top">
+    <div className="min-h-screen bg-[#f5f5f5] text-gray-800 flex flex-col">
+      {/* Header Redesign */}
+      <header className="bg-gradient-to-r from-[#e6be44] to-[#d5c8b6] shadow-lg sticky top-0 z-50 pt-safe-top">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="bg-white p-2 rounded-lg mr-3 shadow-md">
-                <img src={logo} alt="Logo Alto Astral" className="h-6 w-6" />
+            <div className="flex items-center space-x-3">
+              <div className="bg-white p-2 rounded-lg shadow-md border-2 border-[#e6be44]">
+                <img src={logo} alt="Logo Alto Astral" className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-black">Alto Astral</h1>
-                <p className="text-sm text-amber-100">Mesa {tableNumber}</p>
+                <h1 className="text-2xl font-bold text-white drop-shadow-md">Alto Astral</h1>
               </div>
             </div>
 
-            <button 
-              onClick={() => setShowCart(!showCart)}
-              className="relative p-2 text-black rounded-full shadow-md flex items-center hover:bg-white/30 transition-colors"
-            >
-              <FaCartPlus className="h-6 w-6" />
-              {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
-                </span>
-              )}
-              {!isMobile && (
-                <span className="ml-2 hidden md:inline-block">
-                  {formatPrice(calculateTotal())}
-                </span>
-              )}
-            </button>
+            <div className="flex items-center space-x-4">
+              <div className="bg-white rounded-full px-4 py-2 shadow-lg border-2 border-[#e6be44]">
+                <span className="font-bold text-[#e6be44] text-lg">Mesa: </span>
+                <span className="font-extrabold text-gray-800 text-xl">{tableNumber}</span>
+              </div>
+              
+              <button 
+                onClick={() => setShowCart(!showCart)}
+                className="relative p-3 bg-[#918e89] text-white rounded-full shadow-lg hover:bg-[#b0aca6] transition-colors flex items-center"
+              >
+                <FaCartPlus className="h-6 w-6" />
+                {cart.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
+                  </span>
+                )}
+                {!isMobile && (
+                  <span className="ml-2 hidden md:inline-block font-medium">
+                    {formatPrice(calculateTotal())}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {orderStatus && (
             <div className="pb-3">
               <div className={`text-sm p-2 rounded font-medium text-center ${
-                orderStatus.includes('Erro') ? 'bg-red-500' : 'bg-amber-600'
+                orderStatus.includes('Erro') ? 'bg-red-500' : 'bg-[#e6be44]'
               }`}>
                 {orderStatus}
               </div>
@@ -577,8 +578,8 @@ const ClientInterface = ({ tableNumber }) => {
                     onClick={() => setActiveCategory(category)}
                     className={`px-4 py-2 rounded-full whitespace-nowrap font-medium text-sm transition-all flex items-center ${
                       activeCategory === category 
-                        ? 'bg-amber-600 text-white shadow-md' 
-                        : 'bg-white text-gray-700 hover:bg-amber-50'
+                        ? 'bg-[#e6be44] text-white shadow-md' 
+                        : 'bg-white text-gray-700 hover:bg-[#d5c8b6]'
                     }`}
                   >
                     {getCategoryIcon(category)}
@@ -605,7 +606,7 @@ const ClientInterface = ({ tableNumber }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full border border-gray-100 ${
+                  className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full border-2 border-[#e6be44] ${
                     activeCategory === 'semana' && !item.available ? 'opacity-50 pointer-events-none' : ''
                   }`}
                 >
@@ -626,7 +627,7 @@ const ClientInterface = ({ tableNumber }) => {
                       </div>
                     )}
                     {activeCategory === 'semana' && item.available && (
-                      <div className="absolute top-2 left-2 bg-amber-600 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                      <div className="absolute top-2 left-2 bg-[#e6be44] text-white text-xs px-2 py-1 rounded-full shadow-md">
                         PRATO DO DIA
                       </div>
                     )}
@@ -642,7 +643,7 @@ const ClientInterface = ({ tableNumber }) => {
                       <input
                         type="text"
                         placeholder="Observações (ex: sem cebola)"
-                        className="w-full text-xs p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full text-xs p-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44]"
                         value={itemNotes[item.id] || ''}
                         onChange={(e) => updateItemNotes(item.id, e.target.value)}
                         ref={notesInputRef}
@@ -651,7 +652,7 @@ const ClientInterface = ({ tableNumber }) => {
                     
                     <div className="mt-auto flex justify-between items-center">
                       <div>
-                        <p className="text-amber-600 font-bold text-lg">{formatPrice(item.price)}</p>
+                        <p className="text-[#e6be44] font-bold text-lg">{formatPrice(item.price)}</p>
                         {item.rating && (
                           <div className="flex items-center mt-1">
                             <div className="flex text-amber-400">
@@ -669,7 +670,7 @@ const ClientInterface = ({ tableNumber }) => {
                         whileTap={{ scale: 0.9 }}
                         onClick={() => addToCart(item)}
                         disabled={activeCategory === 'semana' && !item.available}
-                        className={`bg-gradient-to-br from-amber-500 to-amber-600 text-white p-2 rounded-full h-9 w-9 flex items-center justify-center hover:from-amber-600 hover:to-amber-700 transition-all transform hover:scale-110 shadow-md ${
+                        className={`bg-gradient-to-br from-[#918e89] to-[#b0aca6] text-white p-2 rounded-full h-9 w-9 flex items-center justify-center hover:from-[#b0aca6] hover:to-[#d5c8b6] transition-all transform hover:scale-110 shadow-md ${
                           activeCategory === 'semana' && !item.available ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
@@ -689,16 +690,16 @@ const ClientInterface = ({ tableNumber }) => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30 }}
-            className="w-1/3 border-l border-gray-200 bg-white shadow-lg flex flex-col"
+            className="w-1/3 border-l border-[#e6be44] bg-white shadow-lg flex flex-col"
           >
-            <div className="bg-amber-600 text-white p-4 flex justify-between items-center">
+            <div className="bg-[#e6be44] text-white p-4 flex justify-between items-center">
               <h2 className="text-xl font-bold flex items-center">
                 <FaShoppingCart className="h-5 w-5 mr-2" />
                 Seu Pedido - Mesa {tableNumber}
               </h2>
               <button 
                 onClick={() => setShowCart(false)}
-                className="text-white hover:text-amber-200 transition-colors"
+                className="text-white hover:text-gray-200 transition-colors"
               >
                 <IoMdClose className="h-6 w-6" />
               </button>
@@ -711,7 +712,7 @@ const ClientInterface = ({ tableNumber }) => {
                   <p>Seu carrinho está vazio</p>
                   <button
                     onClick={() => setShowCart(false)}
-                    className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 shadow-md transition-colors"
+                    className="mt-4 px-4 py-2 bg-[#e6be44] text-white rounded-lg hover:bg-[#d5c8b6] shadow-md transition-colors"
                   >
                     Voltar ao cardápio
                   </button>
@@ -725,7 +726,7 @@ const ClientInterface = ({ tableNumber }) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="flex justify-between items-start p-3 bg-amber-50 rounded-lg shadow-sm border border-amber-100"
+                        className="flex justify-between items-start p-3 bg-[#f5f5f5] rounded-lg shadow-sm border border-[#e6be44]"
                       >
                         <div className="flex-grow">
                           <div className="font-medium text-gray-800">{item.name}</div>
@@ -740,7 +741,7 @@ const ClientInterface = ({ tableNumber }) => {
                           <div className="flex items-center mt-3">
                             <button 
                               onClick={() => removeFromCart(item.cartId, item.id)}
-                              className="bg-gray-200 hover:bg-gray-300 p-1 rounded-full transition-colors"
+                              className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
                             >
                               <FaMinus className="h-3 w-3" />
                             </button>
@@ -749,7 +750,7 @@ const ClientInterface = ({ tableNumber }) => {
                             </span>
                             <button 
                               onClick={() => addToCart(item)}
-                              className="bg-gray-200 hover:bg-gray-300 p-1 rounded-full transition-colors"
+                              className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
                             >
                               <FaPlus className="h-3 w-3" />
                             </button>
@@ -768,7 +769,7 @@ const ClientInterface = ({ tableNumber }) => {
                     ))}
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6 shadow-sm">
+                  <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                     <div className="flex justify-between mb-2">
                       <span className="text-gray-700">Subtotal:</span>
                       <span className="font-medium">{formatPrice(calculateTotal())}</span>
@@ -776,7 +777,7 @@ const ClientInterface = ({ tableNumber }) => {
                     <div className="border-t border-gray-200 my-2"></div>
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold text-gray-800">Total:</span>
-                      <span className="text-xl font-bold text-amber-600">{formatPrice(calculateTotal())}</span>
+                      <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
                     </div>
                   </div>
 
@@ -786,7 +787,7 @@ const ClientInterface = ({ tableNumber }) => {
                     className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg mb-4 ${
                       isSendingOrder || cart.length === 0
                         ? 'bg-gray-300 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white'
+                        : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] hover:from-[#b0aca6] hover:to-[#d5c8b6] text-white'
                     }`}
                   >
                     <span className="flex items-center justify-center">
@@ -818,14 +819,14 @@ const ClientInterface = ({ tableNumber }) => {
               className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-amber-600 text-white p-4 flex justify-between items-center">
+              <div className="bg-[#e6be44] text-white p-4 flex justify-between items-center">
                 <h2 className="text-xl font-bold flex items-center">
                   <FaShoppingCart className="h-5 w-5 mr-2" />
                   Seu Pedido - Mesa {tableNumber}
                 </h2>
                 <button 
                   onClick={() => setShowCart(false)}
-                  className="text-white hover:text-amber-200 transition-colors"
+                  className="text-white hover:text-gray-200 transition-colors"
                 >
                   <IoMdClose className="h-6 w-6" />
                 </button>
@@ -838,7 +839,7 @@ const ClientInterface = ({ tableNumber }) => {
                     <p>Seu carrinho está vazio</p>
                     <button
                       onClick={() => setShowCart(false)}
-                      className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 shadow-md transition-colors"
+                      className="mt-4 px-4 py-2 bg-[#e6be44] text-white rounded-lg hover:bg-[#d5c8b6] shadow-md transition-colors"
                     >
                       Voltar ao cardápio
                     </button>
@@ -852,12 +853,12 @@ const ClientInterface = ({ tableNumber }) => {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="flex justify-between items-start p-3 bg-amber-50 rounded-lg shadow-sm border border-amber-100"
+                          className="flex justify-between items-start p-3 bg-[#f5f5f5] rounded-lg shadow-sm border border-[#e6be44]"
                         >
                           <div className="flex-grow">
                             <div className="font-medium text-gray-800 flex justify-between">
                               <span>{item.name}</span>
-                              <span className="font-bold text-amber-700">
+                              <span className="font-bold text-[#e6be44]">
                                 {formatPrice(item.price * (item.quantity || 1))}
                               </span>
                             </div>
@@ -869,7 +870,7 @@ const ClientInterface = ({ tableNumber }) => {
                             <div className="flex items-center mt-3">
                               <button 
                                 onClick={() => removeFromCart(item.cartId, item.id)}
-                                className="bg-gray-200 hover:bg-gray-300 p-1 rounded-full transition-colors"
+                                className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
                               >
                                 <FaMinus className="h-3 w-3" />
                               </button>
@@ -878,7 +879,7 @@ const ClientInterface = ({ tableNumber }) => {
                               </span>
                               <button 
                                 onClick={() => addToCart(item)}
-                                className="bg-gray-200 hover:bg-gray-300 p-1 rounded-full transition-colors"
+                                className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
                               >
                                 <FaPlus className="h-3 w-3" />
                               </button>
@@ -901,14 +902,14 @@ const ClientInterface = ({ tableNumber }) => {
                       <textarea
                         id="mobileOrderNotes"
                         rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                        className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
                         placeholder="Ex: Sem cebola, bem passado, etc."
                         value={orderNotes}
                         onChange={(e) => setOrderNotes(e.target.value)}
                       />
                     </div>
 
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6 shadow-sm">
+                    <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-700">Subtotal:</span>
                         <span className="font-medium">{formatPrice(calculateTotal())}</span>
@@ -916,7 +917,7 @@ const ClientInterface = ({ tableNumber }) => {
                       <div className="border-t border-gray-200 my-2"></div>
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-gray-800">Total:</span>
-                        <span className="text-xl font-bold text-amber-600">{formatPrice(calculateTotal())}</span>
+                        <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
                       </div>
                     </div>
 
@@ -926,7 +927,7 @@ const ClientInterface = ({ tableNumber }) => {
                       className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg mb-4 ${
                         isSendingOrder || cart.length === 0
                           ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white'
+                          : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] hover:from-[#b0aca6] hover:to-[#d5c8b6] text-white'
                       }`}
                     >
                       <span className="flex items-center justify-center">
@@ -956,14 +957,14 @@ const ClientInterface = ({ tableNumber }) => {
               exit={{ scale: 0.9, y: 20 }}
               className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
             >
-              <div className="bg-amber-600 text-white p-4 flex justify-between items-center">
+              <div className="bg-[#e6be44] text-white p-4 flex justify-between items-center">
                 <h2 className="text-xl font-bold flex items-center">
                   <FaCheck className="h-5 w-5 mr-2" />
                   Confirmação do Pedido
                 </h2>
                 <button 
                   onClick={() => setShowConfirmation(false)}
-                  className="text-white hover:text-amber-200 transition-colors"
+                  className="text-white hover:text-gray-200 transition-colors"
                 >
                   <IoMdClose className="h-6 w-6" />
                 </button>
@@ -977,7 +978,7 @@ const ClientInterface = ({ tableNumber }) => {
 
                 <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
                   {cart.map(item => (
-                    <div key={item.cartId} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div key={item.cartId} className="p-3 bg-[#f5f5f5] rounded-lg border border-[#e6be44]">
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-medium text-gray-800">
@@ -997,7 +998,7 @@ const ClientInterface = ({ tableNumber }) => {
                   ))}
                 </div>
 
-                <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6 shadow-sm">
+                <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-700">Subtotal:</span>
                     <span className="font-medium">{formatPrice(calculateTotal())}</span>
@@ -1005,7 +1006,7 @@ const ClientInterface = ({ tableNumber }) => {
                   <div className="border-t border-gray-200 my-2"></div>
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-800">Total:</span>
-                    <span className="text-xl font-bold text-amber-600">{formatPrice(calculateTotal())}</span>
+                    <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
                   </div>
                 </div>
               </div>
@@ -1017,7 +1018,7 @@ const ClientInterface = ({ tableNumber }) => {
                   className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg ${
                     isSendingOrder
                       ? 'bg-gray-300 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white'
+                      : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] hover:from-[#b0aca6] hover:to-[#d5c8b6] text-white'
                   }`}
                 >
                   {isSendingOrder ? (
@@ -1039,38 +1040,6 @@ const ClientInterface = ({ tableNumber }) => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <AnimatePresence>
-        {orderSent && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden flex flex-col items-center text-center p-8"
-            >
-              <div className="bg-green-100 p-4 rounded-full mb-4">
-                <FaCheck className="h-12 w-12 text-green-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Pedido Enviado!</h2>
-              <p className="text-gray-600 mb-6">Seu pedido foi enviado para a cozinha e será preparado agora.</p>
-              <p className="text-sm text-gray-500 mb-6">Você pode acompanhar o status do seu pedido no topo da tela.</p>
-              <button
-                onClick={() => setOrderSent(false)}
-                className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
-              >
-                Voltar ao cardápio
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <Footer/>
     </div>
   );
 };

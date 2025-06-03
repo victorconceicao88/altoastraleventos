@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams, Link } from 'react-router-dom';
 import AdminPanel from './components/AdminPanel';
 import ClientInterface from './components/ClientInterface';
 import QRGenerator from './components/QRGenerator';
@@ -40,12 +40,12 @@ function HomePage() {
             <p className="text-gray-500 mb-4">
               Acesso completo ao sistema de administração do restaurante
             </p>
-            <a 
-              href="/admin" 
+            <Link 
+              to="/admin" 
               className="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition w-full text-center"
             >
               Acessar Painel
-            </a>
+            </Link>
           </div>
           
           <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
@@ -53,12 +53,12 @@ function HomePage() {
             <p className="text-gray-500 mb-4">
               Crie QR Codes para as mesas e facilite o acesso dos clientes
             </p>
-            <a 
-              href="/qr-codes" 
+            <Link 
+              to="/qr-codes" 
               className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition w-full text-center"
             >
               Gerar QR Codes
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -70,9 +70,9 @@ function NotFoundPage() {
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       <h1 className="text-4xl font-bold mb-4">404 - Página não encontrada</h1>
-      <a href="/" className="mt-6 text-indigo-600 hover:underline">
+      <Link to="/" className="mt-6 text-indigo-600 hover:underline">
         Voltar para a página inicial
-      </a>
+      </Link>
     </div>
   );
 }
