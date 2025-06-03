@@ -4,8 +4,7 @@ import { database } from '../firebase';
 import { useWindowSize } from 'usehooks-ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
-import Footer from '../components/Footer';
-
+import Footer from './Footer';
 import 'react-lazy-load-image-component/src/effects/blur.css';
 import { 
   
