@@ -5,7 +5,7 @@ import { useWindowSize } from 'usehooks-ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
-import Footer from './Footer';
+import Footer from './footer';
 import { 
   FaShoppingCart, 
   FaPlus, 
