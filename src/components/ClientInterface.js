@@ -1069,6 +1069,7 @@ const ClientInterface = ({ tableNumber }) => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Footer/>
     </div>
   );
 };
