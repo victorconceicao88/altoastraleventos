@@ -4,10 +4,9 @@ import { database } from '../firebase';
 import { useWindowSize } from 'usehooks-ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
-import Footer from './Footer';
 import 'react-lazy-load-image-component/src/effects/blur.css';
+import Footer from './Footer';
 import { 
-  
   FaShoppingCart, 
   FaPlus, 
   FaMinus, 
@@ -24,7 +23,7 @@ import {
   FaWineBottle,
   FaIceCream
 } from 'react-icons/fa';
-import { GiMeal, GiCupcake, GiHamburger } from 'react-icons/gi';
+import { GiMeal, GiCupcake,GiHamburger } from 'react-icons/gi';
 import { BiDrink } from 'react-icons/bi';
 import { IoMdClose } from 'react-icons/io';
 
@@ -118,7 +117,7 @@ const ClientInterface = ({ tableNumber }) => {
       },
       { 
         id: 2, 
-        name: 'Maminha', 
+        name: 'Picanha Premium', 
         description: 'Picanha grelhada, arroz branco, feijão tropeiro e vinagrete', 
         price: 15.90, 
         veg: false, 
@@ -894,8 +893,21 @@ const ClientInterface = ({ tableNumber }) => {
                       ))}
                     </div>
 
+                    <div className="mb-4">
+                      <label htmlFor="mobileOrderNotes" className="block text-sm font-medium text-gray-700 mb-1">
+                        Observações para o pedido (opcional)
+                      </label>
+                      <textarea
+                        id="mobileOrderNotes"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                        placeholder="Ex: Sem cebola, bem passado, etc."
+                        value={orderNotes}
+                        onChange={(e) => setOrderNotes(e.target.value)}
+                      />
+                    </div>
 
-                 <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6 shadow-sm">
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6 shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-700">Subtotal:</span>
                         <span className="font-medium">{formatPrice(calculateTotal())}</span>
@@ -1057,7 +1069,6 @@ const ClientInterface = ({ tableNumber }) => {
           </motion.div>
         )}
       </AnimatePresence>
-      <Footer />
     </div>
   );
 };
