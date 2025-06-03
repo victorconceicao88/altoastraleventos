@@ -54,6 +54,8 @@ const AdminPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [kitchenNotes, setKitchenNotes] = useState('');
+  const [itemNotes, setItemNotes] = useState({});
 
   // Configuração inicial das mesas e comandas
   const initialTables = () => {
@@ -509,9 +511,25 @@ const AdminPanel = () => {
       if (item.description) {
         receipt += `${item.description}${LF}`;
       }
+       if (item.notes) {
+      receipt += `OBS: ${item.notes}${LF}`;
+      }
       receipt += `€ ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
     });
   
+    // Adicionar observações se existirem
+    if (order.notes || order.clientNotes) {
+      receipt += '--------------------------------' + LF;
+      receipt += `${BOLD_ON}OBSERVAÇÕES:${BOLD_OFF}${LF}`;
+      receipt += `${order.notes || order.clientNotes}${LF}`;
+    }
+
+    if (order.kitchenNotes) {
+      receipt += '--------------------------------' + LF;
+      receipt += `${BOLD_ON}OBSERVAÇÕES DA COZINHA:${BOLD_OFF}${LF}`;
+      receipt += `${order.kitchenNotes}${LF}`;
+    }
+
     receipt += '--------------------------------' + LF;
     receipt += `${BOLD_ON}TOTAL: € ${calculateOrderTotal(order).toFixed(2)}${BOLD_OFF}${LF}${LF}`;
     receipt += `${CENTER}Obrigado pela sua preferência!${LF}${LF}`;
@@ -645,48 +663,56 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    if (!isAuthenticated || !selectedTable) {
-      setSelectedOrder(null);
-      return;
-    }
-  
-    const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-    const unsubscribe = onValue(orderRef, (snapshot) => {
-      const orderData = snapshot.val();
-      
-      if (orderData) {
-        const orders = Object.entries(orderData);
-        if (orders.length > 0) {
-          const [orderId, order] = orders[0];
-          const loadedOrder = { id: orderId, ...order };
-          
-          const newPrintedItems = {...printedItems};
-          let hasPrintedItems = false;
-          
-          loadedOrder.items?.forEach(item => {
-            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-            if (item.printed && !printedItems[itemKey]) {
-              newPrintedItems[itemKey] = true;
-              hasPrintedItems = true;
-            }
-          });
-          
-          if (hasPrintedItems) {
-            setPrintedItems(newPrintedItems);
+ useEffect(() => {
+  if (!isAuthenticated || !selectedTable) {
+    setSelectedOrder(null);
+    return;
+  }
+
+  const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+  const unsubscribe = onValue(orderRef, (snapshot) => {
+    const orderData = snapshot.val();
+    
+    if (orderData) {
+      const orders = Object.entries(orderData);
+      if (orders.length > 0) {
+        const [orderId, order] = orders[0];
+        const loadedOrder = { 
+          id: orderId, 
+          ...order,
+          // Garantir que items.notes seja preservado
+          items: order.items?.map(item => ({
+            ...item,
+            notes: item.notes || '' // Garantir que notes exista
+          })) || []
+        };
+        
+        const newPrintedItems = {...printedItems};
+        let hasPrintedItems = false;
+        
+        loadedOrder.items?.forEach(item => {
+          const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+          if (item.printed && !printedItems[itemKey]) {
+            newPrintedItems[itemKey] = true;
+            hasPrintedItems = true;
           }
-          
-          setSelectedOrder(loadedOrder);
-        } else {
-          setSelectedOrder(null);
+        });
+        
+        if (hasPrintedItems) {
+          setPrintedItems(newPrintedItems);
         }
+        
+        setSelectedOrder(loadedOrder);
       } else {
         setSelectedOrder(null);
       }
-    });
-  
-    return () => unsubscribe();
-  }, [isAuthenticated, selectedTable]);
+    } else {
+      setSelectedOrder(null);
+    }
+  });
+
+  return () => unsubscribe();
+}, [isAuthenticated, selectedTable]);
 
   const createNewOrder = async () => {
     if (!selectedTable) return;
@@ -760,60 +786,66 @@ const AdminPanel = () => {
     }
   };
 
-  const addItemToOrder = async () => {
-    if (!selectedTable || !selectedMenuItem) return;
-  
-    setLoading(true);
-    try {
-      let orderRef;
-      let orderData;
+const addItemToOrder = async () => {
+  if (!selectedTable || !selectedMenuItem) return;
+
+  setLoading(true);
+  try {
+    let orderRef;
+    let orderData;
+    
+    if (selectedOrder?.id) {
+      orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+      const currentItems = selectedOrder.items || [];
       
-      if (selectedOrder?.id) {
-        orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-        const currentItems = selectedOrder.items || [];
-        
-        orderData = {
-          items: [...currentItems, {
-            ...selectedMenuItem,
-            quantity: newItemQuantity,
-            addedAt: Date.now(),
-            printed: false
-          }],
-          updatedAt: Date.now()
-        };
-      } else {
-        orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-        orderData = {
-          items: [{
-            ...selectedMenuItem,
-            quantity: newItemQuantity,
-            addedAt: Date.now(),
-            printed: false
-          }],
-          status: 'open',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          tableId: selectedTable
-        };
-      }
-  
-      if (selectedOrder?.id) {
-        await update(orderRef, orderData);
-      } else {
-        const newOrderRef = await push(orderRef, orderData);
-        setSelectedOrder({ id: newOrderRef.key, ...orderData });
-      }
-  
-      setShowAddItemModal(false);
-      setSelectedMenuItem(null);
-      setNewItemQuantity(1);
-    } catch (err) {
-      setError('Erro ao adicionar item');
-      console.error(err);
-    } finally {
-      setLoading(false);
+      orderData = {
+        items: [...currentItems, {
+          ...selectedMenuItem,
+          quantity: newItemQuantity,
+          addedAt: Date.now(),
+          printed: false,
+          notes: itemNotes[selectedMenuItem.id] || '' // Garantir que as notas sejam incluídas
+        }],
+        updatedAt: Date.now(),
+        kitchenNotes: kitchenNotes || null
+      };
+    } else {
+      orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+      orderData = {
+        items: [{
+          ...selectedMenuItem,
+          quantity: newItemQuantity,
+          addedAt: Date.now(),
+          printed: false,
+          notes: itemNotes[selectedMenuItem.id] || '' // Garantir que as notas sejam incluídas
+        }],
+        status: 'open',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        tableId: selectedTable,
+        kitchenNotes: kitchenNotes || null
+      };
     }
-  };
+
+    if (selectedOrder?.id) {
+      await update(orderRef, orderData);
+    } else {
+      const newOrderRef = await push(orderRef, orderData);
+      setSelectedOrder({ id: newOrderRef.key, ...orderData });
+    }
+
+    setShowAddItemModal(false);
+    setSelectedMenuItem(null);
+    setNewItemQuantity(1);
+    setKitchenNotes('');
+    setItemNotes({}); // Limpar as observações dos itens
+  } catch (err) {
+    setError('Erro ao adicionar item');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const removeItemFromOrder = async (itemId) => {
     if (!selectedTable || !selectedOrder?.items) return;
@@ -1309,20 +1341,17 @@ const AdminPanel = () => {
                       <div className="space-y-3 mb-6">
                         {selectedOrder.items?.length > 0 ? (
                           selectedOrder.items.map((item) => {
-                            const isPrinted =
-                              printedItems[
-                                `${selectedTable}-${item.id}-${item.addedAt || ''}`
-                              ] || item.printed;
+                            const isPrinted = printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed;
 
                             return (
-                              <div
-                                key={`${item.id}-${item.addedAt || ''}`}
-                                className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border ${
-                                  isPrinted
-                                    ? 'bg-gray-50 border-gray-200'
-                                    : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
-                                } transition-all duration-200`}
-                              >
+                                  <div
+                                    key={`${item.id}-${item.addedAt || ''}`}
+                                    className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border ${
+                                      isPrinted
+                                        ? 'bg-gray-50 border-gray-200'
+                                        : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
+                                    } transition-all duration-200`}
+                                  >
                                 <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
                                   {!isPrinted && (
                                     <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap flex items-center">
@@ -1354,8 +1383,14 @@ const AdminPanel = () => {
                                         {item.description}
                                       </p>
                                     )}
+                                    {item.notes && (
+                                    <div className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded">
+                                      <span className="font-semibold">Obs:</span> {item.notes}
+                                    </div>
+                                  )}
                                   </div>
                                 </div>
+                                
 
                                 <div className="flex items-center justify-between w-full sm:w-auto sm:gap-3">
                                   <div className="flex items-center bg-white rounded-lg px-2 py-1 border border-gray-300">
@@ -1450,7 +1485,9 @@ const AdminPanel = () => {
                               Adicionar Itens
                             </button>
                           </div>
+                          
                         )}
+                        
                       </div>
 
                       {selectedOrder.items?.length > 0 && (
@@ -1667,6 +1704,7 @@ const AdminPanel = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+              
             </div>
             
             {!selectedMenuItem ? (
@@ -1679,6 +1717,7 @@ const AdminPanel = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
+                  
                   {searchTerm && (
                     <button
                       onClick={() => {

@@ -1,7 +1,7 @@
 import { QRCodeCanvas } from 'qrcode.react';
 import { FaReceipt, FaPrint } from 'react-icons/fa';
 import { useEffect, useRef, useState } from 'react';
-import logo from '../assets/logo-alto-astral.png'; // Verifique novamente o caminho do logo
+import logo from '../assets/logo-alto-astral.png';
 
 const QRGenerator = () => {
   const baseUrl = window.location.origin;
@@ -58,33 +58,33 @@ const QRGenerator = () => {
             body {
               font-family: 'Poppins', sans-serif;
               margin: 0;
-              padding: 5mm; /* Reduzi o padding da página para otimizar o espaço */
+              padding: 5mm;
               background: #f8f9fa;
             }
             
             .print-header {
               text-align: center;
-              margin-bottom: 15px; /* Reduzi a margem do cabeçalho */
+              margin-bottom: 15px;
             }
             
             .cards-grid {
               display: grid;
-              grid-template-columns: repeat(3, 1fr); /* 3 colunas para ter 9 por página (3x3) */
-              gap: 8mm; /* Ajustei o espaçamento entre as comandas */
-              max-width: 280mm; /* Aumentei a largura máxima para acomodar 3x3 em paisagem A4 */
+              grid-template-columns: repeat(3, 1fr);
+              gap: 8mm;
+              max-width: 280mm;
               margin: 0 auto;
             }
             
             .credit-card {
               background: white;
               border-radius: 8px;
-              padding: 8px; /* Reduzi o padding interno do cartão */
+              padding: 8px;
               color: black;
               box-shadow: 0 4px 10px rgba(0,0,0,0.1);
               position: relative;
               overflow: hidden;
-              width: 85.6mm; /* Largura padrão de cartão de crédito */
-              height: 53.98mm; /* Altura padrão de cartão de crédito */
+              width: 85.6mm;
+              height: 53.98mm;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
@@ -97,12 +97,12 @@ const QRGenerator = () => {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 2px; /* Margem reduzida */
+              margin-bottom: 2px;
             }
             
             .card-logo {
-              height: 32px; /* Levemente reduzido para melhor encaixe no 3x3 */
-              max-width: 85px; /* Levemente reduzido */
+              height: 32px;
+              max-width: 85px;
               object-fit: contain;
               filter: none;
               margin: 0 auto;
@@ -111,10 +111,10 @@ const QRGenerator = () => {
             
             .qr-container {
               background: white;
-              padding: 2px; /* Padding menor */
-              border-radius: 5px; /* Borda levemente menor */
-              width: 60px; /* Levemente menor para otimização do espaço */
-              height: 60px; /* Levemente menor */
+              padding: 2px;
+              border-radius: 5px;
+              width: 60px;
+              height: 60px;
               margin: 0 auto;
               display: flex;
               align-items: center;
@@ -129,7 +129,7 @@ const QRGenerator = () => {
             }
             
             .card-type {
-              font-size: 10px; /* Fonte menor */
+              font-size: 10px;
               letter-spacing: 0.5px;
               text-align: center;
               margin-top: 2px;
@@ -139,15 +139,15 @@ const QRGenerator = () => {
             }
             
             .card-number {
-              font-size: 15px; /* Fonte levemente menor */
+              font-size: 15px;
               text-align: center;
               font-weight: 700;
-              margin: 0; /* Margem zero */
+              margin: 0;
               color: #1a202c;
             }
 
             .card-label {
-              font-size: 8px; /* Fonte ainda menor */
+              font-size: 8px;
               text-align: center;
               opacity: 0.8;
               margin-bottom: 2px;
@@ -157,11 +157,11 @@ const QRGenerator = () => {
             }
 
             .card-footer {
-              display: none; /* Continua escondido */
+              display: none;
             }
             
             .card-id {
-              font-size: 8px; /* Fonte do ID menor */
+              font-size: 8px;
               opacity: 0.8;
               font-weight: 600;
               color: #444;
@@ -169,9 +169,9 @@ const QRGenerator = () => {
             
             .card-icon {
               position: absolute;
-              bottom: 6px; /* Ajustei a posição */
-              left: 6px; /* Ajustei a posição */
-              font-size: 12px; /* Ícone menor */
+              bottom: 6px;
+              left: 6px;
+              font-size: 12px;
               opacity: 0.6;
               color: #3b82f6;
             }
@@ -181,22 +181,22 @@ const QRGenerator = () => {
             }
             
             @page {
-              size: A4 landscape; /* Orientação da página: paisagem */
-              margin: 7mm; /* Margens mínimas para maximizar o espaço */
+              size: A4 landscape;
+              margin: 7mm;
             }
             
             @media print {
               body {
                 background: white;
-                padding: 0; /* Removido padding do body na impressão para maior controle */
+                padding: 0;
               }
               
               .cards-grid {
-                grid-template-columns: repeat(3, 1fr) !important; /* Força 3 colunas na impressão */
-                gap: 7mm !important; /* Espaçamento menor na impressão */
-                margin: 0 auto; /* Centraliza a grade */
-                max-width: 280mm; /* Garante que a grade não seja cortada */
-                padding: 5mm; /* Adicionado padding à grade para garantir margem na página */
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 7mm !important;
+                margin: 0 auto;
+                max-width: 280mm;
+                padding: 5mm;
               }
               
               .credit-card {
