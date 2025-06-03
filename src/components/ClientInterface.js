@@ -374,7 +374,6 @@ const ClientInterface = ({ tableNumber }) => {
     
     setItemNotes(prev => ({ ...prev, [item.id]: '' }));
     setShowItemAdded(true);
-    // Removido o setShowCart(true) para não abrir o modal automaticamente
   };
 
   // Remover do carrinho
@@ -442,7 +441,7 @@ const ClientInterface = ({ tableNumber }) => {
 
       const orderData = {
         items: orderItems,
-        status: 'Preparando',
+        status: 'Recebido',
         createdAt: Date.now(),
         tableNumber: parseInt(tableNumber),
         source: 'client',
@@ -465,7 +464,7 @@ const ClientInterface = ({ tableNumber }) => {
         const updates = {
           items: [...(activeOrder?.items || []), ...orderItems],
           updatedAt: Date.now(),
-          status: 'Preparando',
+          status: 'Recebido',
           total: (activeOrder?.total || 0) + orderTotal,
           notes: orderNotes,
           clientNotes: orderNotes,
@@ -486,17 +485,18 @@ const ClientInterface = ({ tableNumber }) => {
       setOrderStatus('Pedido enviado');
       setShowConfirmation(false);
       setOrderNotes('');
+      setIsSendingOrder(false);
       
       setTimeout(() => {
         if (isMobile) setShowCart(false);
+        setOrderStatus('');
       }, 3000);
 
     } catch (error) {
       console.error("Erro ao enviar pedido:", error);
       setOrderStatus('Erro ao enviar');
-      setTimeout(() => setOrderStatus(''), 2000);
-    } finally {
       setIsSendingOrder(false);
+      setTimeout(() => setOrderStatus(''), 2000);
     }
   };
 
@@ -516,17 +516,14 @@ const ClientInterface = ({ tableNumber }) => {
         if (order) {
           setCurrentOrderId(order[0]);
           setActiveOrder(order[1]);
-          setOrderStatus(order[1]?.status || '');
           if (order[1]?.status === 'Fechado') setCart([]);
         } else {
           setCurrentOrderId(null);
           setActiveOrder(null);
-          setOrderStatus('');
         }
       } else {
         setCurrentOrderId(null);
         setActiveOrder(null);
-        setOrderStatus('');
       }
     });
 
@@ -567,13 +564,13 @@ const ClientInterface = ({ tableNumber }) => {
   const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] text-gray-800 flex flex-col">
+    <div className="min-h-screen bg-white text-gray-800 flex flex-col">
       {/* Header */}
       <header className="bg-[#d5c8b6] shadow-lg sticky top-0 z-50 pt-safe-top">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-white p-2 rounded-lg shadow-md border-2 border-[#e6be44]">
+              <div className="p-2 rounded-lg shadow-md">
                 <img src={logo} alt="Logo Alto Astral" className="h-8 w-8" />
               </div>
               <div>
@@ -642,7 +639,7 @@ const ClientInterface = ({ tableNumber }) => {
                     className={`px-4 py-2 rounded-full whitespace-nowrap font-bold text-sm transition-all flex items-center ${
                       activeCategory === category 
                         ? 'bg-[#918e89] text-black shadow-md' 
-                        : 'bg-[#b0aca6] text-[#d5c8b6] hover:bg-[#d5c8b6]'
+                        : 'bg-[#b0aca6] text-white'
                     }`}
                   >
                     {getCategoryIcon(category)}
@@ -733,7 +730,7 @@ const ClientInterface = ({ tableNumber }) => {
                         whileTap={{ scale: 0.9 }}
                         onClick={() => addToCart(item)}
                         disabled={activeCategory === 'semana' && !item.available}
-                        className={`bg-gradient-to-br from-[#918e89] to-[#b0aca6] text-white p-2 rounded-full h-9 w-9 flex items-center justify-center hover:from-[#b0aca6] hover:to-[#d5c8b6] transition-all transform hover:scale-110 shadow-md ${
+                        className={`bg-gradient-to-br from-[#918e89] to-[#b0aca6] text-white p-2 rounded-full h-9 w-9 flex items-center justify-center shadow-md ${
                           activeCategory === 'semana' && !item.available ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
@@ -850,7 +847,7 @@ const ClientInterface = ({ tableNumber }) => {
                     className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg mb-4 ${
                       isSendingOrder || cart.length === 0
                         ? 'bg-gray-300 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] hover:from-[#b0aca6] hover:to-[#d5c8b6] text-white'
+                        : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] text-white'
                     }`}
                   >
                     <span className="flex items-center justify-center">
@@ -990,7 +987,7 @@ const ClientInterface = ({ tableNumber }) => {
                       className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg mb-4 ${
                         isSendingOrder || cart.length === 0
                           ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] hover:from-[#b0aca6] hover:to-[#d5c8b6] text-white'
+                          : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] text-white'
                       }`}
                     >
                       <span className="flex items-center justify-center">
@@ -1081,7 +1078,7 @@ const ClientInterface = ({ tableNumber }) => {
                   className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg ${
                     isSendingOrder
                       ? 'bg-gray-300 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] hover:from-[#b0aca6] hover:to-[#d5c8b6] text-white'
+                      : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] text-white'
                   }`}
                 >
                   {isSendingOrder ? (
