@@ -374,7 +374,7 @@ const ClientInterface = ({ tableNumber }) => {
     
     setItemNotes(prev => ({ ...prev, [item.id]: '' }));
     setShowItemAdded(true);
-    setShowCart(true);
+    // Removido o setShowCart(true) para não abrir o modal automaticamente
   };
 
   // Remover do carrinho
@@ -577,14 +577,14 @@ const ClientInterface = ({ tableNumber }) => {
                 <img src={logo} alt="Logo Alto Astral" className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[#e6be44] drop-shadow-md">Alto Astral</h1>
+                <h1 className="text-2xl font-bold text-black drop-shadow-md">Alto Astral</h1>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
               <div className="bg-white rounded-full px-4 py-2 shadow-lg border-2 border-[#e6be44]">
-                <span className="font-bold text-[#e6be44] text-lg">Mesa: </span>
-                <span className="font-extrabold text-gray-800 text-xl">{tableNumber}</span>
+                <span className="font-bold text-black text-lg">Mesa: </span>
+                <span className="font-extrabold text-black text-xl">{tableNumber}</span>
               </div>
               
               <button 
@@ -598,7 +598,7 @@ const ClientInterface = ({ tableNumber }) => {
                   </span>
                 )}
                 {!isMobile && (
-                  <span className="ml-2 hidden md:inline-block font-medium">
+                  <span className="ml-2 hidden md:inline-block font-medium text-black">
                     {formatPrice(calculateTotal())}
                   </span>
                 )}
@@ -639,10 +639,10 @@ const ClientInterface = ({ tableNumber }) => {
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`px-4 py-2 rounded-full whitespace-nowrap font-medium text-sm transition-all flex items-center ${
+                    className={`px-4 py-2 rounded-full whitespace-nowrap font-bold text-sm transition-all flex items-center ${
                       activeCategory === category 
-                        ? 'bg-[#918e89] text-white shadow-md' 
-                        : 'bg-[#b0aca6] text-[#e6be44] font-bold hover:bg-[#d5c8b6]'
+                        ? 'bg-[#918e89] text-black shadow-md' 
+                        : 'bg-[#b0aca6] text-[#d5c8b6] hover:bg-[#d5c8b6]'
                     }`}
                   >
                     {getCategoryIcon(category)}
@@ -715,7 +715,7 @@ const ClientInterface = ({ tableNumber }) => {
                     
                     <div className="mt-auto flex justify-between items-center">
                       <div>
-                        <p className="text-[#e6be44] font-bold text-lg">{formatPrice(item.price)}</p>
+                        <p className="text-black font-bold text-lg">{formatPrice(item.price)}</p>
                         {item.rating && (
                           <div className="flex items-center mt-1">
                             <div className="flex text-amber-400">
@@ -792,7 +792,7 @@ const ClientInterface = ({ tableNumber }) => {
                         className="flex justify-between items-start p-3 bg-[#f5f5f5] rounded-lg shadow-sm border border-[#e6be44]"
                       >
                         <div className="flex-grow">
-                          <div className="font-medium text-gray-800">{item.name}</div>
+                          <div className="font-bold text-black">{item.name}</div>
                           {item.description && (
                             <div className="text-xs text-gray-500 mt-1 line-clamp-1">{item.description}</div>
                           )}
@@ -808,7 +808,7 @@ const ClientInterface = ({ tableNumber }) => {
                             >
                               <FaMinus className="h-3 w-3" />
                             </button>
-                            <span className="mx-2 font-medium w-6 text-center">
+                            <span className="mx-2 font-bold w-6 text-center">
                               {item.quantity || 1}
                             </span>
                             <button 
@@ -825,7 +825,7 @@ const ClientInterface = ({ tableNumber }) => {
                             </button>
                           </div>
                         </div>
-                        <div className="font-bold text-gray-800 ml-4 whitespace-nowrap">
+                        <div className="font-bold text-black ml-4 whitespace-nowrap">
                           {formatPrice(item.price * (item.quantity || 1))}
                         </div>
                       </motion.div>
@@ -834,12 +834,12 @@ const ClientInterface = ({ tableNumber }) => {
 
                   <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                     <div className="flex justify-between mb-2">
-                      <span className="text-gray-700">Subtotal:</span>
-                      <span className="font-medium">{formatPrice(calculateTotal())}</span>
+                      <span className="text-gray-700 font-bold">Subtotal:</span>
+                      <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>
                     </div>
                     <div className="border-t border-gray-200 my-2"></div>
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-gray-800">Total:</span>
+                      <span className="text-lg font-bold text-black">Total:</span>
                       <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
                     </div>
                   </div>
@@ -919,7 +919,7 @@ const ClientInterface = ({ tableNumber }) => {
                           className="flex justify-between items-start p-3 bg-[#f5f5f5] rounded-lg shadow-sm border border-[#e6be44]"
                         >
                           <div className="flex-grow">
-                            <div className="font-medium text-gray-800 flex justify-between">
+                            <div className="font-bold text-black flex justify-between">
                               <span>{item.name}</span>
                               <span className="font-bold text-[#e6be44]">
                                 {formatPrice(item.price * (item.quantity || 1))}
@@ -937,7 +937,7 @@ const ClientInterface = ({ tableNumber }) => {
                               >
                                 <FaMinus className="h-3 w-3" />
                               </button>
-                              <span className="mx-2 font-medium w-6 text-center">
+                              <span className="mx-2 font-bold w-6 text-center">
                                 {item.quantity || 1}
                               </span>
                               <button 
@@ -959,7 +959,7 @@ const ClientInterface = ({ tableNumber }) => {
                     </div>
 
                     <div className="mb-4">
-                      <label htmlFor="mobileOrderNotes" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="mobileOrderNotes" className="block text-sm font-bold text-black mb-1">
                         Observações para o pedido (opcional)
                       </label>
                       <textarea
@@ -974,12 +974,12 @@ const ClientInterface = ({ tableNumber }) => {
 
                     <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                       <div className="flex justify-between mb-2">
-                        <span className="text-gray-700">Subtotal:</span>
-                        <span className="font-medium">{formatPrice(calculateTotal())}</span>
+                        <span className="text-gray-700 font-bold">Subtotal:</span>
+                        <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>
                       </div>
                       <div className="border-t border-gray-200 my-2"></div>
                       <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold text-gray-800">Total:</span>
+                        <span className="text-lg font-bold text-black">Total:</span>
                         <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
                       </div>
                     </div>
@@ -1035,7 +1035,7 @@ const ClientInterface = ({ tableNumber }) => {
 
               <div className="p-4 overflow-y-auto flex-grow">
                 <div className="text-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Mesa {tableNumber}</h3>
+                  <h3 className="text-lg font-bold text-black">Mesa {tableNumber}</h3>
                   <p className="text-sm text-gray-600">Revise seu pedido antes de enviar</p>
                 </div>
 
@@ -1044,7 +1044,7 @@ const ClientInterface = ({ tableNumber }) => {
                     <div key={item.cartId} className="p-3 bg-[#f5f5f5] rounded-lg border border-[#e6be44]">
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-medium text-gray-800">
+                          <div className="font-bold text-black">
                             {item.name} × {item.quantity || 1}
                           </div>
                           {item.notes && (
@@ -1053,7 +1053,7 @@ const ClientInterface = ({ tableNumber }) => {
                             </div>
                           )}
                         </div>
-                        <div className="font-bold text-gray-800 whitespace-nowrap">
+                        <div className="font-bold text-black whitespace-nowrap">
                           {formatPrice(item.price * (item.quantity || 1))}
                         </div>
                       </div>
@@ -1063,12 +1063,12 @@ const ClientInterface = ({ tableNumber }) => {
 
                 <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                   <div className="flex justify-between mb-2">
-                    <span className="text-gray-700">Subtotal:</span>
-                    <span className="font-medium">{formatPrice(calculateTotal())}</span>
+                    <span className="text-gray-700 font-bold">Subtotal:</span>
+                    <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>
                   </div>
                   <div className="border-t border-gray-200 my-2"></div>
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-gray-800">Total:</span>
+                    <span className="text-lg font-bold text-black">Total:</span>
                     <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
                   </div>
                 </div>
