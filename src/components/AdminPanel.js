@@ -66,8 +66,8 @@ const AdminPanel = () => {
       tables.push({
         id: i.toString(),
         type: 'interna',
-        capacity: i <= 4 ? 4 : 6, // Mesas 1-4: 4 lugares, 5-8: 6 lugares
-        location: 'Área interna'
+        capacity: i <= 4 ? 4 : 6,
+        location: 'Interno'
       });
     }
     
@@ -76,18 +76,18 @@ const AdminPanel = () => {
       tables.push({
         id: i.toString(),
         type: 'externa',
-        capacity: i <= 12 ? 4 : 6, // Mesas 9-12: 4 lugares, 13-16: 6 lugares
-        location: 'Terraço'
+        capacity: i <= 12 ? 4 : 6,
+        location: 'Externo'
       });
     }
     
-    // Comandas adicionais (17-50) - para delivery/balcão
+    // Comandas adicionais (17-50)
     for (let i = 17; i <= 50; i++) {
       tables.push({
         id: i.toString(),
         type: 'comanda',
         capacity: 0,
-        location: i <= 30 ? 'Balcão' : 'Delivery'
+        location: ''
       });
     }
     
@@ -501,23 +501,49 @@ const AdminPanel = () => {
   
     let receipt = INIT;
     receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
-    receipt += `MESA: ${selectedTable}${LF}`;
-    receipt += `${new Date().toLocaleString()}${LF}${LF}`;
+    receipt += `${CENTER}${new Date().toLocaleString()}${LF}${LF}`;
+    
+    // Dados da mesa/comanda
+    const table = tables.find(t => t.id === selectedTable);
+    receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}`;
+    
+    // Verificar se é delivery para adicionar taxa
+    const isDelivery = table?.type === 'comanda' && table?.location === 'Delivery';
+    let total = calculateOrderTotal(order);
+    let deliveryFee = 0;
+    
+    if (isDelivery) {
+      deliveryFee = 2.50;
+      total += deliveryFee;
+    }
+    
+    receipt += '--------------------------------' + LF;
+    receipt += `${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
     receipt += '--------------------------------' + LF;
     
-    receipt += LEFT;
+    // Itens do pedido
     order.items.forEach(item => {
       receipt += `${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
       if (item.description) {
         receipt += `${item.description}${LF}`;
       }
-       if (item.notes) {
-      receipt += `OBS: ${item.notes}${LF}`;
+      if (item.notes) {
+        receipt += `OBS: ${item.notes}${LF}`;
       }
-      receipt += `€ ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
+      receipt += `Preço: € ${item.price.toFixed(2)} x ${item.quantity} = € ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
     });
-  
-    // Adicionar observações se existirem
+    
+    // Adicionar taxa de entrega se for delivery
+    if (isDelivery) {
+      receipt += '--------------------------------' + LF;
+      receipt += `${BOLD_ON}Taxa de Entrega: € ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
+    }
+    
+    // Total
+    receipt += '--------------------------------' + LF;
+    receipt += `${BOLD_ON}TOTAL: € ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
+    
+    // Observações
     if (order.notes || order.clientNotes) {
       receipt += '--------------------------------' + LF;
       receipt += `${BOLD_ON}OBSERVAÇÕES:${BOLD_OFF}${LF}`;
@@ -531,7 +557,6 @@ const AdminPanel = () => {
     }
 
     receipt += '--------------------------------' + LF;
-    receipt += `${BOLD_ON}TOTAL: € ${calculateOrderTotal(order).toFixed(2)}${BOLD_OFF}${LF}${LF}`;
     receipt += `${CENTER}Obrigado pela sua preferência!${LF}${LF}`;
     receipt += `${CENTER}Volte sempre${LF}${LF}`;
     receipt += `${FEED}${FEED}${CUT}`;
@@ -680,10 +705,9 @@ const AdminPanel = () => {
         const loadedOrder = { 
           id: orderId, 
           ...order,
-          // Garantir que items.notes seja preservado
           items: order.items?.map(item => ({
             ...item,
-            notes: item.notes || '' // Garantir que notes exista
+            notes: item.notes || ''
           })) || []
         };
         
@@ -804,7 +828,7 @@ const addItemToOrder = async () => {
           quantity: newItemQuantity,
           addedAt: Date.now(),
           printed: false,
-          notes: itemNotes[selectedMenuItem.id] || '' // Garantir que as notas sejam incluídas
+          notes: itemNotes[selectedMenuItem.id] || ''
         }],
         updatedAt: Date.now(),
         kitchenNotes: kitchenNotes || null
@@ -817,7 +841,7 @@ const addItemToOrder = async () => {
           quantity: newItemQuantity,
           addedAt: Date.now(),
           printed: false,
-          notes: itemNotes[selectedMenuItem.id] || '' // Garantir que as notas sejam incluídas
+          notes: itemNotes[selectedMenuItem.id] || ''
         }],
         status: 'open',
         createdAt: Date.now(),
@@ -838,7 +862,7 @@ const addItemToOrder = async () => {
     setSelectedMenuItem(null);
     setNewItemQuantity(1);
     setKitchenNotes('');
-    setItemNotes({}); // Limpar as observações dos itens
+    setItemNotes({});
   } catch (err) {
     setError('Erro ao adicionar item');
     console.error(err);
@@ -936,20 +960,16 @@ const addItemToOrder = async () => {
   const totalPages = Math.ceil(filteredTables().length / tablesPerPage);
 
   const getTableBadgeColor = (table) => {
-    if (table.type === 'interna') return 'bg-blue-100 text-blue-800';
-    if (table.type === 'externa') return 'bg-green-100 text-green-800';
-    if (table.type === 'comanda') {
-      return table.location === 'Balcão' 
-        ? 'bg-purple-100 text-purple-800' 
-        : 'bg-orange-100 text-orange-800';
+    if (table.currentOrder) {
+      return 'bg-red-100 text-red-800';
     }
-    return 'bg-gray-100 text-gray-800';
+    return 'bg-green-100 text-green-800';
   };
 
   const getTableIcon = (table) => {
     if (table.type === 'interna') return '🏠';
     if (table.type === 'externa') return '🌿';
-    if (table.type === 'comanda') return table.location === 'Balcão' ? '🍽️' : '🚴';
+    if (table.type === 'comanda') return '📋';
     return '🪑';
   };
 
@@ -1094,7 +1114,7 @@ const addItemToOrder = async () => {
                     } flex flex-col items-center justify-center h-full min-h-[100px]`}
                   >
                     <div className={`absolute top-1 right-1 ${badgeColor} text-xs px-2 py-0.5 rounded-full flex items-center`}>
-                      {tableIcon} {table.location}
+                      {hasOrder ? 'Ocupada' : 'Disponível'}
                     </div>
                     
                     {isVIP && hasOrder && (
@@ -1120,7 +1140,7 @@ const addItemToOrder = async () => {
                         </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400 px-3 py-1 rounded-full bg-gray-50">Disponível</span>
+                      <span className="text-xs text-gray-400">Disponível</span>
                     )}
                   </button>
                 );
@@ -1861,6 +1881,20 @@ const addItemToOrder = async () => {
                           +
                         </button>
                       </div>
+                    </div>
+                    
+                    <div className="mb-6">
+                      <label className="block text-gray-700 mb-2 font-medium">Observações:</label>
+                      <textarea
+                        value={itemNotes[selectedMenuItem.id] || ''}
+                        onChange={(e) => setItemNotes(prev => ({
+                          ...prev,
+                          [selectedMenuItem.id]: e.target.value
+                        }))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ex: Sem cebola, bem passado, etc."
+                        rows={3}
+                      />
                     </div>
                     
                     <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
