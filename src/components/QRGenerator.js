@@ -209,30 +209,35 @@ const QRGenerator = () => {
             <p style="font-size: 10px; color: #555;">Comandas Digitais (1-70)</p>
           </div>
           <div class="cards-grid">
-            ${Array.from({ length: totalComandas }, (_, i) => {
-              const tableNumber = i + 1;
-              const cardType = tableNumber <= 18 ? 'MESA' : 'COMANDA';
-              return `
-                <div class="comanda-card">
-                  <div class="card-header">
-                    <div class="card-id">#${String(tableNumber).padStart(2, '0')}</div>
-                    <div class="card-icon">🍽️</div>
-                  </div>
-                  
-                  <img src="${logoBase64}" class="card-logo" alt="Logo Alto Astral" />
-                  
-                  <div class="qr-container">
-                    <img src="${qrImages[i]}" alt="QR Code" />
-                  </div>
-                  
-                  <div class="card-info">
-                    <div class="card-type">${cardType}</div>
-                    <div class="card-number">${tableNumber}</div>
-                    <div class="card-label">Menu Digital</div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+           ${Array.from({ length: totalComandas }, (_, i) => {
+  const tableNumber = i + 1;
+  const cardType = tableNumber <= 18 ? 'MESA' : 'COMANDA';
+  const qrUrl = tableNumber <= 18 
+    ? `${baseUrl}/table/${tableNumber}` 
+    : `${baseUrl}/comanda/${tableNumber}`;
+
+  return `
+    <div class="comanda-card">
+      <div class="card-header">
+        <div class="card-id">#${String(tableNumber).padStart(2, '0')}</div>
+        <div class="card-icon">🍽️</div>
+      </div>
+      
+      <img src="${logoBase64}" class="card-logo" alt="Logo Alto Astral" />
+      
+      <div class="qr-container">
+        <img src="${qrImages[i]}" alt="QR Code" />
+      </div>
+      
+      <div class="card-info">
+        <div class="card-type">${cardType}</div>
+        <div class="card-number">${tableNumber}</div>
+        <div class="card-label">Menu Digital</div>
+      </div>
+    </div>
+  `;
+}).join('')}
+
           </div>
           <script>
             setTimeout(() => {
