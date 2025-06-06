@@ -3,10 +3,15 @@ import AdminPanel from './components/AdminPanel';
 import ClientInterface from './components/ClientInterface';
 import QRGenerator from './components/QRGenerator';
 
-// Wrapper para passar o parâmetro da URL como prop
 function ClientInterfaceWrapper() {
   const { tableNumber } = useParams();
-  return <ClientInterface tableNumber={tableNumber} />;
+  
+  // Verifica se é uma comanda (começa com C) ou mesa (apenas números)
+  const formattedTableNumber = tableNumber.startsWith('C') 
+    ? tableNumber 
+    : parseInt(tableNumber);
+  
+  return <ClientInterface tableNumber={formattedTableNumber} />;
 }
 
 function App() {
@@ -15,7 +20,7 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         <Routes>
           <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<HomePage />} />  
           <Route path="/table/:tableNumber" element={<ClientInterfaceWrapper />} />
           <Route path="/qr-codes" element={<QRGenerator />} />
           <Route path="*" element={<NotFoundPage />} />

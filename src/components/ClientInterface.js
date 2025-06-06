@@ -331,9 +331,9 @@ const sendOrder = async () => {
       }, {})
     };
 
-    // Modificação para lidar com comandas
+    // Caminho corrigido para comandas
     const path = tableNumber.startsWith('C') 
-      ? `comandas/${tableNumber.substring(1)}/currentOrder`
+      ? `tables/comandas/${tableNumber}/currentOrder`
       : `tables/${tableNumber}/currentOrder`;
 
     const orderRef = currentOrderId 
@@ -386,10 +386,13 @@ const sendOrder = async () => {
   // Formatar preço
   const formatPrice = (price) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(price);
 
-  // Monitorar pedidos ativos
 // Modifique esta parte no ClientInterface.js
 useEffect(() => {
-  const orderRef = ref(database, `tables/${tableNumber.replace('C', 'comandas/')}/currentOrder`);
+  if (typeof tableNumber !== 'string') return;
+
+  const formattedTableNumber = tableNumber.replace('C', 'comandas/');
+  const orderRef = ref(database, `tables/${formattedTableNumber}/currentOrder`);
+
   const orderUnsubscribe = onValue(orderRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -410,6 +413,7 @@ useEffect(() => {
 
   return () => orderUnsubscribe();
 }, [tableNumber]);
+
 
   // Atualizar notas do item
   const updateItemNotes = (itemId, notes) => {

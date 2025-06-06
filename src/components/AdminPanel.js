@@ -124,41 +124,55 @@ const AdminPanel = () => {
   const [itemNotes, setItemNotes] = useState({});
 
   // Configuração inicial das mesas e comandas
-  const initialTables = () => {
-    const tables = [];
-    
-    // Mesas internas (1-8)
-    for (let i = 1; i <= 8; i++) {
-      tables.push({
-        id: i.toString(),
-        type: 'interna',
-        capacity: i <= 4 ? 4 : 6,
-        location: 'Interno'
-      });
+const initialTables = () => {
+  const tables = [];
+  
+  // Mesas internas (1-8)
+  for (let i = 1; i <= 8; i++) {
+    tables.push({
+      id: i.toString(),
+      type: 'interna',
+      capacity: i <= 4 ? 4 : 6,
+      location: 'Interno'
+    });
+  }
+  
+  // Mesas externas (9-16)
+  for (let i = 9; i <= 16; i++) {
+    tables.push({
+      id: i.toString(),
+      type: 'externa',
+      capacity: i <= 12 ? 4 : 6,
+      location: 'Externo'
+    });
+  }
+  
+  // Comandas adicionais (C01-C70) - Corrigido para usar prefixo 'C' e padding zero
+  for (let i = 1; i <= 70; i++) {
+    tables.push({
+      id: `C${i.toString().padStart(2, '0')}`,
+      type: 'comanda',
+      capacity: 0,
+      location: ''
+    });
+  }
+  
+  return tables;
+};
+
+useEffect(() => {
+  const auth = getAuth();
+  const unsubscribe = auth.onAuthStateChanged((user) => {
+    if (user) {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
     }
-    
-    // Mesas externas (9-16)
-    for (let i = 9; i <= 16; i++) {
-      tables.push({
-        id: i.toString(),
-        type: 'externa',
-        capacity: i <= 12 ? 4 : 6,
-        location: 'Externo'
-      });
-    }
-    
-    // Comandas adicionais (1-70)
-    for (let i = 1; i <= 70; i++) {
-      tables.push({
-        id: `C${i.toString().padStart(2, '0')}`,
-        type: 'comanda',
-        capacity: 0,
-        location: ''
-      });
-    }
-    
-    return tables;
-  };
+  });
+
+  return () => unsubscribe();
+}, []);
+
 
   const foodImages = {
     frangoCremoso,
@@ -983,13 +997,18 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, [isAuthenticated]);
 
- useEffect(() => {
+useEffect(() => {
   if (!isAuthenticated || !selectedTable) {
     setSelectedOrder(null);
     return;
   }
 
-  const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+const path = selectedTable.startsWith('C')
+  ? `tables/comandas/${selectedTable}/currentOrder`
+  : `tables/${selectedTable}/currentOrder`;
+
+  const orderRef = ref(database, path);
+
   const unsubscribe = onValue(orderRef, (snapshot) => {
     const orderData = snapshot.val();
     
