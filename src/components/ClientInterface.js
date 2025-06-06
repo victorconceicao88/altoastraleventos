@@ -939,15 +939,12 @@ const ClientInterface = ({ tableNumber }) => {
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col">
       {/* Header */}
-      <header className="bg-[#d5c8b6] shadow-lg sticky top-0 z-50 pt-safe-top">
+      <header className="bg-white shadow-lg sticky top-0 z-50 pt-safe-top">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 rounded-lg shadow-md">
-                <img src={logo} alt="Logo Alto Astral" className="h-8 w-8" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-black drop-shadow-md">Alto Astral</h1>
+                <img src={logo} alt="Logo Alto Astral" className="h-12 w-12" />
               </div>
             </div>
 
@@ -959,7 +956,7 @@ const ClientInterface = ({ tableNumber }) => {
               
               <button 
                 onClick={() => setShowCart(!showCart)}
-                className="relative p-3 bg-[#918e89] text-white rounded-full shadow-lg hover:bg-[#b0aca6] transition-colors flex items-center"
+                className="relative p-3  text-black rounded-full shadow-lg  transition-colors flex items-center"
               >
                 <FaCartPlus className="h-6 w-6" />
                 {cart.length > 0 && (
@@ -1856,19 +1853,6 @@ const ClientInterface = ({ tableNumber }) => {
                     ))}
                   </div>
 
-                  <div className="mb-4">
-                    <label htmlFor="orderNotes" className="block text-sm font-bold text-black mb-1">
-                      Observações para o pedido (opcional)
-                    </label>
-                    <textarea
-                      id="orderNotes"
-                      rows={3}
-                      className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
-                      placeholder="Ex: Sem cebola, bem passado, etc."
-                      value={orderNotes}
-                      onChange={(e) => setOrderNotes(e.target.value)}
-                    />
-                  </div>
 
                   <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                     <div className="flex justify-between mb-2">
@@ -1994,21 +1978,7 @@ const ClientInterface = ({ tableNumber }) => {
                           </div>
                         </motion.div>
                       ))}
-                    </div>
-
-                    <div className="mb-4">
-                      <label htmlFor="mobileOrderNotes" className="block text-sm font-bold text-black mb-1">
-                        Observações para o pedido (opcional)
-                      </label>
-                      <textarea
-                        id="mobileOrderNotes"
-                        rows={2}
-                        className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
-                        placeholder="Ex: Sem cebola, bem passado, etc."
-                        value={orderNotes}
-                        onChange={(e) => setOrderNotes(e.target.value)}
-                      />
-                    </div>
+                    </div>         
 
                     <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                       <div className="flex justify-between mb-2">
@@ -2098,22 +2068,8 @@ const ClientInterface = ({ tableNumber }) => {
                     </div>
                   ))}
                 </div>
-
-                <div className="mb-4">
-                  <label htmlFor="confirmationNotes" className="block text-sm font-bold text-black mb-1">
-                    Observações finais (opcional)
-                  </label>
-                  <textarea
-                    id="confirmationNotes"
-                    rows={2}
-                    className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
-                    placeholder="Ex: Sem cebola, bem passado, etc."
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                  />
-                </div>
-
-                <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
+                
+               <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-700 font-bold">Subtotal:</span>
                     <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>
