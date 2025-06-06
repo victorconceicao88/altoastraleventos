@@ -123,55 +123,56 @@ const AdminPanel = () => {
   const [kitchenNotes, setKitchenNotes] = useState('');
   const [itemNotes, setItemNotes] = useState({});
 
+
   // Configuração inicial das mesas e comandas
-const initialTables = () => {
-  const tables = [];
-  
-  // Mesas internas (1-8)
-  for (let i = 1; i <= 8; i++) {
-    tables.push({
-      id: i.toString(),
-      type: 'interna',
-      capacity: i <= 4 ? 4 : 6,
-      location: 'Interno'
-    });
-  }
-  
-  // Mesas externas (9-16)
-  for (let i = 9; i <= 16; i++) {
-    tables.push({
-      id: i.toString(),
-      type: 'externa',
-      capacity: i <= 12 ? 4 : 6,
-      location: 'Externo'
-    });
-  }
-  
-  // Comandas adicionais (C01-C70) - Corrigido para usar prefixo 'C' e padding zero
-  for (let i = 1; i <= 70; i++) {
-    tables.push({
-      id: `C${i.toString().padStart(2, '0')}`,
-      type: 'comanda',
-      capacity: 0,
-      location: ''
-    });
-  }
-  
-  return tables;
-};
+ const initialTables = () => {
+    const tables = [];
+    
+    // Mesas internas (1-8)
+    for (let i = 1; i <= 8; i++) {
+      tables.push({
+        id: i.toString(),
+        type: 'interna',
+        capacity: i <= 4 ? 4 : 6,
+        location: 'Interno'
+      });
+    }
+    
+    // Mesas externas (9-16)
+    for (let i = 9; i <= 16; i++) {
+      tables.push({
+        id: i.toString(),
+        type: 'externa',
+        capacity: i <= 12 ? 4 : 6,
+        location: 'Externo'
+      });
+    }
+    
+    // Comandas (17-70)
+    for (let i = 17; i <= 70; i++) {
+      tables.push({
+        id: i.toString(),
+        type: 'comanda',
+        capacity: 0,
+        location: ''
+      });
+    }
+    
+    return tables;
+  };
 
 useEffect(() => {
-  const auth = getAuth();
-  const unsubscribe = auth.onAuthStateChanged((user) => {
-    if (user) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-    }
-  });
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
 
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
 
   const foodImages = {
@@ -997,60 +998,57 @@ useEffect(() => {
     return () => unsubscribe();
   }, [isAuthenticated]);
 
-useEffect(() => {
-  if (!isAuthenticated || !selectedTable) {
-    setSelectedOrder(null);
-    return;
-  }
+  useEffect(() => {
+    if (!isAuthenticated || !selectedTable) {
+      setSelectedOrder(null);
+      return;
+    }
 
-const path = selectedTable.startsWith('C')
-  ? `tables/comandas/${selectedTable}/currentOrder`
-  : `tables/${selectedTable}/currentOrder`;
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
 
-  const orderRef = ref(database, path);
-
-  const unsubscribe = onValue(orderRef, (snapshot) => {
-    const orderData = snapshot.val();
-    
-    if (orderData) {
-      const orders = Object.entries(orderData);
-      if (orders.length > 0) {
-        const [orderId, order] = orders[0];
-        const loadedOrder = { 
-          id: orderId, 
-          ...order,
-          items: order.items?.map(item => ({
-            ...item,
-            notes: item.notes || ''
-          })) || []
-        };
-        
-        const newPrintedItems = {...printedItems};
-        let hasPrintedItems = false;
-        
-        loadedOrder.items?.forEach(item => {
-          const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-          if (item.printed && !printedItems[itemKey]) {
-            newPrintedItems[itemKey] = true;
-            hasPrintedItems = true;
+    const unsubscribe = onValue(orderRef, (snapshot) => {
+      const orderData = snapshot.val();
+      
+      if (orderData) {
+        const orders = Object.entries(orderData);
+        if (orders.length > 0) {
+          const [orderId, order] = orders[0];
+          const loadedOrder = { 
+            id: orderId, 
+            ...order,
+            items: order.items?.map(item => ({
+              ...item,
+              notes: item.notes || ''
+            })) || []
+          };
+          
+          const newPrintedItems = {...printedItems};
+          let hasPrintedItems = false;
+          
+          loadedOrder.items?.forEach(item => {
+            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+            if (item.printed && !printedItems[itemKey]) {
+              newPrintedItems[itemKey] = true;
+              hasPrintedItems = true;
+            }
+          });
+          
+          if (hasPrintedItems) {
+            setPrintedItems(newPrintedItems);
           }
-        });
-        
-        if (hasPrintedItems) {
-          setPrintedItems(newPrintedItems);
+          
+          setSelectedOrder(loadedOrder);
+        } else {
+          setSelectedOrder(null);
         }
-        
-        setSelectedOrder(loadedOrder);
       } else {
         setSelectedOrder(null);
       }
-    } else {
-      setSelectedOrder(null);
-    }
-  });
+    });
 
-  return () => unsubscribe();
-}, [isAuthenticated, selectedTable]);
+    return () => unsubscribe();
+  }, [isAuthenticated, selectedTable]);
+
 
   const createNewOrder = async () => {
     if (!selectedTable) return;
@@ -1079,7 +1077,7 @@ const path = selectedTable.startsWith('C')
     }
   };
 
-  const closeOrder = async () => {
+   const closeOrder = async () => {
     if (!selectedTable || !selectedOrder?.id) return;
     
     setIsClosingOrder(true);
@@ -1088,7 +1086,7 @@ const path = selectedTable.startsWith('C')
       const table = tables.find(t => t.id === selectedTable);
       let total = calculateOrderTotal(selectedOrder);
       
-      if (table?.type === 'comanda' && table?.location === 'Delivery') {
+      if (table?.type === 'comanda') {
         // Count delivery items
         const deliveryCount = selectedOrder.items.filter(item => 
           item.category === 'delivery'
@@ -1112,6 +1110,17 @@ const path = selectedTable.startsWith('C')
       const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       await remove(orderRef);
       
+      // Atualiza o estado local para refletir que a mesa está disponível
+      setTables(prevTables => prevTables.map(table => {
+        if (table.id === selectedTable) {
+          return {
+            ...table,
+            currentOrder: null
+          };
+        }
+        return table;
+      }));
+      
       setSelectedOrder(null);
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);
@@ -1123,6 +1132,7 @@ const path = selectedTable.startsWith('C')
       setShowCloseConfirmation(false);
     }
   };
+
 
 const addItemToOrder = async () => {
   if (!selectedTable || !selectedMenuItem) return;
@@ -1234,7 +1244,7 @@ const addItemToOrder = async () => {
     return order.items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
   };
 
-  const handleTableSelect = (tableNumber) => {
+ const handleTableSelect = (tableNumber) => {
     const tableStr = tableNumber.toString();
     setSelectedTable(tableStr);
   };

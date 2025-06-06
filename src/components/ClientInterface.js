@@ -296,89 +296,84 @@ const ClientInterface = ({ tableNumber }) => {
   };
 
   // Enviar pedido
-const sendOrder = async () => {
-  if (cart.length === 0) return;
-  setIsSendingOrder(true);
-  setOrderStatus('Enviando...');
-  
-  try {
-    const orderItems = cart.map(item => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      description: item.description || '',
-      quantity: item.quantity || 1,
-      notes: item.notes || '',
-      addedAt: Date.now()
-    }));
+  const sendOrder = async () => {
+    if (cart.length === 0) return;
+    setIsSendingOrder(true);
+    setOrderStatus('Enviando...');
+    
+    try {
+      const orderItems = cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        description: item.description || '',
+        quantity: item.quantity || 1,
+        notes: item.notes || '',
+        addedAt: Date.now()
+      }));
 
-    const orderTotal = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+      const orderTotal = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
 
-    const orderData = {
-      items: orderItems,
-      status: 'Recebido',
-      createdAt: Date.now(),
-      tableNumber: tableNumber,
-      source: 'client',
-      total: orderTotal,
-      notes: orderNotes,
-      clientNotes: orderNotes,
-      itemNotes: orderItems.reduce((acc, item) => {
-        if (item.notes) {
-          acc[item.id] = item.notes;
-        }
-        return acc;
-      }, {})
-    };
-
-    // Caminho corrigido para comandas
-    const path = tableNumber.startsWith('C') 
-      ? `tables/comandas/${tableNumber}/currentOrder`
-      : `tables/${tableNumber}/currentOrder`;
-
-    const orderRef = currentOrderId 
-      ? ref(database, `${path}/${currentOrderId}`)
-      : ref(database, path);
-
-    if (currentOrderId) {
-      const updates = {
-        items: [...(activeOrder?.items || []), ...orderItems],
-        updatedAt: Date.now(),
+      const orderData = {
+        items: orderItems,
         status: 'Recebido',
-        total: (activeOrder?.total || 0) + orderTotal,
+        createdAt: Date.now(),
+        tableNumber: parseInt(tableNumber),
+        source: 'client',
+        total: orderTotal,
         notes: orderNotes,
         clientNotes: orderNotes,
-        itemNotes: {
-          ...(activeOrder?.itemNotes || {}),
-          ...orderData.itemNotes
-        }
+        itemNotes: orderItems.reduce((acc, item) => {
+          if (item.notes) {
+            acc[item.id] = item.notes;
+          }
+          return acc;
+        }, {})
       };
+
+      const orderRef = currentOrderId 
+        ? ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`)
+        : ref(database, `tables/${tableNumber}/currentOrder`);
+
+      if (currentOrderId) {
+        const updates = {
+          items: [...(activeOrder?.items || []), ...orderItems],
+          updatedAt: Date.now(),
+          status: 'Recebido',
+          total: (activeOrder?.total || 0) + orderTotal,
+          notes: orderNotes,
+          clientNotes: orderNotes,
+          itemNotes: {
+            ...(activeOrder?.itemNotes || {}),
+            ...orderData.itemNotes
+          }
+        };
+        
+        await update(orderRef, updates);
+      } else {
+        const newOrderRef = await push(orderRef);
+        await set(newOrderRef, orderData);
+        setCurrentOrderId(newOrderRef.key);
+      }
+
+      setCart([]);
+      setOrderStatus('Pedido enviado');
+      setShowConfirmation(false);
+      setOrderNotes('');
+      setIsSendingOrder(false);
       
-      await update(orderRef, updates);
-    } else {
-      const newOrderRef = await push(orderRef);
-      await set(newOrderRef, orderData);
-      setCurrentOrderId(newOrderRef.key);
+      setTimeout(() => {
+        if (isMobile) setShowCart(false);
+        setOrderStatus('');
+      }, 3000);
+
+    } catch (error) {
+      console.error("Erro ao enviar pedido:", error);
+      setOrderStatus('Erro ao enviar');
+      setIsSendingOrder(false);
+      setTimeout(() => setOrderStatus(''), 2000);
     }
-
-    setCart([]);
-    setOrderStatus('Pedido enviado');
-    setShowConfirmation(false);
-    setOrderNotes('');
-    setIsSendingOrder(false);
-    
-    setTimeout(() => {
-      if (isMobile) setShowCart(false);
-      setOrderStatus('');
-    }, 3000);
-
-  } catch (error) {
-    console.error("Erro ao enviar pedido:", error);
-    setOrderStatus('Erro ao enviar');
-    setIsSendingOrder(false);
-    setTimeout(() => setOrderStatus(''), 2000);
-  }
-};
+  };
 
   // Calcular total
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
@@ -386,34 +381,29 @@ const sendOrder = async () => {
   // Formatar preço
   const formatPrice = (price) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(price);
 
-// Modifique esta parte no ClientInterface.js
-useEffect(() => {
-  if (typeof tableNumber !== 'string') return;
-
-  const formattedTableNumber = tableNumber.replace('C', 'comandas/');
-  const orderRef = ref(database, `tables/${formattedTableNumber}/currentOrder`);
-
-  const orderUnsubscribe = onValue(orderRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const order = Object.entries(data)[0];
-      if (order) {
-        setCurrentOrderId(order[0]);
-        setActiveOrder(order[1]);
-        if (order[1]?.status === 'Fechado') setCart([]);
+  // Monitorar pedidos ativos
+  useEffect(() => {
+    const orderRef = ref(database, `tables/${tableNumber}/currentOrder`);
+    const orderUnsubscribe = onValue(orderRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const order = Object.entries(data)[0];
+        if (order) {
+          setCurrentOrderId(order[0]);
+          setActiveOrder(order[1]);
+          if (order[1]?.status === 'Fechado') setCart([]);
+        } else {
+          setCurrentOrderId(null);
+          setActiveOrder(null);
+        }
       } else {
         setCurrentOrderId(null);
         setActiveOrder(null);
       }
-    } else {
-      setCurrentOrderId(null);
-      setActiveOrder(null);
-    }
-  });
+    });
 
-  return () => orderUnsubscribe();
-}, [tableNumber]);
-
+    return () => orderUnsubscribe();
+  }, [tableNumber]);
 
   // Atualizar notas do item
   const updateItemNotes = (itemId, notes) => {
@@ -882,7 +872,7 @@ useEffect(() => {
       { 
         id: 70, 
         name: 'Água Castelo', 
-        description: 'Água mineral gaseificada', 
+        description: 'Água mineral gaseificada 1L', 
         price: 1.40, 
         image: 'Castelo', 
         rating: 4.2 
@@ -890,7 +880,7 @@ useEffect(() => {
       { 
         id: 71, 
         name: 'Água das Pedras', 
-        description: 'Água mineral gaseificada', 
+        description: 'Água mineral gaseificada 1L', 
         price: 1.40, 
         image: 'pedras', 
         rating: 4.3 
@@ -949,12 +939,15 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-lg sticky top-0 z-50 pt-safe-top">
+      <header className="bg-[#d5c8b6] shadow-lg sticky top-0 z-50 pt-safe-top">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 rounded-lg shadow-md">
-                <img src={logo} alt="Logo Alto Astral" className="h-12 w-12" />
+                <img src={logo} alt="Logo Alto Astral" className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-black drop-shadow-md">Alto Astral</h1>
               </div>
             </div>
 
@@ -966,7 +959,7 @@ useEffect(() => {
               
               <button 
                 onClick={() => setShowCart(!showCart)}
-                className="relative p-3  text-black rounded-full shadow-lg  transition-colors flex items-center"
+                className="relative p-3 bg-[#918e89] text-white rounded-full shadow-lg hover:bg-[#b0aca6] transition-colors flex items-center"
               >
                 <FaCartPlus className="h-6 w-6" />
                 {cart.length > 0 && (
@@ -1863,6 +1856,19 @@ useEffect(() => {
                     ))}
                   </div>
 
+                  <div className="mb-4">
+                    <label htmlFor="orderNotes" className="block text-sm font-bold text-black mb-1">
+                      Observações para o pedido (opcional)
+                    </label>
+                    <textarea
+                      id="orderNotes"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
+                      placeholder="Ex: Sem cebola, bem passado, etc."
+                      value={orderNotes}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                    />
+                  </div>
 
                   <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                     <div className="flex justify-between mb-2">
@@ -1988,7 +1994,21 @@ useEffect(() => {
                           </div>
                         </motion.div>
                       ))}
-                    </div>         
+                    </div>
+
+                    <div className="mb-4">
+                      <label htmlFor="mobileOrderNotes" className="block text-sm font-bold text-black mb-1">
+                        Observações para o pedido (opcional)
+                      </label>
+                      <textarea
+                        id="mobileOrderNotes"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
+                        placeholder="Ex: Sem cebola, bem passado, etc."
+                        value={orderNotes}
+                        onChange={(e) => setOrderNotes(e.target.value)}
+                      />
+                    </div>
 
                     <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                       <div className="flex justify-between mb-2">
@@ -2079,7 +2099,21 @@ useEffect(() => {
                   ))}
                 </div>
 
-               <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
+                <div className="mb-4">
+                  <label htmlFor="confirmationNotes" className="block text-sm font-bold text-black mb-1">
+                    Observações finais (opcional)
+                  </label>
+                  <textarea
+                    id="confirmationNotes"
+                    rows={2}
+                    className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
+                    placeholder="Ex: Sem cebola, bem passado, etc."
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                  />
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-700 font-bold">Subtotal:</span>
                     <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>

@@ -5,12 +5,10 @@ import QRGenerator from './components/QRGenerator';
 
 function ClientInterfaceWrapper() {
   const { tableNumber } = useParams();
-  
-  // Verifica se é uma comanda (começa com C) ou mesa (apenas números)
-  const formattedTableNumber = tableNumber.startsWith('C') 
-    ? tableNumber 
-    : parseInt(tableNumber);
-  
+
+  // Apenas converte para número para garantir que está em formato correto
+  const formattedTableNumber = parseInt(tableNumber, 10);
+
   return <ClientInterface tableNumber={formattedTableNumber} />;
 }
 
