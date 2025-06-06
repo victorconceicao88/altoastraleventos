@@ -296,84 +296,89 @@ const ClientInterface = ({ tableNumber }) => {
   };
 
   // Enviar pedido
-  const sendOrder = async () => {
-    if (cart.length === 0) return;
-    setIsSendingOrder(true);
-    setOrderStatus('Enviando...');
-    
-    try {
-      const orderItems = cart.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        description: item.description || '',
-        quantity: item.quantity || 1,
-        notes: item.notes || '',
-        addedAt: Date.now()
-      }));
+const sendOrder = async () => {
+  if (cart.length === 0) return;
+  setIsSendingOrder(true);
+  setOrderStatus('Enviando...');
+  
+  try {
+    const orderItems = cart.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      description: item.description || '',
+      quantity: item.quantity || 1,
+      notes: item.notes || '',
+      addedAt: Date.now()
+    }));
 
-      const orderTotal = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+    const orderTotal = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
 
-      const orderData = {
-        items: orderItems,
+    const orderData = {
+      items: orderItems,
+      status: 'Recebido',
+      createdAt: Date.now(),
+      tableNumber: tableNumber,
+      source: 'client',
+      total: orderTotal,
+      notes: orderNotes,
+      clientNotes: orderNotes,
+      itemNotes: orderItems.reduce((acc, item) => {
+        if (item.notes) {
+          acc[item.id] = item.notes;
+        }
+        return acc;
+      }, {})
+    };
+
+    // Modificação para lidar com comandas
+    const path = tableNumber.startsWith('C') 
+      ? `comandas/${tableNumber.substring(1)}/currentOrder`
+      : `tables/${tableNumber}/currentOrder`;
+
+    const orderRef = currentOrderId 
+      ? ref(database, `${path}/${currentOrderId}`)
+      : ref(database, path);
+
+    if (currentOrderId) {
+      const updates = {
+        items: [...(activeOrder?.items || []), ...orderItems],
+        updatedAt: Date.now(),
         status: 'Recebido',
-        createdAt: Date.now(),
-        tableNumber: parseInt(tableNumber),
-        source: 'client',
-        total: orderTotal,
+        total: (activeOrder?.total || 0) + orderTotal,
         notes: orderNotes,
         clientNotes: orderNotes,
-        itemNotes: orderItems.reduce((acc, item) => {
-          if (item.notes) {
-            acc[item.id] = item.notes;
-          }
-          return acc;
-        }, {})
+        itemNotes: {
+          ...(activeOrder?.itemNotes || {}),
+          ...orderData.itemNotes
+        }
       };
-
-      const orderRef = currentOrderId 
-        ? ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`)
-        : ref(database, `tables/${tableNumber}/currentOrder`);
-
-      if (currentOrderId) {
-        const updates = {
-          items: [...(activeOrder?.items || []), ...orderItems],
-          updatedAt: Date.now(),
-          status: 'Recebido',
-          total: (activeOrder?.total || 0) + orderTotal,
-          notes: orderNotes,
-          clientNotes: orderNotes,
-          itemNotes: {
-            ...(activeOrder?.itemNotes || {}),
-            ...orderData.itemNotes
-          }
-        };
-        
-        await update(orderRef, updates);
-      } else {
-        const newOrderRef = await push(orderRef);
-        await set(newOrderRef, orderData);
-        setCurrentOrderId(newOrderRef.key);
-      }
-
-      setCart([]);
-      setOrderStatus('Pedido enviado');
-      setShowConfirmation(false);
-      setOrderNotes('');
-      setIsSendingOrder(false);
       
-      setTimeout(() => {
-        if (isMobile) setShowCart(false);
-        setOrderStatus('');
-      }, 3000);
-
-    } catch (error) {
-      console.error("Erro ao enviar pedido:", error);
-      setOrderStatus('Erro ao enviar');
-      setIsSendingOrder(false);
-      setTimeout(() => setOrderStatus(''), 2000);
+      await update(orderRef, updates);
+    } else {
+      const newOrderRef = await push(orderRef);
+      await set(newOrderRef, orderData);
+      setCurrentOrderId(newOrderRef.key);
     }
-  };
+
+    setCart([]);
+    setOrderStatus('Pedido enviado');
+    setShowConfirmation(false);
+    setOrderNotes('');
+    setIsSendingOrder(false);
+    
+    setTimeout(() => {
+      if (isMobile) setShowCart(false);
+      setOrderStatus('');
+    }, 3000);
+
+  } catch (error) {
+    console.error("Erro ao enviar pedido:", error);
+    setOrderStatus('Erro ao enviar');
+    setIsSendingOrder(false);
+    setTimeout(() => setOrderStatus(''), 2000);
+  }
+};
 
   // Calcular total
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
@@ -382,28 +387,29 @@ const ClientInterface = ({ tableNumber }) => {
   const formatPrice = (price) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(price);
 
   // Monitorar pedidos ativos
-  useEffect(() => {
-    const orderRef = ref(database, `tables/${tableNumber}/currentOrder`);
-    const orderUnsubscribe = onValue(orderRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const order = Object.entries(data)[0];
-        if (order) {
-          setCurrentOrderId(order[0]);
-          setActiveOrder(order[1]);
-          if (order[1]?.status === 'Fechado') setCart([]);
-        } else {
-          setCurrentOrderId(null);
-          setActiveOrder(null);
-        }
+// Modifique esta parte no ClientInterface.js
+useEffect(() => {
+  const orderRef = ref(database, `tables/${tableNumber.replace('C', 'comandas/')}/currentOrder`);
+  const orderUnsubscribe = onValue(orderRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const order = Object.entries(data)[0];
+      if (order) {
+        setCurrentOrderId(order[0]);
+        setActiveOrder(order[1]);
+        if (order[1]?.status === 'Fechado') setCart([]);
       } else {
         setCurrentOrderId(null);
         setActiveOrder(null);
       }
-    });
+    } else {
+      setCurrentOrderId(null);
+      setActiveOrder(null);
+    }
+  });
 
-    return () => orderUnsubscribe();
-  }, [tableNumber]);
+  return () => orderUnsubscribe();
+}, [tableNumber]);
 
   // Atualizar notas do item
   const updateItemNotes = (itemId, notes) => {
@@ -2068,7 +2074,7 @@ const ClientInterface = ({ tableNumber }) => {
                     </div>
                   ))}
                 </div>
-                
+
                <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-700 font-bold">Subtotal:</span>
