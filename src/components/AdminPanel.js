@@ -3,16 +3,82 @@ import { ref, onValue, update, push, remove, set, get } from 'firebase/database'
 import { database } from '../firebase';
 import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
 import frangoCremoso from '../assets/frango-cremoso.jpg';
-import picanhaPremium from '../assets/picanha-premium.jpg';
+import picanha from '../assets/picanha.jpg';
 import costelaRaiz from '../assets/costela-raiz.jpg';
-import feijoada from '../assets/feijoada.jpg';
+import frangoSupremo from '../assets/frangosupremo.jpg';
+import feijoadaAstral from '../assets/feijoada.jpg';
 import hamburguer from '../assets/hamburguer.jpg';
-import batataFrita from '../assets/batata-frita.jpg';
-import pastel from '../assets/pastel.jpg';
+import chorica from '../assets/choriça.jpg';
+import Asinha from '../assets/Asinha.jpg';
+import Picanhacomfritas from '../assets/picanha-com-fritas.jpg';
+import Filetilapia from '../assets/filetilapia.jpg';
+import baldedecerveja from '../assets/baldecerveja.jpeg';
+import vegano from '../assets/vegano.jpg';
+import hamburgueraltoastral from '../assets/hamburgueraltoastral.jpg';
+import sandespanado from '../assets/sandespanado.jpg';
+import negs from '../assets/negs.jpg';
+import fritascomqueijo from '../assets/fritascomqueijo.jpg';
+import costelaporco from '../assets/costelaporco.jpg';
+import pastelfeira from '../assets/pastelfeira.jpg';
+import abatanado from '../assets/abatanado.png';
+import chocolatequente from '../assets/chocolatequente.jpg';
+import caipirinha from '../assets/caipirinha.jpg';
 import cafe from '../assets/cafe.jpg';
-import bebida from '../assets/bebida.jpg';
-import salgado from '../assets/salgado.jpg';
-import sobremesa from '../assets/sobremesa.jpg';
+import pedras from '../assets/pedras.jpg';
+import Somersby from '../assets/somersby.jpg';
+import Imperial from '../assets/imperial.jpg';
+import cerveja from '../assets/cerveja.jpg';
+import sangria from '../assets/sangria.jpg';
+import refrigerantes from '../assets/refrigerantes.jpg';
+import Coxinha from '../assets/coxinha.jpg';
+import agua from '../assets/agua.jpg';
+import kibe from '../assets/kibe.jpg';
+import bauru from '../assets/bauru.jpg';
+import fiambre from '../assets/fiambre.jpg';
+import ovosebacon from '../assets/ovosebacon.jpg';
+import tosta from '../assets/tosta.jpg';
+import croissant from '../assets/croissant.jpg';
+import paodequeijo from '../assets/paodequeijo.jpg';
+import doces from '../assets/doces.jpg';
+import sanduichenatural from '../assets/saduichenatural.jpg';
+import tostaspremium from '../assets/tostaspremium.jpg';
+import pasteldenata from '../assets/pastel-de-nata.jpg';
+import empadafrango from '../assets/empadafrango.jpg';
+import hamburgao from '../assets/hamburgao.jpg';
+import meialeite from '../assets/meialeite.jpg';
+import cha from '../assets/cha.jpg';
+import croissanmisto from '../assets/croissantmisto.jpg';
+import sandesmista from '../assets/sandesmista.jpg';
+import galao from '../assets/galao.jpg';
+import cariocalimao from '../assets/cariocalimao.jpg';
+import paocomovo from '../assets/paocomovo.jpg';
+import torradapaocaseiro from '../assets/torradapaocaseiro.jpg';
+import torradapaodeforma from '../assets/torradapaodeforma.jpg';
+import bolaqueijo from '../assets/bolaqueijo.jpg';
+import pasteldestaque from '../assets/pasteldestaque.jpg';
+import tostamistapaoforma from '../assets/tostamistapaoforma.jpg';
+import Garoto from '../assets/garoto.jpg';
+import vodka from '../assets/vodka.jpg';
+import Caipiblack from '../assets/caipiblack.jpg';
+import fiambreequeijo from '../assets/fiambreequeijo.jpg';
+import capuccino from '../assets/capuccino.jpg';
+import Castelo from '../assets/castelo.jpg';
+import Cheesecake from '../assets/cheesecake.jpg';
+import maracuja from '../assets/Maracuja.jpg';
+import acerola from '../assets/Acerola.jpg';
+import manga from '../assets/manga.jpg';
+import goiaba from '../assets/goiaba.jpg';
+import morango from '../assets/morango.jpg';
+import Caju from '../assets/caju.jpg';
+import abacaxi from '../assets/Abacaxi.jpg';
+import coco from '../assets/coco.jpg';
+import caja from '../assets/Caja.jpg';
+import cupuacu from '../assets/cupucacu.jpg';
+import graviola from '../assets/graviola.jpg';
+import frutosvermelhos from '../assets/frutosvermelhos.jpg';
+import bolopoteananas from '../assets/bolopoteananas.jpg';
+import Prestígio from '../assets/presigio.jpg';
+import toblerone from '../assets/toblerone.jpg';
 
 const AdminPanel = () => {
   // Authentication state
@@ -81,10 +147,10 @@ const AdminPanel = () => {
       });
     }
     
-    // Comandas adicionais (17-50)
-    for (let i = 17; i <= 50; i++) {
+    // Comandas adicionais (1-70)
+    for (let i = 1; i <= 70; i++) {
       tables.push({
-        id: i.toString(),
+        id: `C${i.toString().padStart(2, '0')}`,
         type: 'comanda',
         capacity: 0,
         location: ''
@@ -96,128 +162,357 @@ const AdminPanel = () => {
 
   const foodImages = {
     frangoCremoso,
-    picanhaPremium,
+    picanhaPremium: picanha,
     costelaRaiz,
-    feijoada,
+    frangosupremo: frangoSupremo,
+    feijoadaAstral,
     hamburguer,
-    batataFrita,
-    pastel,
+    chorica,
+    Asinha,
+    Picanhacomfritas,
+    Filetilapia,
+    baldedecerveja,
+    vegano,
+    hamburgueraltoastral,
+    sandespanado,
+    negs,
+    fritascomqueijo,
+    costelaporco,
+    pastelfeira,
     cafe,
-    bebida,
-    salgado,
-    sobremesa
+    abatanado,
+    chocolatequente,
+    caipirinha,
+    pedras,
+    Somersby,
+    Imperial,
+    cerveja,
+    sangria,
+    refrigerantes,
+    Coxinha,
+    agua,
+    kibe,
+    bauru,
+    fiambre,
+    ovosebacon,
+    tosta,
+    croissant,
+    paodequeijo,
+    doces,
+    sanduichenatural,
+    tostaspremium,
+    pasteldenata,
+    empadafrango,
+    hamburgao,
+    meialeite,
+    cha,
+    croissanmisto,
+    sandesmista,
+    galao,
+    cariocalimao,
+    paocomovo,
+    torradapaocaseiro,
+    torradapaodeforma,
+    bolaqueijo,
+    pasteldestaque,
+    tostamistapaoforma,
+    Garoto,
+    pedras,
+    vodka,
+    Caipiblack,
+    fiambreequeijo,
+    capuccino,
+    Castelo,
+    Cheesecake,
+    maracuja,
+    acerola,
+    manga,
+    goiaba,
+    morango,
+    Caju,
+    abacaxi,
+    coco,
+    caja,
+    cupuacu,
+    graviola,
+    frutosvermelhos,
+    bolopoteananas,
+    Prestígio,
+    toblerone,
+    batataFrita: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    bebida: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    salgado: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
   };
   
   const menu = {
     semana: [
       { id: 1, name: 'Frango Cremoso', description: 'Strogonoff de frango, arroz branco, salada e batata palha', price: 12.90, veg: false, image: foodImages.frangoCremoso, rating: 4.5 },
-      { id: 2, name: 'Picanha Premium', description: 'Picanha grelhada, arroz branco, feijão tropeiro e vinagrete', price: 15.90, veg: false, image: foodImages.picanhaPremium, rating: 4.8 },
-      { id: 3, name: 'Costela Raiz', description: 'Costela de vaca com mandioca, arroz branco, farofa e salada', price: 14.90, veg: false, image: foodImages.costelaRaiz, rating: 4.7 },
-      { id: 4, name: 'Frango Supremo', description: 'Filé de frango à parmegiana, arroz branco, batata frita e salada', price: 13.90, veg: false, image: foodImages.frangoCremoso, rating: 4.3 },
-      { id: 5, name: 'Feijoada Astral', description: 'Feijoada brasileira, arroz branco, couve, farofa, torresmo e laranja', price: 12.90, veg: false, image: foodImages.feijoada, rating: 4.9 },
-      { id: 6, name: 'Opção Vegetariana', description: 'Prato vegetariano sob consulta - acompanha bebida e café', price: 12.90, veg: true, image: foodImages.frangoCremoso, rating: 4.2 }
+      { id: 2, name: 'Maminha Top', description: 'Maminha grelhada, arroz branco, feijão tropeiro e vinagrete', price: 12.90, veg: false, image: foodImages.picanhaPremium, rating: 4.8 },
+      { id: 3, name: 'Costela Raiz', description: 'Costela de vaca com mandioca, arroz branco, farofa e salada', price: 12.90, veg: false, image: foodImages.costelaRaiz, rating: 4.7 },
+      { id: 4, name: 'Frango Supremo', description: 'Filé de frango à parmegiana, arroz branco, batata frita e salada', price: 12.90, veg: false, image: foodImages.frangosupremo, rating: 4.3 },
+      { id: 5, name: 'Feijoada Astral', description: 'Feijoada brasileira, arroz branco, couve, farofa, torresmo e laranja', price: 12.90, veg: false, image: foodImages.feijoadaAstral, rating: 4.9 },
+      { id: 6, name: 'Opção Vegetariana', description: 'Prato vegetariano sob consulta - acompanha bebida e café', price: 12.90, veg: true, image: foodImages.vegano, rating: 4.2 }
     ],
     lanches: [
       { id: 7, name: 'Hambúrguer com Fritas', description: 'Carne, alface, tomate, cebola, cheddar, molho da casa', price: 7.00, image: foodImages.hamburguer, rating: 4.4 },
-      { id: 8, name: 'Hambúrguer Alto Astral', description: 'Carne 120g, bacon, queijo, anéis de cebola, alface, tomate, cheddar, molho coquetel e especial', price: 9.90, image: foodImages.hamburguer, rating: 4.7 },
-      { id: 9, name: 'Hambúrguer Neg\'s', description: 'Carne 120g, frango panado, bacon, queijo, anéis de cebola, cebola crispy, alface, tomate, cheddar, molho coquetel e especial', price: 12.90, image: foodImages.hamburguer, rating: 4.9 },
-      { id: 10, name: 'Sandes de Panado', description: 'Frango panado, alface, tomate, cebola, molho da casa', price: 5.50, image: foodImages.hamburguer, rating: 4.1 },
-      { id: 11, name: 'Tostas Premium', description: 'Frango ou atum acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: foodImages.hamburguer, rating: 4.0 },
-      { id: 12, name: 'Sandes Natural', description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', price: 6.50, image: foodImages.hamburguer, rating: 3.9 }
+      { id: 8, name: 'Hambúrguer Alto Astral', description: 'Carne 120g, bacon, queijo, anéis de cebola, alface, tomate, cheddar, molho coquetel e especial', price: 9.90, image: foodImages.hamburgueraltoastral, rating: 4.7 },
+      { id: 9, name: 'Hambúrguer Neg\'s', description: 'Carne 120g, frango panado, bacon, queijo, anéis de cebola, cebola crispy, alface, tomate, cheddar, molho coquetel e especial', price: 12.90, image: foodImages.negs, rating: 4.9 },
+      { id: 10, name: 'Sandes de Panado', description: 'Frango panado, alface, tomate, cebola, molho da casa', price: 5.50, image: foodImages.sandespanado, rating: 4.1 },
+      { id: 11, name: 'Tosta Premium (Frango)', description: 'acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: foodImages.tostaspremium, rating: 4.0 },
+      { id: 12, name: 'Tosta Premium (Atum)', description: 'acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: foodImages.tostaspremium, rating: 4.0 },
+      { id: 13, name: 'Sanduíche Natural', description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', price: 6.50, image: foodImages.sanduichenatural, rating: 3.9 }
     ],
     porcoes: [
-      { id: 13, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: foodImages.batataFrita, rating: 4.2 },
-      { id: 14, name: 'Fritas com Bacon e Queijo', description: 'Porção com 400g de batatas com bacon e queijo cheddar', price: 6.50, image: foodImages.batataFrita, rating: 4.6 },
-      { id: 15, name: 'Chouriça com Cebola', description: 'Porção com 600g de chouriça acebolada e pão fatiado', price: 9.00, image: foodImages.batataFrita, rating: 4.5 },
-      { id: 16, name: 'Asinha de Frango', description: 'Porção com 700g de asinhas de frango e molho barbecue', price: 12.00, image: foodImages.batataFrita, rating: 4.4 },
-      { id: 17, name: 'Costelinha', description: 'Porção com 800g de costelinha e molho barbecue', price: 12.00, image: foodImages.batataFrita, rating: 4.7 },
-      { id: 18, name: 'Picanha com Fritas', description: 'Porção com 600g de tiras de picanha temperada com sal de parrilha e acompanhado de batata frita ou doce', price: 18.00, image: foodImages.batataFrita, rating: 4.8 },
-      { id: 19, name: 'Filé de Tilápia', description: 'Porção com 800g de filé de tilápia e molho tartaro', price: 14.00, image: foodImages.batataFrita, rating: 4.3 }
+      { id: 14, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: foodImages.batataFrita, rating: 4.2 },
+      { id: 15, name: 'Fritas com Bacon e Queijo', description: 'Porção com 400g de batatas com bacon e queijo cheddar', price: 6.50, image: foodImages.fritascomqueijo, rating: 4.6 },
+      { id: 16, name: 'Chouriça com Cebola', description: 'Porção com 600g de chouriça acebolada e pão fatiado', price: 9.00, image: foodImages.chorica, rating: 4.5 },
+      { id: 17, name: 'Asinha de Frango', description: 'Porção com 700g de asinhas de frango e molho barbecue', price: 12.00, image: foodImages.Asinha, rating: 4.4 },
+      { id: 18, name: 'Costelinha', description: 'Porção com 800g de costelinha e molho barbecue', price: 12.00, image: foodImages.costelaporco, rating: 4.7 },
+      { id: 19, name: 'Picanha com Fritas', description: 'Porção com 600g de tiras de picanha temperada com sal de parrilha e acompanhado de batata frita ou doce', price: 22.90, image: foodImages.Picanhacomfritas, rating: 4.8 },
+      { id: 20, name: 'Filé de Tilápia', description: 'Porção com 800g de filé de tilápia e molho tartaro', price: 15.00, image: foodImages.Filetilapia, rating: 4.3 }
     ],
     pasteis: [
-      { id: 20, name: 'Pastel Simples', description: 'Frango desfiado, carne picada ou queijo', price: 5.00, image: foodImages.pastel, rating: 4.3 },
-      { id: 21, name: 'Pastel de Frango com Queijo', description: 'Frango desfiado com queijo', price: 5.50, image: foodImages.pastel, rating: 4.5 },
-      { id: 22, name: 'Pastel de Frango com Queijo e Bacon', description: 'Frango desfiado com queijo e bacon em cubos', price: 6.50, image: foodImages.pastel, rating: 4.7 },
-      { id: 23, name: 'Pastel de Carne com Queijo', description: 'Carne picada com queijo e azeitona', price: 5.50, image: foodImages.pastel, rating: 4.4 },
-      { id: 24, name: 'Pastel de Carne com Queijo e Bacon', description: 'Carne picada com queijo, azeitona e bacon em cubos', price: 6.50, image: foodImages.pastel, rating: 4.6 },
-      { id: 25, name: 'Pastel de Chouriça', description: 'Queijo, chouriça e milho', price: 5.50, image: foodImages.pastel, rating: 4.2 },
-      { id: 26, name: 'Pastel Misto', description: 'Fiambre, queijo, azeitona e milho', price: 5.50, image: foodImages.pastel, rating: 4.1 },
-      { id: 27, name: 'Pastel de Pizza', description: 'Queijo, fiambre, tomate e orégano', price: 5.50, image: foodImages.pastel, rating: 4.0 },
-      { id: 28, name: 'Pastel Alto Astral', description: 'Queijo, bacon, tomate, azeitona, cheddar e orégano', price: 6.50, image: foodImages.pastel, rating: 4.8 },
-      { id: 29, name: 'Pastel Romeu e Julieta', description: 'Queijo com goiabada', price: 5.50, image: foodImages.pastel, rating: 4.7 },
-      { id: 30, name: 'Pastel de Banana com Nutela', description: 'Queijo, banana e nutella', price: 6.00, image: foodImages.pastel, rating: 4.9 }
+      { id: 21, name: 'Pastel Simples', description: 'Frango desfiado, carne picada ou queijo', price: 5.00, image: foodImages.pastelfeira, rating: 4.3 },
+      { id: 22, name: 'Pastel de Frango com Queijo', description: 'Frango desfiado com queijo', price: 5.50, image: foodImages.pastelfeira, rating: 4.5 },
+      { id: 23, name: 'Pastel de Frango com Queijo e Bacon', description: 'Frango desfiado com queijo e bacon em cubos', price: 6.50, image: foodImages.pastelfeira, rating: 4.7 },
+      { id: 24, name: 'Pastel de Carne com Queijo', description: 'Carne picada com queijo e azeitona', price: 5.50, image: foodImages.pastelfeira, rating: 4.4 },
+      { id: 25, name: 'Pastel de Carne com Queijo e Bacon', description: 'Carne picada com queijo, azeitona e bacon em cubos', price: 6.50, image: foodImages.pastelfeira, rating: 4.6 },
+      { id: 26, name: 'Pastel de Chouriça', description: 'Queijo, chouriça e milho', price: 5.50, image: foodImages.pastelfeira, rating: 4.2 },
+      { id: 27, name: 'Pastel Misto', description: 'Fiambre, queijo, azeitona e milho', price: 5.50, image: foodImages.pastelfeira, rating: 4.1 },
+      { id: 28, name: 'Pastel de Pizza', description: 'Queijo, fiambre, tomate e orégano', price: 5.50, image: foodImages.pastelfeira, rating: 4.0 },
+      { id: 29, name: 'Pastel Alto Astral', description: 'Queijo, bacon, tomate, azeitona, cheddar e orégano', price: 6.50, image: foodImages.pastelfeira, rating: 4.8 },
+      { id: 30, name: 'Pastel Romeu e Julieta', description: 'Queijo com goiabada', price: 5.50, image: foodImages.pastelfeira, rating: 4.7 },
+      { id: 31, name: 'Pastel de Banana com Nutella', description: 'Queijo, banana e nutella', price: 6.00, image: foodImages.pastelfeira, rating: 4.9 }
     ],
     cafe: [
-      { id: 31, name: 'Café Expresso', price: 1.00, image: foodImages.cafe, rating: 4.5 },
-      { id: 32, name: 'Café Descafeinado', price: 1.00, image: foodImages.cafe, rating: 4.3 },
-      { id: 33, name: 'Café Duplo', price: 2.00, image: foodImages.cafe, rating: 4.6 },
-      { id: 34, name: 'Garoto', price: 1.00, image: foodImages.cafe, rating: 4.2 },
-      { id: 35, name: 'Abatanado', price: 1.10, image: foodImages.cafe, rating: 4.1 },
-      { id: 36, name: 'Meia de Leite', price: 1.50, image: foodImages.cafe, rating: 4.4 },
-      { id: 37, name: 'Galão', price: 1.60, image: foodImages.cafe, rating: 4.5 },
-      { id: 38, name: 'Chá', price: 1.60, image: foodImages.cafe, rating: 4.0 },
-      { id: 39, name: 'Cappuccino', price: 3.00, image: foodImages.cafe, rating: 4.7 },
-      { id: 40, name: 'Caricoa de Limão', price: 1.00, image: foodImages.cafe, rating: 3.9 },
-      { id: 41, name: 'Chocolate Quente', price: 3.00, image: foodImages.cafe, rating: 4.8 },
-      { id: 42, name: 'Torrada com Pão Caseiro', price: 2.00, image: foodImages.cafe, rating: 4.3 },
-      { id: 43, name: 'Torrada com Pão de Forma', price: 1.50, image: foodImages.cafe, rating: 4.1 },
-      { id: 44, name: 'Meia Torrada', price: 1.00, image: foodImages.cafe, rating: 4.0 },
-      { id: 45, name: 'Croissant Misto', price: 3.00, image: foodImages.cafe, rating: 4.6 },
-      { id: 46, name: 'Croissant Misto Tostado', price: 3.20, image: foodImages.cafe, rating: 4.7 },
-      { id: 47, name: 'Tosta Mista', price: 3.20, image: foodImages.cafe, rating: 4.5 },
-      { id: 48, name: 'Tosta Mista (Pão de Forma)', price: 2.80, image: foodImages.cafe, rating: 4.4 },
-      { id: 49, name: 'Sandes Mista', price: 2.20, image: foodImages.cafe, rating: 4.2 },
-      { id: 50, name: 'Pão com Ovo', price: 2.20, image: foodImages.cafe, rating: 4.1 },
-      { id: 51, name: 'Ovos com Bacon', price: 4.00, image: foodImages.cafe, rating: 4.7 }
+      { id: 32, name: 'Café Expresso', price: 1.00, image: foodImages.cafe, rating: 4.5 },
+      { id: 33, name: 'Café Descafeinado', price: 1.00, image: foodImages.cafe, rating: 4.3 },
+      { id: 34, name: 'Café Duplo', price: 2.00, image: foodImages.pastel, rating: 4.6 },
+      { id: 35, name: 'Garoto', price: 1.00, image: foodImages.Garoto, rating: 4.2 },
+      { id: 36, name: 'Abatanado', price: 1.10, image: foodImages.abatanado, rating: 4.1 },
+      { id: 37, name: 'Meia de Leite', price: 1.50, image: foodImages.meialeite, rating: 4.4 },
+      { id: 38, name: 'Galão', price: 1.60, image: foodImages.galao, rating: 4.5 },
+      { id: 39, name: 'Chá', price: 1.60, image: foodImages.cha, rating: 4.0 },
+      { id: 40, name: 'Cappuccino', price: 3.00, image: foodImages.capuccino, rating: 4.7 },
+      { id: 41, name: 'Carioca de Limão', price: 1.00, image: foodImages.cariocalimao, rating: 3.9 },
+      { id: 42, name: 'Chocolate Quente', price: 3.00, image: foodImages.chocolatequente, rating: 4.8 },
+      { id: 43, name: 'Torrada com Pão Caseiro', price: 2.00, image: foodImages.torradapaocaseiro, rating: 4.3 },
+      { id: 44, name: 'Torrada com Pão de Forma', price: 1.50, image: foodImages.torradapaodeforma, rating: 4.1 },
+      { id: 45, name: 'Meia Torrada', price: 1.00, image: foodImages.torradapaocaseiro, rating: 4.0 },
+      { id: 46, name: 'Croissant Misto', price: 3.00, image: foodImages.croissanmisto, rating: 4.6 },
+      { id: 47, name: 'Croissant Misto Tostado', price: 3.20, image: foodImages.croissant, rating: 4.7 },
+      { id: 48, name: 'Tosta Mista', price: 3.20, image: foodImages.tosta, rating: 4.5 },
+      { id: 49, name: 'Tosta Mista (Pão de Forma)', price: 2.80, image: foodImages.tostamistapaoforma, rating: 4.4 },
+      { id: 50, name: 'Sandes Mista', price: 2.20, image: foodImages.sandesmista, rating: 4.2 },
+      { id: 51, name: 'Pão com Ovo', price: 2.20, image: foodImages.paocomovo, rating: 4.1 },
+      { id: 52, name: 'Ovos com Bacon', price: 4.00, image: foodImages.ovosebacon, rating: 4.7 }
     ],
     bebidas: [
-      { id: 52, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: foodImages.bebida, rating: 4.8 },
-      { id: 53, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: foodImages.bebida, rating: 4.9 },
-      { id: 54, name: 'Whiskey Jamenson', price: 3.50, image: foodImages.bebida, rating: 4.7 },
-      { id: 55, name: 'Whiskey J&B', price: 3.00, image: foodImages.bebida, rating: 4.5 },
-      { id: 56, name: 'Whiskey Jack Daniels', price: 3.50, image: foodImages.bebida, rating: 4.8 },
-      { id: 57, name: 'Whiskey Black Label', price: 4.00, image: foodImages.bebida, rating: 4.9 },
-      { id: 58, name: 'Vodka', price: 4.00, image: foodImages.bebida, rating: 4.6 },
-      { id: 59, name: 'Somersby', price: 2.50, image: foodImages.bebida, rating: 4.4 },
-      { id: 60, name: 'Imperial Heineken (0.20)', price: 1.50, image: foodImages.bebida, rating: 4.5 },
-      { id: 61, name: 'Caneca Heineken (0.50)', price: 3.00, image: foodImages.bebida, rating: 4.7 },
-      { id: 62, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: foodImages.bebida, rating: 4.3 },
-      { id: 63, name: 'Cerveja Mini (0.20ml)', price: 1.10, image: foodImages.bebida, rating: 4.2 },
-      { id: 64, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: foodImages.bebida, rating: 4.8 },
-      { id: 65, name: 'Refrigerante Lata', price: 1.60, image: foodImages.bebida, rating: 4.1 },
-      { id: 66, name: 'Água 1.5L', price: 1.50, image: foodImages.bebida, rating: 4.0 },
-      { id: 67, name: 'Água 0.5L', price: 1.00, image: foodImages.bebida, rating: 4.0 },
-      { id: 68, name: 'Água 0.33L', price: 0.60, image: foodImages.bebida, rating: 4.0 },
-      { id: 69, name: 'Água Castelo', price: 1.40, image: foodImages.bebida, rating: 4.2 },
-      { id: 70, name: 'Água das Pedras', price: 1.40, image: foodImages.bebida, rating: 4.3 }
+      { id: 53, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: foodImages.caipirinha, rating: 4.8 },
+      { id: 54, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: foodImages.Caipiblack, rating: 4.9 },
+      { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: foodImages.bebida, rating: 4.7 },
+      { id: 56, name: 'Whiskey J&B', price: 3.00, image: foodImages.bebida, rating: 4.5 },
+      { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: foodImages.bebida, rating: 4.8 },
+      { id: 58, name: 'Whiskey Black Label', price: 4.00, image: foodImages.bebida, rating: 4.9 },
+      { id: 59, name: 'Vodka', price: 4.00, image: foodImages.vodka, rating: 4.6 },
+      { id: 60, name: 'Somersby', price: 2.50, image: foodImages.Somersby, rating: 4.4 },
+      { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: foodImages.Imperial, rating: 4.5 },
+      { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: foodImages.Imperial, rating: 4.7 },
+      { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: foodImages.cerveja, rating: 4.3 },
+      { id: 64, name: 'Cerveja Mini (0.20ml)', price: 1.10, image: foodImages.cerveja, rating: 4.2 },
+      { id: 65, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: foodImages.sangria, rating: 4.8 },
+      { id: 66, name: 'Refrigerante Lata', price: 1.60, image: foodImages.refrigerantes, rating: 4.1 },
+      { id: 67, name: 'Água 1.5L', price: 1.50, image: foodImages.agua, rating: 4.0 },
+      { id: 68, name: 'Água 0.5L', price: 1.00, image: foodImages.agua, rating: 4.0 },
+      { id: 69, name: 'Água 0.33L', price: 0.60, image: foodImages.agua, rating: 4.0 },
+      { id: 70, name: 'Água Castelo', price: 1.40, image: foodImages.Castelo, rating: 4.2 },
+      { id: 71, name: 'Água das Pedras', price: 1.40, image: foodImages.pedras, rating: 4.3 },
+      { id: 72, name: 'Balde de Heineken', price: 10.00, image: foodImages.baldedecerveja, rating: 4.9 }
+    ],
+    sumos: [
+      {
+        id: 'sumo-maracuja',
+        name: 'Sumo/Batido de Maracujá',
+        description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.maracuja,
+        veg: true,
+        nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)',
+        rating: 4.7
+      },
+      {
+        id: 'sumo-acerola',
+        name: 'Sumo/Batido de Acerola',
+        description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.acerola,
+        veg: true,
+        nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)',
+        rating: 4.6
+      },
+      {
+        id: 'sumo-manga',
+        name: 'Sumo/Batido de Manga',
+        description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.manga,
+        veg: true,
+        nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)',
+        rating: 4.5
+      },
+      {
+        id: 'sumo-goiaba',
+        name: 'Sumo/Batido de Goiaba',
+        description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.goiaba,
+        veg: true,
+        nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)',
+        rating: 4.4
+      },
+      {
+        id: 'sumo-morango',
+        name: 'Sumo/Batido de Morango',
+        description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.morango,
+        veg: true,
+        nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)',
+        rating: 4.6
+      },
+      {
+        id: 'sumo-caju',
+        name: 'Sumo/Batido de Caju',
+        description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.Caju,
+        veg: true,
+        nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)',
+        rating: 4.3
+      },
+      {
+        id: 'sumo-abacaxi',
+        name: 'Sumo/Batido de Abacaxi',
+        description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.abacaxi,
+        veg: true,
+        nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)',
+        rating: 4.5
+      },
+      {
+        id: 'sumo-coco',
+        name: 'Sumo/Batido de Coco',
+        description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.coco,
+        veg: true,
+        nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)',
+        rating: 4.7
+      },
+      {
+        id: 'sumo-caja',
+        name: 'Sumo/Batido de Cajá',
+        description: 'Exótico e refrescante, rico em vitaminas do complexo B',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.caja,
+        veg: true,
+        nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)',
+        rating: 4.2
+      },
+      {
+        id: 'sumo-cupuacu',
+        name: 'Sumo/Batido de Cupuaçu',
+        description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.cupuacu,
+        veg: true,
+        nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)',
+        rating: 4.8
+      },
+      {
+        id: 'sumo-graviola',
+        name: 'Sumo/Batido de Graviola',
+        description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: foodImages.graviola,
+        veg: true,
+        nutritionalInfo: 'Rica em vitaminas B1, B2 e C. 140kcal (com água)',
+        rating: 4.4
+      }
     ],
     salgados: [
-      { id: 71, name: 'Pão de Queijo', price: 1.60, image: foodImages.salgado, rating: 4.5 },
-      { id: 72, name: 'Pastel de Nata', price: 1.30, image: foodImages.salgado, rating: 4.7 },
-      { id: 73, name: 'Empada de Frango', price: 2.00, image: foodImages.salgado, rating: 4.4 },
-      { id: 74, name: 'Kibe', price: 2.20, image: foodImages.salgado, rating: 4.3 },
-      { id: 75, name: 'Fiambre e Queijo', price: 2.20, image: foodImages.salgado, rating: 4.2 },
-      { id: 76, name: 'Bauru', price: 2.20, image: foodImages.salgado, rating: 4.1 },
-      { id: 77, name: 'Bola de Queijo', price: 2.20, image: foodImages.salgado, rating: 4.3 },
-      { id: 78, name: 'Coxinha de Frango', price: 2.20, image: foodImages.salgado, rating: 4.6 },
-      { id: 79, name: 'Coxinha com Catupiry', price: 3.00, image: foodImages.salgado, rating: 4.8 },
-      { id: 80, name: 'Hamburgão', price: 3.50, image: foodImages.salgado, rating: 4.7 }
+      { id: 73, name: 'Pão de Queijo', price: 1.60, image: foodImages.paodequeijo, rating: 4.5 },
+      { id: 74, name: 'Pastel de Nata', price: 1.30, image: foodImages.pasteldenata, rating: 4.7 },
+      { id: 75, name: 'Empada de Frango', price: 2.00, image: foodImages.empadafrango, rating: 4.4 },
+      { id: 76, name: 'Kibe', price: 2.20, image: foodImages.kibe, rating: 4.3 },
+      { id: 77, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: foodImages.fiambre, rating: 4.2 },
+      { id: 78, name: 'Fiambre e Queijo', price: 2.20, image: foodImages.fiambreequeijo, rating: 4.2 },
+      { id: 79, name: 'Bauru', price: 2.20, image: foodImages.bauru, rating: 4.1 },
+      { id: 80, name: 'Bola de Queijo', price: 2.20, image: foodImages.bolaqueijo, rating: 4.3 },
+      { id: 81, name: 'Coxinha de Frango', price: 2.20, image: foodImages.Coxinha, rating: 4.6 },
+      { id: 82, name: 'Coxinha com Catupiry', price: 3.00, image: foodImages.Coxinha, rating: 4.8 },
+      { id: 83, name: 'Hamburgão', price: 3.50, image: foodImages.hamburgao, rating: 4.7 }
     ],
     sobremesas: [
-      { id: 81, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: foodImages.sobremesa, rating: 4.8 },
-      { id: 82, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: foodImages.sobremesa, rating: 4.9 },
-      { id: 83, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: foodImages.sobremesa, rating: 4.7 },
-      { id: 84, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: foodImages.sobremesa, rating: 4.8 },
-      { id: 85, name: 'Cheesecake - Goiabada', price: 3.50, image: foodImages.sobremesa, rating: 4.7 },
-      { id: 86, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: foodImages.sobremesa, rating: 4.8 },
-      { id: 87, name: 'Brigadeiro Tradicional', price: 1.50, image: foodImages.sobremesa, rating: 4.6 },
-      { id: 88, name: 'Brigadeiro Beijinho', price: 1.50, image: foodImages.sobremesa, rating: 4.5 },
-      { id: 89, name: 'Brigadeiro Ninho', price: 2.00, image: foodImages.sobremesa, rating: 4.8 },
-      { id: 90, name: 'Brigadeiro Paçoca', price: 2.00, image: foodImages.sobremesa, rating: 4.7 },
-      { id: 91, name: 'Brigadeiro Morango', price: 2.00, image: foodImages.sobremesa, rating: 4.8 },
-      { id: 92, name: 'Brigadeiro Churros', price: 2.00, image: foodImages.sobremesa, rating: 4.9 },
-      { id: 93, name: 'Tarte de Toblerone', price: 2.20, image: foodImages.sobremesa, rating: 4.7 },
-      { id: 94, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: foodImages.sobremesa, rating: 4.8 }
+      { id: 84, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: foodImages.Prestígio, rating: 4.8 },
+      { id: 85, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: foodImages.doces, rating: 4.9 },
+      { id: 86, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: foodImages.bolopoteananas, rating: 4.7 },
+      { id: 87, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: foodImages.doces, rating: 4.8 },
+      { id: 88, name: 'Cheesecake - Goiabada', price: 3.50, image: foodImages.Cheesecake, rating: 4.7 },
+      { id: 89, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: foodImages.frutosvermelhos, rating: 4.8 },
+      { id: 90, name: 'Brigadeiro Tradicional', price: 1.50, image: foodImages.doces, rating: 4.6 },
+      { id: 91, name: 'Brigadeiro Beijinho', price: 1.50, image: foodImages.doces, rating: 4.5 },
+      { id: 92, name: 'Brigadeiro Ninho', price: 2.00, image: foodImages.doces, rating: 4.8 },
+      { id: 93, name: 'Brigadeiro Paçoca', price: 2.00, image: foodImages.doces, rating: 4.7 },
+      { id: 94, name: 'Brigadeiro Morango', price: 2.00, image: foodImages.doces, rating: 4.8 },
+      { id: 95, name: 'Brigadeiro Churros', price: 2.00, image: foodImages.doces, rating: 4.9 },
+      { id: 96, name: 'Tarte de Toblerone', price: 2.20, image: foodImages.toblerone, rating: 4.7 },
+      { id: 97, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: foodImages.doces, rating: 4.8 }
     ]
   };
 
@@ -528,7 +823,7 @@ const AdminPanel = () => {
         receipt += `${item.description}${LF}`;
       }
       if (item.notes) {
-        receipt += `OBS: ${item.notes}${LF}`;
+        receipt += `OBS: ${item.notes}${LF}${LF}`;
       }
       receipt += `Preço: € ${item.price.toFixed(2)} x ${item.quantity} = € ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
     });
@@ -1333,7 +1628,7 @@ const addItemToOrder = async () => {
                       </div>
                       <div>
                         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                          {selectedTable <= 16 ? `Mesa ${selectedTable}` : `Comanda ${selectedTable}`}
+                          {selectedTable.startsWith('C') ? `Comanda ${selectedTable.substring(1)}` : `Mesa ${selectedTable}`}
                         </h2>
                         <p className="text-sm text-gray-500">
                           {selectedOrder?.items?.length || 0} itens • € {selectedOrder ? calculateOrderTotal(selectedOrder).toFixed(2) : '0.00'}
@@ -1344,7 +1639,7 @@ const addItemToOrder = async () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setShowAddItemModal(true)}
-                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm hover:from-blue-700 hover:to-indigo-700 transition-all hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all hover:shadow-md flex items-center gap-2 whitespace-nowrap"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

@@ -20,34 +20,103 @@ import {
   FaHamburger,
   FaBreadSlice,
   FaWineBottle,
-  FaIceCream
+  FaIceCream,
+  FaHeart,
+  FaSnowflake
 } from 'react-icons/fa';
-import { GiMeal, GiCupcake, GiHamburger  } from 'react-icons/gi';
+import { GiMeal, GiCupcake, GiHamburger, GiFruitBowl, GiWaterBottle } from 'react-icons/gi';
 import { BiDrink } from 'react-icons/bi';
 import { IoMdClose } from 'react-icons/io';
 import { Link } from 'react-router-dom';
 import {
   FiMapPin, FiPhone, FiClock, FiLock, FiMail, FiCalendar, FiInstagram, FiFacebook, FiArrowRight, FiCheck,
-  FiShoppingBag
+  FiShoppingBag, FiPlus
 } from 'react-icons/fi';
 
 // Importe todas as imagens
 import frangoCremoso from '../assets/frango-cremoso.jpg';
-import picanhaPremium from '../assets/picanha-premium.jpg';
+import picanha from '../assets/picanha.jpg';
 import costelaRaiz from '../assets/costela-raiz.jpg';
-import feijoada from '../assets/feijoada.jpg';
+import frangoSupremo from '../assets/frangosupremo.jpg';
+import feijoadaAstral from '../assets/feijoada.jpg';
 import hamburguer from '../assets/hamburguer.jpg';
-import batataFrita from '../assets/batata-frita.jpg';
-import pastel from '../assets/pastel.jpg';
+import chorica from '../assets/choriça.jpg';
+import Asinha from '../assets/Asinha.jpg';
+import Picanhacomfritas from '../assets/picanha-com-fritas.jpg';
+import Filetilapia from '../assets/filetilapia.jpg';
+import baldedecerveja from '../assets/baldecerveja.jpeg';
+import vegano from '../assets/vegano.jpg';
+import hamburgueraltoastral from '../assets/hamburgueraltoastral.jpg';
+import sandespanado from '../assets/sandespanado.jpg';
+import negs from '../assets/negs.jpg';
+import fritascomqueijo from '../assets/fritascomqueijo.jpg';
+import costelaporco from '../assets/costelaporco.jpg';
+import pastelfeira from '../assets/pastelfeira.jpg';
+import abatanado from '../assets/abatanado.png';
+import chocolatequente from '../assets/chocolatequente.jpg';
+import caipirinha from '../assets/caipirinha.jpg';
+import logoBackground from '../assets/fotodecapa.jpeg';
 import cafe from '../assets/cafe.jpg';
-import bebida from '../assets/bebida.jpg';
-import salgado from '../assets/salgado.jpg';
-import sobremesa from '../assets/sobremesa.jpg';
+import pedras from '../assets/pedras.jpg';
+import Somersby from '../assets/somersby.jpg';
+import Imperial from '../assets/imperial.jpg';
+import cerveja from '../assets/cerveja.jpg';
+import sangria from '../assets/sangria.jpg';
+import refrigerantes from '../assets/refrigerantes.jpg';
+import Coxinha from '../assets/coxinha.jpg';
+import agua from '../assets/agua.jpg';
+import kibe from '../assets/kibe.jpg';
+import bauru from '../assets/bauru.jpg';
+import fiambre from '../assets/fiambre.jpg';
+import ovosebacon from '../assets/ovosebacon.jpg';
+import tosta from '../assets/tosta.jpg';
+import croissant from '../assets/croissant.jpg';
+import paodequeijo from '../assets/paodequeijo.jpg';
+import doces from '../assets/doces.jpg';
+import sanduichenatural from '../assets/saduichenatural.jpg';
+import tostaspremium from '../assets/tostaspremium.jpg';
+import pasteldenata from '../assets/pastel-de-nata.jpg';
+import empadafrango from '../assets/empadafrango.jpg';
+import hamburgao from '../assets/hamburgao.jpg';
+import meialeite from '../assets/meialeite.jpg';
+import cha from '../assets/cha.jpg';
+import croissanmisto from '../assets/croissantmisto.jpg';
+import sandesmista from '../assets/sandesmista.jpg';
+import galao from '../assets/galao.jpg';
+import cariocalimao from '../assets/cariocalimao.jpg';
+import paocomovo from '../assets/paocomovo.jpg';
+import torradapaocaseiro from '../assets/torradapaocaseiro.jpg';
+import torradapaodeforma from '../assets/torradapaodeforma.jpg';
+import bolaqueijo from '../assets/bolaqueijo.jpg';
+import pasteldestaque from '../assets/pasteldestaque.jpg';
+import tostamistapaoforma from '../assets/tostamistapaoforma.jpg';
+import Garoto from '../assets/garoto.jpg';
+import vodka from '../assets/vodka.jpg';
+import Caipiblack from '../assets/caipiblack.jpg';
+import fiambreequeijo from '../assets/fiambreequeijo.jpg';
+import capuccino from '../assets/capuccino.jpg';
+import Castelo from '../assets/castelo.jpg';
+import Cheesecake from '../assets/cheesecake.jpg';
+import maracuja from '../assets/Maracuja.jpg';
+import acerola from '../assets/Acerola.jpg';
+import manga from '../assets/manga.jpg';
+import goiaba from '../assets/goiaba.jpg';
+import morango from '../assets/morango.jpg';
+import Caju from '../assets/caju.jpg';
+import abacaxi from '../assets/Abacaxi.jpg';
+import coco from '../assets/coco.jpg';
+import caja from '../assets/Caja.jpg';
+import cupuacu from '../assets/cupucacu.jpg';
+import graviola from '../assets/graviola.jpg';
+import frutosvermelhos from '../assets/frutosvermelhos.jpg';
+import bolopoteananas from '../assets/bolopoteananas.jpg';
+import Prestígio from '../assets/presigio.jpg';
+import toblerone from '../assets/toblerone.jpg';
 import logo from '../assets/logo-alto-astral.png';
 import EventImage1 from '../assets/eventos/evento1.jpg';
 import EventImage2 from '../assets/eventos/evento2.jpg';
 import EventImage3 from '../assets/eventos/evento3.jpg';
-import altoastralFoto from '../assets/altoastral-foto.jpeg';
+import altoastralFoto from '../assets/ondas.jpeg';
 import salgadosDocesFoto from '../assets/salgados-doces.jpg';
 
 const ClientInterface = ({ tableNumber }) => {
@@ -65,6 +134,10 @@ const ClientInterface = ({ tableNumber }) => {
   const [orderNotes, setOrderNotes] = useState('');
   const [activeEvent, setActiveEvent] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+  const [selectedBases, setSelectedBases] = useState({});
+  const [isHovered, setIsHovered] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [favorites, setFavorites] = useState([]);
   const notesInputRef = useRef(null);
   
   const windowSize = useWindowSize();
@@ -111,218 +184,6 @@ const ClientInterface = ({ tableNumber }) => {
     }
   ];
 
-  // Obter dia da semana (0 = Domingo, 1 = Segunda, ..., 6 = Sábado)
-  const getDayOfWeek = () => {
-    return new Date().getDay();
-  };
-
-  // Determinar prato do dia
-  const getDailySpecial = () => {
-    const day = getDayOfWeek();
-    switch(day) {
-      case 1: // Segunda
-        return 1; // ID do Frango Cremoso
-      case 2: // Terça
-        return 2; // ID da Picanha Premium
-      case 3: // Quarta
-        return 3; // ID da Costela Raiz
-      case 4: // Quinta
-        return 4; // ID do Frango Supremo
-      case 5: // Sexta
-        return 5; // ID da Feijoada
-      case 6: // Sábado
-        return 6; // ID da Opção Vegetariana
-      default: // Domingo e outros dias
-        return null; // Nenhum prato especial
-    }
-  };
-
-  const dailySpecialId = getDailySpecial();
-
-  const menu = {
-    semana: [
-      { 
-        id: 1, 
-        name: 'Frango Cremoso', 
-        description: 'Strogonoff de frango, arroz branco, salada e batata palha', 
-        price: 12.90, 
-        veg: false, 
-        image: 'frangoCremoso', 
-        rating: 4.5,
-        available: dailySpecialId === 1
-      },
-      { 
-        id: 2, 
-        name: 'Picanha Premium', 
-        description: 'Picanha grelhada, arroz branco, feijão tropeiro e vinagrete', 
-        price: 15.90, 
-        veg: false, 
-        image: 'picanhaPremium', 
-        rating: 4.8,
-        available: dailySpecialId === 2
-      },
-      { 
-        id: 3, 
-        name: 'Costela Raiz', 
-        description: 'Costela de vaca com mandioca, arroz branco, farofa e salada', 
-        price: 14.90, 
-        veg: false, 
-        image: 'costelaRaiz', 
-        rating: 4.7,
-        available: dailySpecialId === 3
-      },
-      { 
-        id: 4, 
-        name: 'Frango Supremo', 
-        description: 'Filé de frango à parmegiana, arroz branco, batata frita e salada', 
-        price: 13.90, 
-        veg: false, 
-        image: 'frangoCremoso', 
-        rating: 4.3,
-        available: dailySpecialId === 4
-      },
-      { 
-        id: 5, 
-        name: 'Feijoada Astral', 
-        description: 'Feijoada brasileira, arroz branco, couve, farofa, torresmo e laranja', 
-        price: 12.90, 
-        veg: false, 
-        image: 'feijoada', 
-        rating: 4.9,
-        available: dailySpecialId === 5
-      },
-      { 
-        id: 6, 
-        name: 'Opção Vegetariana', 
-        description: 'Prato vegetariano sob consulta - acompanha bebida e café', 
-        price: 12.90, 
-        veg: true, 
-        image: 'frangoCremoso', 
-        rating: 4.2,
-        available: true // Sempre disponível
-      }
-    ],
-    lanches: [
-      { id: 7, name: 'Hambúrguer com Fritas', description: 'Carne, alface, tomate, cebola, cheddar, molho da casa', price: 7.00, image: 'hamburguer', rating: 4.4 },
-      { id: 8, name: 'Hambúrguer Alto Astral', description: 'Carne 120g, bacon, queijo, anéis de cebola, alface, tomate, cheddar, molho coquetel e especial', price: 9.90, image: 'hamburguer', rating: 4.7 },
-      { id: 9, name: 'Hambúrguer Neg\'s', description: 'Carne 120g, frango panado, bacon, queijo, anéis de cebola, cebola crispy, alface, tomate, cheddar, molho coquetel e especial', price: 12.90, image: 'hamburguer', rating: 4.9 },
-      { id: 10, name: 'Sandes de Panado', description: 'Frango panado, alface, tomate, cebola, molho da casa', price: 5.50, image: 'hamburguer', rating: 4.1 },
-      { id: 11, name: 'Tostas Premium', description: 'Frango ou atum acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: 'hamburguer', rating: 4.0 },
-      { id: 12, name: 'Sandes Natural', description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', price: 6.50, image: 'hamburguer', rating: 3.9 }
-    ],
-    porcoes: [
-      { id: 13, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: 'batataFrita', rating: 4.2 },
-      { id: 14, name: 'Fritas com Bacon e Queijo', description: 'Porção com 400g de batatas com bacon e queijo cheddar', price: 6.50, image: 'batataFrita', rating: 4.6 },
-      { id: 15, name: 'Chouriça com Cebola', description: 'Porção com 600g de chouriça acebolada e pão fatiado', price: 9.00, image: 'batataFrita', rating: 4.5 },
-      { id: 16, name: 'Asinha de Frango', description: 'Porção com 700g de asinhas de frango e molho barbecue', price: 12.00, image: 'batataFrita', rating: 4.4 },
-      { id: 17, name: 'Costelinha', description: 'Porção com 800g de costelinha e molho barbecue', price: 12.00, image: 'batataFrita', rating: 4.7 },
-      { id: 18, name: 'Picanha com Fritas', description: 'Porção com 600g de tiras de picanha temperada com sal de parrilha e acompanhado de batata frita ou doce', price: 18.00, image: 'batataFrita', rating: 4.8 },
-      { id: 19, name: 'Filé de Tilápia', description: 'Porção com 800g de filé de tilápia e molho tartaro', price: 14.00, image: 'batataFrita', rating: 4.3 }
-    ],
-    pasteis: [
-      { id: 20, name: 'Pastel Simples', description: 'Frango desfiado, carne picada ou queijo', price: 5.00, image: 'pastel', rating: 4.3 },
-      { id: 21, name: 'Pastel de Frango com Queijo', description: 'Frango desfiado com queijo', price: 5.50, image: 'pastel', rating: 4.5 },
-      { id: 22, name: 'Pastel de Frango com Queijo e Bacon', description: 'Frango desfiado com queijo e bacon em cubos', price: 6.50, image: 'pastel', rating: 4.7 },
-      { id: 23, name: 'Pastel de Carne com Queijo', description: 'Carne picada com queijo e azeitona', price: 5.50, image: 'pastel', rating: 4.4 },
-      { id: 24, name: 'Pastel de Carne com Queijo e Bacon', description: 'Carne picada com queijo, azeitona e bacon em cubos', price: 6.50, image: 'pastel', rating: 4.6 },
-      { id: 25, name: 'Pastel de Chouriça', description: 'Queijo, chouriça e milho', price: 5.50, image: 'pastel', rating: 4.2 },
-      { id: 26, name: 'Pastel Misto', description: 'Fiambre, queijo, azeitona e milho', price: 5.50, image: 'pastel', rating: 4.1 },
-      { id: 27, name: 'Pastel de Pizza', description: 'Queijo, fiambre, tomate e orégano', price: 5.50, image: 'pastel', rating: 4.0 },
-      { id: 28, name: 'Pastel Alto Astral', description: 'Queijo, bacon, tomate, azeitona, cheddar e orégano', price: 6.50, image: 'pastel', rating: 4.8 },
-      { id: 29, name: 'Pastel Romeu e Julieta', description: 'Queijo com goiabada', price: 5.50, image: 'pastel', rating: 4.7 },
-      { id: 30, name: 'Pastel de Banana com Nutela', description: 'Queijo, banana e nutella', price: 6.00, image: 'pastel', rating: 4.9 }
-    ],
-    cafe: [
-      { id: 31, name: 'Café Expresso', price: 1.00, image: 'cafe', rating: 4.5 },
-      { id: 32, name: 'Café Descafeinado', price: 1.00, image: 'cafe', rating: 4.3 },
-      { id: 33, name: 'Café Duplo', price: 2.00, image: 'cafe', rating: 4.6 },
-      { id: 34, name: 'Garoto', price: 1.00, image: 'cafe', rating: 4.2 },
-      { id: 35, name: 'Abatanado', price: 1.10, image: 'cafe', rating: 4.1 },
-      { id: 36, name: 'Meia de Leite', price: 1.50, image: 'cafe', rating: 4.4 },
-      { id: 37, name: 'Galão', price: 1.60, image: 'cafe', rating: 4.5 },
-      { id: 38, name: 'Chá', price: 1.60, image: 'cafe', rating: 4.0 },
-      { id: 39, name: 'Cappuccino', price: 3.00, image: 'cafe', rating: 4.7 },
-      { id: 40, name: 'Caricoa de Limão', price: 1.00, image: 'cafe', rating: 3.9 },
-      { id: 41, name: 'Chocolate Quente', price: 3.00, image: 'cafe', rating: 4.8 },
-      { id: 42, name: 'Torrada com Pão Caseiro', price: 2.00, image: 'cafe', rating: 4.3 },
-      { id: 43, name: 'Torrada com Pão de Forma', price: 1.50, image: 'cafe', rating: 4.1 },
-      { id: 44, name: 'Meia Torrada', price: 1.00, image: 'cafe', rating: 4.0 },
-      { id: 45, name: 'Croissant Misto', price: 3.00, image: 'cafe', rating: 4.6 },
-      { id: 46, name: 'Croissant Misto Tostado', price: 3.20, image: 'cafe', rating: 4.7 },
-      { id: 47, name: 'Tosta Mista', price: 3.20, image: 'cafe', rating: 4.5 },
-      { id: 48, name: 'Tosta Mista (Pão de Forma)', price: 2.80, image: 'cafe', rating: 4.4 },
-      { id: 49, name: 'Sandes Mista', price: 2.20, image: 'cafe', rating: 4.2 },
-      { id: 50, name: 'Pão com Ovo', price: 2.20, image: 'cafe', rating: 4.1 },
-      { id: 51, name: 'Ovos com Bacon', price: 4.00, image: 'cafe', rating: 4.7 }
-    ],
-    bebidas: [
-      { id: 52, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: 'bebida', rating: 4.8 },
-      { id: 53, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: 'bebida', rating: 4.9 },
-      { id: 54, name: 'Whiskey Jamenson', price: 3.50, image: 'bebida', rating: 4.7 },
-      { id: 55, name: 'Whiskey J&B', price: 3.00, image: 'bebida', rating: 4.5 },
-      { id: 56, name: 'Whiskey Jack Daniels', price: 3.50, image: 'bebida', rating: 4.8 },
-      { id: 57, name: 'Whiskey Black Label', price: 4.00, image: 'bebida', rating: 4.9 },
-      { id: 58, name: 'Vodka', price: 4.00, image: 'bebida', rating: 4.6 },
-      { id: 59, name: 'Somersby', price: 2.50, image: 'bebida', rating: 4.4 },
-      { id: 60, name: 'Imperial Heineken (0.20)', price: 1.50, image: 'bebida', rating: 4.5 },
-      { id: 61, name: 'Caneca Heineken (0.50)', price: 3.00, image: 'bebida', rating: 4.7 },
-      { id: 62, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'bebida', rating: 4.3 },
-      { id: 63, name: 'Cerveja Mini (0.20ml)', price: 1.10, image: 'bebida', rating: 4.2 },
-      { id: 64, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: 'bebida', rating: 4.8 }
-    ],
-    'refrigerantes-aguas': [
-      { id: 65, name: 'Refrigerante Lata', price: 1.60, image: 'bebida', rating: 4.1 },
-      { id: 66, name: 'Água 1.5L', price: 1.50, image: 'bebida', rating: 4.0 },
-      { id: 67, name: 'Água 0.5L', price: 1.00, image: 'bebida', rating: 4.0 },
-      { id: 68, name: 'Água 0.33L', price: 0.60, image: 'bebida', rating: 4.0 },
-      { id: 69, name: 'Água Castelo', price: 1.40, image: 'bebida', rating: 4.2 },
-      { id: 70, name: 'Água das Pedras', price: 1.40, image: 'bebida', rating: 4.3 }
-    ],
-    salgados: [
-      { id: 71, name: 'Pão de Queijo', price: 1.60, image: 'salgado', rating: 4.5 },
-      { id: 72, name: 'Pastel de Nata', price: 1.30, image: 'salgado', rating: 4.7 },
-      { id: 73, name: 'Empada de Frango', price: 2.00, image: 'salgado', rating: 4.4 },
-      { id: 74, name: 'Kibe', price: 2.20, image: 'salgado', rating: 4.3 },
-      { id: 75, name: 'Fiambre e Queijo', price: 2.20, image: 'salgado', rating: 4.2 },
-      { id: 76, name: 'Bauru', price: 2.20, image: 'salgado', rating: 4.1 },
-      { id: 77, name: 'Bola de Queijo', price: 2.20, image: 'salgado', rating: 4.3 },
-      { id: 78, name: 'Coxinha de Frango', price: 2.20, image: 'salgado', rating: 4.6 },
-      { id: 79, name: 'Coxinha com Catupiry', price: 3.00, image: 'salgado', rating: 4.8 },
-      { id: 80, name: 'Hamburgão', price: 3.50, image: 'salgado', rating: 4.7 }
-    ],
-    sobremesas: [
-      { id: 81, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'sobremesa', rating: 4.8 },
-      { id: 82, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'sobremesa', rating: 4.9 },
-      { id: 83, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'sobremesa', rating: 4.7 },
-      { id: 84, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'sobremesa', rating: 4.8 },
-      { id: 85, name: 'Cheesecake - Goiabada', price: 3.50, image: 'sobremesa', rating: 4.7 },
-      { id: 86, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'sobremesa', rating: 4.8 },
-      { id: 87, name: 'Brigadeiro Tradicional', price: 1.50, image: 'sobremesa', rating: 4.6 },
-      { id: 88, name: 'Brigadeiro Beijinho', price: 1.50, image: 'sobremesa', rating: 4.5 },
-      { id: 89, name: 'Brigadeiro Ninho', price: 2.00, image: 'sobremesa', rating: 4.8 },
-      { id: 90, name: 'Brigadeiro Paçoca', price: 2.00, image: 'sobremesa', rating: 4.7 },
-      { id: 91, name: 'Brigadeiro Morango', price: 2.00, image: 'sobremesa', rating: 4.8 },
-      { id: 92, name: 'Brigadeiro Churros', price: 2.00, image: 'sobremesa', rating: 4.9 },
-      { id: 93, name: 'Tarte de Toblerone', price: 2.20, image: 'sobremesa', rating: 4.7 },
-      { id: 94, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'sobremesa', rating: 4.8 }
-    ]
-  };
-
-  // Mapeamento de imagens
-  const foodImages = {
-    frangoCremoso,
-    picanhaPremium,
-    costelaRaiz,
-    feijoada,
-    hamburguer,
-    batataFrita,
-    pastel,
-    cafe,
-    bebida,
-    salgado,
-    sobremesa
-  };
-
   // Detectar mobile
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -350,27 +211,38 @@ const ClientInterface = ({ tableNumber }) => {
   }, [isHovering, events.length]);
 
   // Adicionar ao carrinho
-  const addToCart = (item) => {
+  const addToCart = (item, base = null) => {
     const notes = itemNotes[item.id] || '';
+    let finalItem = { ...item };
+    let finalPrice = item.price;
+    
+    if (base && item.baseOptions) {
+      finalPrice = item.baseOptions[base];
+      finalItem = {
+        ...item,
+        price: finalPrice,
+        notes: `Base: ${base === 'agua' ? 'Água' : 'Leite'}${notes ? ` | ${notes}` : ''}`
+      };
+    }
     
     setCart(prevCart => {
       const existingItem = prevCart.find(cartItem => 
-        cartItem.id === item.id && 
-        cartItem.notes === notes
+        cartItem.id === finalItem.id && 
+        cartItem.notes === finalItem.notes
       );
       
       if (existingItem) {
         return prevCart.map(cartItem =>
-          cartItem.id === item.id && cartItem.notes === notes
+          cartItem.id === finalItem.id && cartItem.notes === finalItem.notes
             ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
             : cartItem
         );
       } else {
         return [...prevCart, { 
-          ...item, 
+          ...finalItem, 
           quantity: 1, 
           cartId: Date.now(),
-          notes: notes
+          notes: finalItem.notes || notes
         }];
       }
     });
@@ -554,17 +426,496 @@ const ClientInterface = ({ tableNumber }) => {
       case 'bebidas':
         return <FaBeer className="h-5 w-5 mr-2" />;
       case 'refrigerantes-aguas':
-        return <BiDrink className="h-5 w-5 mr-2" />;
+        return <GiWaterBottle className="h-5 w-5 mr-2" />;
       case 'salgados':
         return <FaUtensils className="h-5 w-5 mr-2" />;
       case 'sobremesas':
         return <FaIceCream className="h-5 w-5 mr-2" />;
+      case 'sumos':
+        return <GiFruitBowl className="h-5 w-5 mr-2" />;
       default:
         return <FaUtensils className="h-5 w-5 mr-2" />;
     }
   };
 
+  const toggleFavorite = (itemId) => {
+    setFavorites(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId) 
+        : [...prev, itemId]
+    );
+  };
+
+  const filteredMenu = (category) => {
+    return menu[category] || [];
+  };
+
   const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+
+  // Obter dia da semana (0 = Domingo, 1 = Segunda, ..., 6 = Sábado)
+  const getDayOfWeek = () => {
+    return new Date().getDay();
+  };
+
+  // Determinar prato do dia
+  const getDailySpecial = () => {
+    const day = getDayOfWeek();
+    switch(day) {
+      case 1: // Segunda
+        return 1; // ID do Frango Cremoso
+      case 2: // Terça
+        return 2; // ID da Picanha Premium
+      case 3: // Quarta
+        return 3; // ID da Costela Raiz
+      case 4: // Quinta
+        return 4; // ID do Frango Supremo
+      case 5: // Sexta
+        return 5; // ID da Feijoada
+      case 6: // Sábado
+        return 6; // ID da Opção Vegetariana
+      default: // Domingo e outros dias
+        return null; // Nenhum prato especial
+    }
+  };
+
+  const dailySpecialId = getDailySpecial();
+
+  const foodImages = {
+    frangoCremoso: frangoCremoso,
+    picanhaPremium: picanha,
+    costelaRaiz: costelaRaiz,
+    frangosupremo: frangoSupremo,
+    feijoadaAstral: feijoadaAstral,
+    hamburguer: hamburguer,
+    chorica: chorica,
+    Asinha: Asinha,
+    Picanhacomfritas: Picanhacomfritas,
+    Filetilapia: Filetilapia,
+    baldedecerveja: baldedecerveja,
+    vegano: vegano,
+    hamburgueraltoastral: hamburgueraltoastral,
+    sandespanado: sandespanado,
+    negs: negs,
+    fritascomqueijo: fritascomqueijo,
+    costelaporco: costelaporco,
+    pastelfeira: pastelfeira,
+    cafe: cafe,
+    abatanado: abatanado,
+    chocolatequente: chocolatequente,
+    caipirinha: caipirinha,
+    pedras:pedras,
+    Somersby:Somersby,
+    Imperial:Imperial,
+    cerveja:cerveja,
+    sangria:sangria,
+    refrigerantes:refrigerantes,
+    Coxinha:Coxinha,
+    agua:agua,
+    kibe:kibe,
+    bauru:bauru,
+    fiambre:fiambre,
+    ovosebacaon:ovosebacon,
+    tosta:tosta,
+    croissant:croissant,
+    paodequeijo:paodequeijo,
+    doces:doces,
+    sanduichenatural:sanduichenatural,
+    tostaspremium:tostaspremium,
+    pasteldenata:pasteldenata,
+    empadafrango:empadafrango,
+    hamburgao:hamburgao,
+    meialeite:meialeite,
+    cha:cha,
+    croissanmisto:croissanmisto,
+    sandesmista:sandesmista,
+    galao:galao,
+    cariocalimao:cariocalimao,
+    paocomovo:paocomovo,
+    torradapaocaseiro:torradapaocaseiro,
+    torradapaodeforma:torradapaodeforma,
+    bolaqueijo:bolaqueijo,
+    pasteldestaque:pasteldestaque,
+    tostamistapaoforma:tostamistapaoforma,
+    Garoto:Garoto,
+    pedras:pedras,
+    vodka:vodka,
+    Caipiblack:Caipiblack,
+    fiambreequeijo:fiambreequeijo,
+    capuccino:capuccino,
+    Castelo:Castelo,
+    Cheesecake:Cheesecake,
+    maracuja:maracuja,
+    acerola:acerola,
+    manga:manga,
+    goiaba:goiaba,
+    morango:morango,
+    Caju:Caju,
+    abacaxi:abacaxi,
+    coco:coco,
+    caja:caja,
+    cupuacu:cupuacu,
+    graviola:graviola,
+    frutosvermelhos:frutosvermelhos,
+    bolopoteananas:bolopoteananas,
+    Prestígio:Prestígio,
+    toblerone:toblerone,
+    batataFrita: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    bebida: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    salgado: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    background: logoBackground,
+  };
+
+  const menu = {
+    semana: [
+      { 
+        id: 1, 
+        name: 'Frango Cremoso', 
+        description: 'Strogonoff de frango, arroz branco, salada e batata palha', 
+        price: 12.90, 
+        veg: false, 
+        image: 'frangoCremoso', 
+        rating: 4.5,
+        available: dailySpecialId === 1
+      },
+      { 
+        id: 2, 
+        name: 'Maminha Top', 
+        description: 'Maminha grelhada, arroz branco, feijão tropeiro e vinagrete', 
+        price: 15.90, 
+        veg: false, 
+        image: 'picanhaPremium', 
+        rating: 4.8,
+        available: dailySpecialId === 2
+      },
+      { 
+        id: 3, 
+        name: 'Costela Raiz', 
+        description: 'Costela de vaca com mandioca, arroz branco, farofa e salada', 
+        price: 14.90, 
+        veg: false, 
+        image: 'costelaRaiz', 
+        rating: 4.7,
+        available: dailySpecialId === 3
+      },
+      { 
+        id: 4, 
+        name: 'Frango Supremo', 
+        description: 'Filé de frango à parmegiana, arroz branco, batata frita e salada', 
+        price: 13.90, 
+        veg: false, 
+        image: 'frangosupremo', 
+        rating: 4.3,
+        available: dailySpecialId === 4
+      },
+      { 
+        id: 5, 
+        name: 'Feijoada Astral', 
+        description: 'Feijoada brasileira, arroz branco, couve, farofa, torresmo e laranja', 
+        price: 12.90, 
+        veg: false, 
+        image: 'feijoadaAstral', 
+        rating: 4.9,
+        available: dailySpecialId === 5
+      },
+      { 
+        id: 6, 
+        name: 'Opção Vegetariana', 
+        description: 'Prato vegetariano sob consulta - acompanha bebida e café', 
+        price: 12.90, 
+        veg: true, 
+        image: 'vegano', 
+        rating: 4.2,
+        available: true // Sempre disponível
+      }
+    ],
+    lanches: [
+      { id: 7, name: 'Hambúrguer com Fritas', description: 'Carne, alface, tomate, cebola, cheddar, molho da casa', price: 7.00, image: 'hamburguer', rating: 4.4 },
+      { id: 8, name: 'Hambúrguer Alto Astral', description: 'Carne 120g, bacon, queijo, anéis de cebola, alface, tomate, cheddar, molho coquetel e especial', price: 9.90, image: 'hamburgueraltoastral', rating: 4.7 },
+      { id: 9, name: 'Hambúrguer Neg\'s', description: 'Carne 120g, frango panado, bacon, queijo, anéis de cebola, cebola crispy, alface, tomate, cheddar, molho coquetel e especial', price: 12.90, image: 'negs', rating: 4.9 },
+      { id: 10, name: 'Sandes de Panado', description: 'Frango panado, alface, tomate, cebola, molho da casa', price: 5.50, image: 'sandespanado', rating: 4.1 },
+      { id: 11, name: 'Tostas Premium (Frango)', description: 'acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: 'tostaspremium', rating: 4.0 },
+      { id: 12, name: 'Tostas Premium (Atum)', description: 'acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: 'tostaspremium', rating: 4.0 },
+      { id: 13, name: 'Sanduíche Natural', description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', price: 6.50, image: 'sanduichenatural', rating: 3.9 }
+    ],
+    porcoes: [
+      { id: 14, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: 'batataFrita', rating: 4.2 },
+      { id: 15, name: 'Fritas com Bacon e Queijo', description: 'Porção com 400g de batatas com bacon e queijo cheddar', price: 6.50, image: 'fritascomqueijo', rating: 4.6 },
+      { id: 16, name: 'Chouriça com Cebola', description: 'Porção com 600g de chouriça acebolada e pão fatiado', price: 9.00, image: 'chorica', rating: 4.5 },
+      { id: 17, name: 'Asinha de Frango', description: 'Porção com 700g de asinhas de frango e molho barbecue', price: 12.00, image: 'Asinha', rating: 4.4 },
+      { id: 18, name: 'Costelinha', description: 'Porção com 800g de costelinha e molho barbecue', price: 12.00, image: 'costelaporco', rating: 4.7 },
+      { id: 19, name: 'Picanha com Fritas', description: 'Porção com 600g de tiras de picanha temperada com sal de parrilha e acompanhado de batata frita ou doce', price: 22.90, image: 'Picanhacomfritas', rating: 4.8 },
+      { id: 20, name: 'Filé de Tilápia', description: 'Porção com 800g de filé de tilápia e molho tartaro', price: 15.00, image: 'Filetilapia', rating: 4.3 }
+    ],
+    pasteis: [
+      { id: 21, name: 'Pastel Simples', description: 'Frango desfiado, carne picada ou queijo', price: 5.00, image: 'pastelfeira', rating: 4.3 },
+      { id: 22, name: 'Pastel de Frango com Queijo', description: 'Frango desfiado com queijo', price: 5.50, image: 'pastelfeira', rating: 4.5 },
+      { id: 23, name: 'Pastel de Frango com Queijo e Bacon', description: 'Frango desfiado com queijo e bacon em cubos', price: 6.50, image: 'pastelfeira', rating: 4.7 },
+      { id: 24, name: 'Pastel de Carne com Queijo', description: 'Carne picada com queijo e azeitona', price: 5.50, image: 'pastelfeira', rating: 4.4 },
+      { id: 25, name: 'Pastel de Carne com Queijo e Bacon', description: 'Carne picada com queijo, azeitona e bacon em cubos', price: 6.50, image: 'pastelfeira', rating: 4.6 },
+      { id: 26, name: 'Pastel de Chouriça', description: 'Queijo, chouriça e milho', price: 5.50, image: 'pastelfeira', rating: 4.2 },
+      { id: 27, name: 'Pastel Misto', description: 'Fiambre, queijo, azeitona e milho', price: 5.50, image: 'pastelfeira', rating: 4.1 },
+      { id: 28, name: 'Pastel de Pizza', description: 'Queijo, fiambre, tomate e orégano', price: 5.50, image: 'pastelfeira', rating: 4.0 },
+      { id: 29, name: 'Pastel Alto Astral', description: 'Queijo, bacon, tomate, azeitona, cheddar e orégano', price: 6.50, image: 'pastelfeira', rating: 4.8 },
+      { id: 30, name: 'Pastel Romeu e Julieta', description: 'Queijo com goiabada', price: 5.50, image: 'pastelfeira', rating: 4.7 },
+      { id: 31, name: 'Pastel de Banana com Nutella', description: 'Queijo, banana e nutella', price: 6.00, image: 'pastelfeira', rating: 4.9 }
+    ],
+    cafe: [
+      { id: 32, name: 'Café Expresso', price: 1.00, image: 'cafe', rating: 4.5 },
+      { id: 33, name: 'Café Descafeinado', price: 1.00, image: 'cafe', rating: 4.3 },
+      { id: 34, name: 'Café Duplo', price: 2.00, image: 'pastel', rating: 4.6 },
+      { id: 35, name: 'Garoto', price: 1.00, image: 'Garoto', rating: 4.2 },
+      { id: 36, name: 'Abatanado', price: 1.10, image: 'abatanado', rating: 4.1 },
+      { id: 37, name: 'Meia de Leite', price: 1.50, image: 'meialeite', rating: 4.4 },
+      { id: 38, name: 'Galão', price: 1.60, image: 'galao', rating: 4.5 },
+      { id: 39, name: 'Chá', price: 1.60, image: 'cha', rating: 4.0 },
+      { id: 40, name: 'Cappuccino', price: 3.00, image: 'capuccino', rating: 4.7 },
+      { id: 41, name: 'Carioca de Limão', price: 1.00, image: 'cariocalimao', rating: 3.9 },
+      { id: 42, name: 'Chocolate Quente', price: 3.00, image: 'chocolatequente', rating: 4.8 },
+      { id: 43, name: 'Torrada com Pão Caseiro', price: 2.00, image: 'torradapaocaseiro', rating: 4.3 },
+      { id: 44, name: 'Torrada com Pão de Forma', price: 1.50, image: 'torradapaodeforma', rating: 4.1 },
+      { id: 45, name: 'Meia Torrada', price: 1.00, image: 'torradapaocaseiro', rating: 4.0 },
+      { id: 46, name: 'Croissant Misto', price: 3.00, image: 'croissanmisto', rating: 4.6 },
+      { id: 47, name: 'Croissant Misto Tostado', price: 3.20, image: 'croissant', rating: 4.7 },
+      { id: 48, name: 'Tosta Mista', price: 3.20, image: 'tosta', rating: 4.5 },
+      { id: 49, name: 'Tosta Mista (Pão de Forma)', price: 2.80, image: 'tostamistapaoforma', rating: 4.4 },
+      { id: 50, name: 'Sandes Mista', price: 2.20, image: 'sandesmista', rating: 4.2 },
+      { id: 51, name: 'Pão com Ovo', price: 2.20, image: 'paocomovo', rating: 4.1 },
+      { id: 52, name: 'Ovos com Bacon', price: 4.00, image: 'ovosebacaon', rating: 4.7 }
+    ],
+    bebidas: [
+      { id: 53, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: 'caipirinha', rating: 4.8 },
+      { id: 54, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: 'Caipiblack', rating: 4.9 },
+      { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: 'bebida', rating: 4.7 },
+      { id: 56, name: 'Whiskey J&B', price: 3.00, image: 'bebida', rating: 4.5 },
+      { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: 'bebida', rating: 4.8 },
+      { id: 58, name: 'Whiskey Black Label', price: 4.00, image: 'bebida', rating: 4.9 },
+      { id: 59, name: 'Vodka', price: 4.00, image: 'vodka', rating: 4.6 }
+    ],
+    sumos: [
+      {
+        id: 'sumo-maracuja',
+        name: 'Sumo/Batido de Maracujá',
+        description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'maracuja',
+        veg: true,
+        nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)'
+      },
+      {
+        id: 'sumo-acerola',
+        name: 'Sumo/Batido de Acerola',
+        description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'acerola',
+        veg: true,
+        nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)'
+      },
+      {
+        id: 'sumo-manga',
+        name: 'Sumo/Batido de Manga',
+        description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'manga',
+        veg: true,
+        nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)'
+      },
+      {
+        id: 'sumo-goiaba',
+        name: 'Sumo/Batido de Goiaba',
+        description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'goiaba',
+        veg: true,
+        nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)'
+      },
+      {
+        id: 'sumo-morango',
+        name: 'Sumo/Batido de Morango',
+        description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'morango',
+        veg: true,
+        nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)'
+      },
+      {
+        id: 'sumo-caju',
+        name: 'Sumo/Batido de Caju',
+        description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'Caju',
+        veg: true,
+        nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)'
+      },
+      {
+        id: 'sumo-abacaxi',
+        name: 'Sumo/Batido de Abacaxi',
+        description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'abacaxi',
+        veg: true,
+        nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)'
+      },
+      {
+        id: 'sumo-coco',
+        name: 'Sumo/Batido de Coco',
+        description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'coco',
+        veg: true,
+        nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)'
+      },
+      {
+        id: 'sumo-caja',
+        name: 'Sumo/Batido de Cajá',
+        description: 'Exótico e refrescante, rico em vitaminas do complexo B',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'caja',
+        veg: true,
+        nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)'
+      },
+      {
+        id: 'sumo-cupuacu',
+        name: 'Sumo/Batido de Cupuaçu',
+        description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'cupuacu',
+        veg: true,
+        nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)'
+      },
+      {
+        id: 'sumo-graviola',
+        name: 'Sumo/Batido de Graviola',
+        description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
+        price: 4.00,
+        baseOptions: {
+          agua: 4.00,
+          leite: 4.50
+        },
+        image: 'graviola',
+        veg: true,
+        nutritionalInfo: 'Rica em vitaminas B1, B2 e C. 140kcal (com água)'
+      }
+    ],
+    'refrigerantes-aguas': [
+      { 
+        id: 66, 
+        name: 'Refrigerante Lata', 
+        description: 'Coca-Cola, Fanta, Sprite, Ice Tea, 7UP, Pepsi', 
+        price: 1.60, 
+        image: 'refrigerantes', 
+        rating: 4.1
+      },
+      { 
+        id: 67, 
+        name: 'Água 1.5L', 
+        description: 'Água mineral natural 1.5 litros', 
+        price: 1.50, 
+        image: 'agua', 
+        rating: 4.0
+      },
+      { 
+        id: 68, 
+        name: 'Água 0.5L', 
+        description: 'Água mineral natural 500ml', 
+        price: 1.00, 
+        image: 'agua', 
+        rating: 4.0
+      },
+      { 
+        id: 69, 
+        name: 'Água 0.33L', 
+        description: 'Água mineral natural 330ml', 
+        price: 0.60, 
+        image: 'agua', 
+        rating: 4.0
+      },
+      { 
+        id: 70, 
+        name: 'Água Castelo', 
+        description: 'Água mineral gaseificada 1L', 
+        price: 1.40, 
+        image: 'Castelo', 
+        rating: 4.2 
+      },
+      { 
+        id: 71, 
+        name: 'Água das Pedras', 
+        description: 'Água mineral gaseificada 1L', 
+        price: 1.40, 
+        image: 'pedras', 
+        rating: 4.3 
+      },
+    ],
+    salgados: [
+      { id: 73, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
+      { id: 74, name: 'Pastel de Nata', price: 1.30, image: 'pasteldenata', rating: 4.7 },
+      { id: 75, name: 'Empada de Frango', price: 2.00, image: 'empadafrango', rating: 4.4 },
+      { id: 76, name: 'Kibe', price: 2.20, image: 'kibe', rating: 4.3 },
+      { id: 77, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: 'fiambre', rating: 4.2 },
+      { id: 78, name: 'Fiambre e Queijo', price: 2.20, image: 'fiambreequeijo', rating: 4.2 },
+      { id: 79, name: 'Bauru', price: 2.20, image: 'bauru', rating: 4.1 },
+      { id: 80, name: 'Bola de Queijo', price: 2.20, image: 'bolaqueijo', rating: 4.3 },
+      { id: 81, name: 'Coxinha de Frango', price: 2.20, image: 'Coxinha', rating: 4.6 },
+      { id: 82, name: 'Coxinha com Catupiry', price: 3.00, image: 'Coxinha', rating: 4.8 },
+      { id: 83, name: 'Hamburgão', price: 3.50, image: 'hamburgao', rating: 4.7 }
+    ],
+    sobremesas: [
+      { id: 84, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'Prestígio', rating: 4.8 },
+      { id: 85, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'doces', rating: 4.9 },
+      { id: 86, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'bolopoteananas', rating: 4.7 },
+      { id: 87, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'doces', rating: 4.8 },
+      { id: 88, name: 'Cheesecake - Goiabada', price: 3.50, image: 'Cheesecake', rating: 4.7 },
+      { id: 89, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'frutosvermelhos', rating: 4.8 },
+      { id: 90, name: 'Brigadeiro Tradicional', price: 1.50, image: 'doces', rating: 4.6 },
+      { id: 91, name: 'Brigadeiro Beijinho', price: 1.50, image: 'doces', rating: 4.5 },
+      { id: 92, name: 'Brigadeiro Ninho', price: 2.00, image: 'doces', rating: 4.8 },
+      { id: 93, name: 'Brigadeiro Paçoca', price: 2.00, image: 'doces', rating: 4.7 },
+      { id: 94, name: 'Brigadeiro Morango', price: 2.00, image: 'doces', rating: 4.8 },
+      { id: 95, name: 'Brigadeiro Churros', price: 2.00, image: 'doces', rating: 4.9 },
+      { id: 96, name: 'Tarte de Toblerone', price: 2.20, image: 'toblerone', rating: 4.7 },
+      { id: 97, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'doces', rating: 4.8 }
+    ]
+  };
 
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col">
@@ -652,98 +1003,506 @@ const ClientInterface = ({ tableNumber }) => {
                      category === 'pasteis' ? 'Pastéis' : 
                      category === 'cafe' ? 'Café' : 
                      category === 'bebidas' ? 'Bebidas' : 
-                     category === 'refrigerantes-aguas' ? 'Refrigerantes e Águas' :
+                     category === 'refrigerantes-aguas' ? 'Refrigerantes & Águas' :
                      category === 'salgados' ? 'Salgados' : 
+                     category === 'sumos' ? 'Sumos & Batidos' :
                      'Sobremesas'}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className={`grid gap-4 pb-6 ${
-              isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-            }`}>
-              {menu[activeCategory].map(item => (
-                <motion.div 
-                  key={item.id}
+            {activeCategory === 'sumos' ? (
+              <div className="space-y-12">
+                {/* Minimalist Hero Section */}
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full border-2 border-[#e6be44] ${
-                    activeCategory === 'semana' && !item.available ? 'opacity-50 pointer-events-none' : ''
-                  }`}
+                  transition={{ duration: 0.6 }}
+                  className="text-center"
                 >
-                  <div className={`overflow-hidden relative ${
-                    isMobile ? 'h-48' : 'h-40'
-                  }`}>
-                    <LazyLoadImage
-                      src={foodImages[item.image]}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                      effect="blur"
-                      width="100%"
-                      height="100%"
-                    />
-                    {item.veg && (
-                      <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full shadow-md">
-                        VEG
-                      </div>
-                    )}
-                    {activeCategory === 'semana' && item.available && (
-                      <div className="absolute top-2 left-2 bg-[#e6be44] text-white text-xs px-2 py-1 rounded-full shadow-md">
-                        PRATO DO DIA
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent h-16"></div>
-                    <div className="absolute bottom-2 left-2 text-white font-bold text-lg">{item.name}</div>
-                  </div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    {item.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.description}</p>
-                    )}
-                    
-                    <div className="mb-3">
-                      <input
-                        type="text"
-                        placeholder="Observações (ex: sem cebola)"
-                        className="w-full text-xs p-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44]"
-                        value={itemNotes[item.id] || ''}
-                        onChange={(e) => updateItemNotes(item.id, e.target.value)}
-                        ref={notesInputRef}
-                      />
-                    </div>
-                    
-                    <div className="mt-auto flex justify-between items-center">
-                      <div>
-                        <p className="text-black font-bold text-lg">{formatPrice(item.price)}</p>
-                        {item.rating && (
-                          <div className="flex items-center mt-1">
-                            <div className="flex text-amber-400">
-                              {[...Array(5)].map((_, i) => (
-                                <svg key={i} xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${i < Math.floor(item.rating) ? 'fill-current' : ''}`} viewBox="0 0 20 20" stroke="currentColor">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                              ))}
-                            </div>
-                            <span className="text-xs text-gray-500 ml-1">{item.rating}</span>
-                          </div>
-                        )}
-                      </div>
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => addToCart(item)}
-                        disabled={activeCategory === 'semana' && !item.available}
-                        className={`bg-gradient-to-br from-[#918e89] to-[#b0aca6] text-white p-2 rounded-full h-9 w-9 flex items-center justify-center shadow-md ${
-                          activeCategory === 'semana' && !item.available ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <FaPlus className="h-4 w-4" />
-                      </motion.button>
-                    </div>
-                  </div>
+                  <motion.div
+                    animate={{ rotate: [0, 15, -15, 0] }}
+                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
+                    className="inline-block mb-6"
+                  >
+                    <GiFruitBowl className="text-5xl text-[#e6be44]" />
+                  </motion.div>
+                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
+                      Sumos & Batidos
+                    </span>
+                  </h1>
+                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Preparados na hora com polpas naturais, 100% fruta e sem adição de açúcar
+                  </p>
                 </motion.div>
-              ))}
-            </div>
+
+                {/* Product Grid with Individual State */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredMenu(activeCategory).map((item) => {
+                    // Use item.id as part of the state key for individual control
+                    const baseSelected = selectedBases[item.id] || 'agua';
+
+                    const basePrice = baseSelected === 'leite' 
+                      ? (item.baseOptions?.leite || item.price)
+                      : (item.baseOptions?.agua || item.price);
+
+                    const addToCartWithAnimation = () => {
+                      setIsAdding(true);
+                      addToCart({
+                        ...item,
+                        price: basePrice,
+                        notes: `Base: ${baseSelected === 'agua' ? 'Água' : 'Leite'}`
+                      }, baseSelected); // Passando a base selecionada como segundo parâmetro
+                      setTimeout(() => setIsAdding(false), 1000);
+                    };
+
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        whileHover={{ y: -5 }}
+                        onHoverStart={() => setIsHovered(true)}
+                        onHoverEnd={() => setIsHovered(false)}
+                        className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
+                      >
+                        {/* Image with elegant overlay */}
+                        <div className="relative h-64 w-full overflow-hidden">
+                          <LazyLoadImage
+                            src={foodImages[item.image]}
+                            alt={item.name}
+                            className="absolute top-0 left-0 w-full h-full object-cover"
+                            effect="blur"
+                            width="100%"
+                            height="100%"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                          
+                          {/* Favorite button with animation */}
+                          <motion.button
+                            onClick={() => toggleFavorite(item.id)}
+                            className="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-sm"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <FaHeart 
+                              className={`w-5 h-5 transition-colors ${
+                                favorites.includes(item.id) 
+                                  ? 'text-red-500 fill-red-500' 
+                                  : 'text-gray-400'
+                              }`}
+                            />
+                          </motion.button>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="p-5 flex-grow flex flex-col">
+                          <div className="flex justify-between items-start mb-3">
+                            <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
+                            <motion.div
+                              animate={{ 
+                                scale: isHovered ? 1.1 : 1,
+                                color: isHovered ? '#e6be44' : '#000'
+                              }}
+                              className="text-xl font-bold"
+                            >
+                              {formatPrice(basePrice)}
+                            </motion.div>
+                          </div>
+                          
+                          <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
+                          
+                          {/* Base Selection - Individual to each product */}
+                          <div className="mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-gray-500">Base:</span>
+                              <div className="flex items-center space-x-2">
+                                <motion.button
+                                  onClick={() => setSelectedBases(prev => ({ ...prev, [item.id]: 'agua' }))}
+                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    selectedBases[item.id] === 'agua' 
+                                      ? 'bg-[#e6be44] text-white' 
+                                      : 'bg-[#f3f3f3] text-gray-700'
+                                  }`}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  Água
+                                </motion.button>
+
+                                <motion.button
+                                  onClick={() => setSelectedBases(prev => ({ ...prev, [item.id]: 'leite' }))}
+                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    selectedBases[item.id] === 'leite' 
+                                      ? 'bg-[#e6be44] text-white' 
+                                      : 'bg-[#f3f3f3] text-gray-700'
+                                  }`}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  Leite
+                                </motion.button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Add to Cart Button */}
+                          <motion.button
+                            onClick={addToCartWithAnimation}
+                            className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
+                            whileHover={{ 
+                              y: -2,
+                              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {isAdding ? (
+                              <motion.span
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="flex items-center"
+                              >
+                                <FiCheck className="mr-2" />
+                                Adicionado!
+                              </motion.span>
+                            ) : (
+                              <motion.span
+                                initial={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 20 }}
+                                className="flex items-center"
+                              >
+                                <FiPlus className="mr-2" />
+                                Adicionar
+                              </motion.span>
+                            )}
+                            
+                            {/* Animated background effect */}
+                            {isAdding && (
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: '100%' }}
+                                transition={{ duration: 1 }}
+                                className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
+                              />
+                            )}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : activeCategory === 'refrigerantes-aguas' ? (
+              <div className="space-y-12">
+                {/* Premium Hero Section for Drinks */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="text-center"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 15, -15, 0] }}
+                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
+                    className="inline-block mb-6"
+                  >
+                    <GiWaterBottle className="text-5xl text-[#e6be44]" />
+                  </motion.div>
+                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
+                      Refrigerantes & Águas
+                    </span>
+                  </h1>
+                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Bebidas geladas disponíveis no freezer - Verifique as opções disponíveis e especifique sua preferência nas observações
+                  </p>
+                </motion.div>
+
+                {/* Premium Drink Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredMenu(activeCategory).map((item) => {
+                    const addToCartWithAnimation = () => {
+                      setIsAdding(true);
+                      addToCart(item);
+                      setTimeout(() => setIsAdding(false), 1000);
+                    };
+
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        whileHover={{ y: -5 }}
+                        className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
+                      >
+                        {/* Image with frost effect */}
+                        <div className="relative h-64 w-full overflow-hidden">
+                          <LazyLoadImage
+                            src={foodImages[item.image]}
+                            alt={item.name}
+                            className="absolute top-0 left-0 w-full h-full object-cover"
+                            effect="blur"
+                            width="100%"
+                            height="100%"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                          <div className="absolute inset-0 bg-blue-50/10 backdrop-blur-[1px]" />
+                          
+                          {/* Frost icon */}
+                          <div className="absolute top-4 right-4 p-2 bg-white/80 rounded-full shadow-md">
+                            <FaSnowflake className="text-blue-400 w-5 h-5" />
+                          </div>
+                          
+                          {/* Favorite button */}
+                          <motion.button
+                            onClick={() => toggleFavorite(item.id)}
+                            className="absolute top-4 left-4 p-2 bg-white/90 rounded-full shadow-sm"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <FaHeart 
+                              className={`w-5 h-5 transition-colors ${
+                                favorites.includes(item.id) 
+                                  ? 'text-red-500 fill-red-500' 
+                                  : 'text-gray-400'
+                              }`}
+                            />
+                          </motion.button>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="p-5 flex-grow flex flex-col">
+                          <div className="flex justify-between items-start mb-3">
+                            <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
+                            <motion.div
+                              animate={{ 
+                                scale: isHovered ? 1.1 : 1,
+                                color: isHovered ? '#e6be44' : '#000'
+                              }}
+                              className="text-xl font-bold"
+                            >
+                              {formatPrice(item.price)}
+                            </motion.div>
+                          </div>
+                          
+                          <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
+                          
+                          {/* Important Notice */}
+                          <div className="mb-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                            <p className="text-xs text-blue-600 flex items-center">
+                              <FaSnowflake className="mr-2" />
+                              Verifique as bebidas disponíveis no freezer e especifique sua preferência nas observações
+                            </p>
+                          </div>
+
+                          {/* Add to Cart Button */}
+                          <motion.button
+                            onClick={addToCartWithAnimation}
+                            className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
+                            whileHover={{ 
+                              y: -2,
+                              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {isAdding ? (
+                              <motion.span
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="flex items-center"
+                              >
+                                <FiCheck className="mr-2" />
+                                Adicionado!
+                              </motion.span>
+                            ) : (
+                              <motion.span
+                                initial={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 20 }}
+                                className="flex items-center"
+                              >
+                                <FiPlus className="mr-2" />
+                                Adicionar
+                              </motion.span>
+                            )}
+                            
+                            {/* Animated background effect */}
+                            {isAdding && (
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: '100%' }}
+                                transition={{ duration: 1 }}
+                                className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
+                              />
+                            )}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-12">
+                {/* Hero Section for other categories */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="text-center"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 15, -15, 0] }}
+                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
+                    className="inline-block mb-6"
+                  >
+                    {getCategoryIcon(activeCategory)}
+                  </motion.div>
+                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
+                      {activeCategory === 'semana' ? 'Cardápio' : 
+                       activeCategory === 'lanches' ? 'Lanches' : 
+                       activeCategory === 'porcoes' ? 'Porções' : 
+                       activeCategory === 'pasteis' ? 'Pastéis' : 
+                       activeCategory === 'cafe' ? 'Café' : 
+                       activeCategory === 'bebidas' ? 'Bebidas' : 
+                       activeCategory === 'salgados' ? 'Salgados' : 
+                       'Sobremesas'}
+                    </span>
+                  </h1>
+                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    {activeCategory === 'semana' ? 'Pratos deliciosos preparados com ingredientes frescos e selecionados' : 
+                     activeCategory === 'lanches' ? 'Sanduíches e lanches para todos os gostos' : 
+                     activeCategory === 'porcoes' ? 'Porções generosas para compartilhar' : 
+                     activeCategory === 'pasteis' ? 'Pastéis crocantes com diversos recheios' : 
+                     activeCategory === 'cafe' ? 'Bebidas quentes e acompanhamentos para seu café' : 
+                     activeCategory === 'bebidas' ? 'Bebidas alcoólicas e coquetéis especiais' : 
+                     activeCategory === 'salgados' ? 'Salgadinhos frescos e saborosos' : 
+                     'Sobremesas doces para finalizar sua refeição'}
+                  </p>
+                </motion.div>
+
+                {/* Product Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredMenu(activeCategory).map((item) => {
+                    const addToCartWithAnimation = () => {
+                      setIsAdding(true);
+                      addToCart(item);
+                      setTimeout(() => setIsAdding(false), 1000);
+                    };
+
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        whileHover={{ y: -5 }}
+                        onHoverStart={() => setIsHovered(true)}
+                        onHoverEnd={() => setIsHovered(false)}
+                        className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
+                      >
+                        {/* Image with elegant overlay */}
+                        <div className="relative h-64 w-full overflow-hidden">
+                          <LazyLoadImage
+                            src={foodImages[item.image]}
+                            alt={item.name}
+                            className="absolute top-0 left-0 w-full h-full object-cover"
+                            effect="blur"
+                            width="100%"
+                            height="100%"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                          
+                          {/* Favorite button with animation */}
+                          <motion.button
+                            onClick={() => toggleFavorite(item.id)}
+                            className="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-sm"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <FaHeart 
+                              className={`w-5 h-5 transition-colors ${
+                                favorites.includes(item.id) 
+                                  ? 'text-red-500 fill-red-500' 
+                                  : 'text-gray-400'
+                              }`}
+                            />
+                          </motion.button>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="p-5 flex-grow flex flex-col">
+                          <div className="flex justify-between items-start mb-3">
+                            <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
+                            <motion.div
+                              animate={{ 
+                                scale: isHovered ? 1.1 : 1,
+                                color: isHovered ? '#e6be44' : '#000'
+                              }}
+                              className="text-xl font-bold"
+                            >
+                              {formatPrice(item.price)}
+                            </motion.div>
+                          </div>
+                          
+                          {item.description && (
+                            <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
+                          )}
+                          
+                          {/* Add to Cart Button */}
+                          <motion.button
+                            onClick={addToCartWithAnimation}
+                            className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
+                            whileHover={{ 
+                              y: -2,
+                              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {isAdding ? (
+                              <motion.span
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="flex items-center"
+                              >
+                                <FiCheck className="mr-2" />
+                                Adicionado!
+                              </motion.span>
+                            ) : (
+                              <motion.span
+                                initial={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 20 }}
+                                className="flex items-center"
+                              >
+                                <FiPlus className="mr-2" />
+                                Adicionar
+                              </motion.span>
+                            )}
+                            
+                            {/* Animated background effect */}
+                            {isAdding && (
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: '100%' }}
+                                transition={{ duration: 1 }}
+                                className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
+                              />
+                            )}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -830,6 +1589,20 @@ const ClientInterface = ({ tableNumber }) => {
                         </div>
                       </motion.div>
                     ))}
+                  </div>
+
+                  <div className="mb-4">
+                    <label htmlFor="orderNotes" className="block text-sm font-bold text-black mb-1">
+                      Observações para o pedido (opcional)
+                    </label>
+                    <textarea
+                      id="orderNotes"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
+                      placeholder="Ex: Sem cebola, bem passado, etc."
+                      value={orderNotes}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                    />
                   </div>
 
                   <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
@@ -1059,6 +1832,20 @@ const ClientInterface = ({ tableNumber }) => {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="confirmationNotes" className="block text-sm font-bold text-black mb-1">
+                    Observações finais (opcional)
+                  </label>
+                  <textarea
+                    id="confirmationNotes"
+                    rows={2}
+                    className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
+                    placeholder="Ex: Sem cebola, bem passado, etc."
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                  />
                 </div>
 
                 <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">

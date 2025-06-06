@@ -5,9 +5,10 @@ import logo from '../assets/logo-alto-astral.png';
 
 const QRGenerator = () => {
   const baseUrl = window.location.origin;
-  const [qrImages, setQrImages] = useState(Array(50).fill(null));
+  const totalComandas = 70;
+  const [qrImages, setQrImages] = useState(Array(totalComandas).fill(null));
   const [logoBase64, setLogoBase64] = useState('');
-  const canvasRefs = useRef(Array(50).fill(null));
+  const canvasRefs = useRef(Array(totalComandas).fill(null));
 
   // Converte o logo para base64
   useEffect(() => {
@@ -69,57 +70,59 @@ const QRGenerator = () => {
             
             .cards-grid {
               display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8mm;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 5mm;
               max-width: 280mm;
               margin: 0 auto;
             }
             
-            .credit-card {
+            .comanda-card {
               background: white;
               border-radius: 8px;
-              padding: 8px;
+              padding: 12px;
               color: black;
               box-shadow: 0 4px 10px rgba(0,0,0,0.1);
               position: relative;
               overflow: hidden;
-              width: 85.6mm;
-              height: 53.98mm;
+              width: 65mm;
+              height: 100mm;
               display: flex;
               flex-direction: column;
+              align-items: center;
               justify-content: space-between;
               page-break-inside: avoid;
-              border: 2px solid #3b82f6;
+              border: 2px solid #918e89;
               box-sizing: border-box;
             }
             
             .card-header {
+              width: 100%;
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 2px;
+              margin-bottom: 8px;
             }
             
             .card-logo {
               height: 32px;
-              max-width: 85px;
+              max-width: 100px;
               object-fit: contain;
-              filter: none;
-              margin: 0 auto;
+              margin: 0 auto 10px;
               display: block;
             }
             
             .qr-container {
               background: white;
-              padding: 2px;
-              border-radius: 5px;
-              width: 60px;
-              height: 60px;
-              margin: 0 auto;
+              padding: 8px;
+              border-radius: 8px;
+              width: 120px;
+              height: 120px;
+              margin: 10px auto;
               display: flex;
               align-items: center;
               justify-content: center;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+              box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+              border: 1px solid #e2e8f0;
             }
             
             .qr-container img {
@@ -128,58 +131,49 @@ const QRGenerator = () => {
               object-fit: contain;
             }
             
-            .card-type {
-              font-size: 10px;
-              letter-spacing: 0.5px;
+            .card-info {
               text-align: center;
-              margin-top: 2px;
+              margin: 15px 0;
+            }
+            
+            .card-type {
+              font-size: 12px;
+              letter-spacing: 0.5px;
               font-weight: 600;
               text-transform: uppercase;
               color: #333;
+              margin-bottom: 5px;
             }
             
             .card-number {
-              font-size: 15px;
-              text-align: center;
+              font-size: 24px;
               font-weight: 700;
-              margin: 0;
+              margin: 5px 0;
               color: #1a202c;
             }
 
             .card-label {
-              font-size: 8px;
-              text-align: center;
+              font-size: 10px;
               opacity: 0.8;
-              margin-bottom: 2px;
+              margin-bottom: 10px;
               text-transform: uppercase;
               letter-spacing: 0.5px;
               color: #555;
             }
-
-            .card-footer {
-              display: none;
-            }
             
             .card-id {
-              font-size: 8px;
+              font-size: 10px;
               opacity: 0.8;
               font-weight: 600;
               color: #444;
             }
             
             .card-icon {
-              position: absolute;
-              bottom: 6px;
-              left: 6px;
-              font-size: 12px;
+              font-size: 14px;
               opacity: 0.6;
               color: #3b82f6;
             }
 
-            .card-corner, .card-stripe {
-                display: none;
-            }
-            
             @page {
               size: A4 landscape;
               margin: 7mm;
@@ -192,18 +186,19 @@ const QRGenerator = () => {
               }
               
               .cards-grid {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 7mm !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 5mm !important;
                 margin: 0 auto;
                 max-width: 280mm;
                 padding: 5mm;
               }
               
-              .credit-card {
+              .comanda-card {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-                width: 85.6mm;
-                height: 53.98mm;
+                width: 65mm;
+                height: 100mm;
+                border: 2px solid #918e89 !important;
               }
             }
           </style>
@@ -211,32 +206,30 @@ const QRGenerator = () => {
         <body>
           <div class="print-header">
             <h1 style="font-size: 18px; margin-bottom: 2px; color: #1e3c72;">Alto Astral</h1>
-            <p style="font-size: 10px; color: #555;">Comandas Digitais</p>
+            <p style="font-size: 10px; color: #555;">Comandas Digitais (1-70)</p>
           </div>
           <div class="cards-grid">
-            ${Array.from({ length: 50 }, (_, i) => {
+            ${Array.from({ length: totalComandas }, (_, i) => {
               const tableNumber = i + 1;
               const cardType = tableNumber <= 18 ? 'MESA' : 'COMANDA';
               return `
-                <div class="credit-card">
+                <div class="comanda-card">
                   <div class="card-header">
                     <div class="card-id">#${String(tableNumber).padStart(2, '0')}</div>
+                    <div class="card-icon">🍽️</div>
                   </div>
+                  
+                  <img src="${logoBase64}" class="card-logo" alt="Logo Alto Astral" />
                   
                   <div class="qr-container">
                     <img src="${qrImages[i]}" alt="QR Code" />
                   </div>
                   
-                  <div class="card-type">${cardType}</div>
-                  <div class="card-number">${tableNumber}</div>
-                  
-                  <div class="card-label">Menu Digital</div>
-
-                  <div style="text-align: center; margin-top: 3px;">
-                    <img src="${logoBase64}" class="card-logo" alt="Logo Alto Astral" />
+                  <div class="card-info">
+                    <div class="card-type">${cardType}</div>
+                    <div class="card-number">${tableNumber}</div>
+                    <div class="card-label">Menu Digital</div>
                   </div>
-                  
-                  <div class="card-icon">🍽️</div>
                 </div>
               `;
             }).join('')}
@@ -267,7 +260,7 @@ const QRGenerator = () => {
           className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105"
         >
           <FaPrint className="text-lg" />
-          <span className="font-medium">Imprimir Comandas</span>
+          <span className="font-medium">Imprimir Comandas (1-70)</span>
         </button>
       </div>
 
@@ -275,12 +268,12 @@ const QRGenerator = () => {
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-800 tracking-tight mb-4">
           Comandas Digitais
         </h1>
-        <p className="text-lg text-gray-600">Escaneie o QR Code para acessar o menu digital</p>
+        <p className="text-lg text-gray-600">Escaneie o QR Code para acessar o menu digital (1-70)</p>
       </header>
 
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8">
-          {Array.from({ length: 50 }, (_, i) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {Array.from({ length: totalComandas }, (_, i) => {
             const tableNumber = i + 1;
             const qrUrl = `${baseUrl}/table/${tableNumber}`;
             const label = getLabel(tableNumber);
@@ -288,34 +281,41 @@ const QRGenerator = () => {
             return (
               <div
                 key={tableNumber}
-                className="bg-white border-2 border-blue-500 p-3 rounded-xl shadow-lg flex flex-col items-center justify-between transition-all hover:shadow-xl hover:-translate-y-1"
-                style={{ width: '85.6mm', height: '53.98mm', boxSizing: 'border-box' }}
+                className="bg-white rounded-xl shadow-lg flex flex-col items-center p-4 transition-all hover:shadow-xl hover:-translate-y-1"
+                style={{ 
+                  width: '65mm', 
+                  height: '100mm', 
+                  boxSizing: 'border-box',
+                  border: '2px solid #918e89'
+                }}
               >
-                <div className="text-center w-full">
-                  <div className="flex items-center justify-between mb-1 text-gray-700">
-                    <span className="font-semibold text-sm">#{String(tableNumber).padStart(2, '0')}</span>
-                    <FaReceipt className="text-base text-blue-600" />
-                  </div>
+                <div className="w-full flex justify-between items-center mb-4">
+                  <span className="font-semibold text-sm text-gray-700">#{String(tableNumber).padStart(2, '0')}</span>
+                  <FaReceipt className="text-base text-blue-600" />
                 </div>
                 
-                <div className="mb-2 p-1 border border-gray-200 rounded-lg bg-white shadow-sm w-fit">
+                <img
+                  src={logo}
+                  alt="Logo Alto Astral"
+                  className="h-10 mb-6"
+                />
+                
+                <div className="mb-6 p-2 bg-white rounded-lg shadow-sm border border-gray-200">
                   <QRCodeCanvas
                     value={qrUrl}
-                    size={65}
+                    size={120}
                     level="H"
                     includeMargin={true}
                     ref={(el) => (canvasRefs.current[i] = el)}
                   />
                 </div>
 
-                <div className="text-center w-full">
-                  <p className="font-bold text-base text-gray-900 leading-tight">{label}</p>
-                  <p className="text-xs text-gray-600 mb-1">Menu Digital</p>
-                  <img
-                    src={logo}
-                    alt="Logo Alto Astral"
-                    className="h-10 mx-auto opacity-90 mt-1"
-                  />
+                <div className="text-center mt-auto">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    {tableNumber <= 18 ? 'MESA' : 'COMANDA'}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 mb-2">{tableNumber}</p>
+                  <p className="text-xs text-gray-600 uppercase tracking-wider">Menu Digital</p>
                 </div>
               </div>
             );
