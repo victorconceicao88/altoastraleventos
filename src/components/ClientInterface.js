@@ -118,6 +118,8 @@ import EventImage2 from '../assets/eventos/evento2.jpg';
 import EventImage3 from '../assets/eventos/evento3.jpg';
 import altoastralFoto from '../assets/ondas.jpeg';
 import salgadosDocesFoto from '../assets/salgados-doces.jpg';
+import pedrassabor from '../assets/pedrassabor.jpg';
+import superbock from '../assets/superbock.jpg';
 
 const ClientInterface = ({ tableNumber }) => {
   const [cart, setCart] = useState([]);
@@ -559,13 +561,15 @@ const ClientInterface = ({ tableNumber }) => {
     bolopoteananas:bolopoteananas,
     Prestígio:Prestígio,
     toblerone:toblerone,
+    pedrassabor:pedrassabor,
+    superbock:superbock,
     batataFrita: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     bebida: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     salgado: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     background: logoBackground,
   };
 
-  const menu = {
+ const menu = {
     semana: [
       { 
         id: 1, 
@@ -689,11 +693,17 @@ const ClientInterface = ({ tableNumber }) => {
       { id: 56, name: 'Whiskey J&B', price: 3.00, image: 'bebida', rating: 4.5 },
       { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: 'bebida', rating: 4.8 },
       { id: 58, name: 'Whiskey Black Label', price: 4.00, image: 'bebida', rating: 4.9 },
-      { id: 59, name: 'Vodka', price: 4.00, image: 'vodka', rating: 4.6 }
+      { id: 59, name: 'Vodka', price: 4.00, image: 'vodka', rating: 4.6 },
+      { id: 60, name: 'Somersby', price: 2.50, image: 'Somersby' },
+      { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: 'Imperial' },
+      { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: 'Imperial' },
+      { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
+      {id:  64, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
+      { id: 65, name: 'Superbock Preta', price: 1.40, image: 'superbock' }
     ],
     sumos: [
       {
-        id: 'sumo-maracuja',
+        id: 66, // ID ajustado
         name: 'Sumo/Batido de Maracujá',
         description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
         price: 4.00,
@@ -706,7 +716,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)'
       },
       {
-        id: 'sumo-acerola',
+        id: 67, // ID ajustado
         name: 'Sumo/Batido de Acerola',
         description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
         price: 4.00,
@@ -719,7 +729,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)'
       },
       {
-        id: 'sumo-manga',
+        id: 68, // ID ajustado
         name: 'Sumo/Batido de Manga',
         description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
         price: 4.00,
@@ -732,7 +742,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)'
       },
       {
-        id: 'sumo-goiaba',
+        id: 69, // ID ajustado
         name: 'Sumo/Batido de Goiaba',
         description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
         price: 4.00,
@@ -745,7 +755,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)'
       },
       {
-        id: 'sumo-morango',
+        id: 70, // ID ajustado
         name: 'Sumo/Batido de Morango',
         description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
         price: 4.00,
@@ -758,7 +768,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)'
       },
       {
-        id: 'sumo-caju',
+        id: 71, // ID ajustado
         name: 'Sumo/Batido de Caju',
         description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
         price: 4.00,
@@ -771,7 +781,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)'
       },
       {
-        id: 'sumo-abacaxi',
+        id: 72, // ID ajustado
         name: 'Sumo/Batido de Abacaxi',
         description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
         price: 4.00,
@@ -784,7 +794,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)'
       },
       {
-        id: 'sumo-coco',
+        id: 73, // ID ajustado
         name: 'Sumo/Batido de Coco',
         description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
         price: 4.00,
@@ -797,7 +807,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)'
       },
       {
-        id: 'sumo-caja',
+        id: 74, // ID ajustado
         name: 'Sumo/Batido de Cajá',
         description: 'Exótico e refrescante, rico em vitaminas do complexo B',
         price: 4.00,
@@ -810,7 +820,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)'
       },
       {
-        id: 'sumo-cupuacu',
+        id: 75, // ID ajustado
         name: 'Sumo/Batido de Cupuaçu',
         description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
         price: 4.00,
@@ -823,7 +833,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)'
       },
       {
-        id: 'sumo-graviola',
+        id: 76, // ID ajustado
         name: 'Sumo/Batido de Graviola',
         description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
         price: 4.00,
@@ -838,7 +848,7 @@ const ClientInterface = ({ tableNumber }) => {
     ],
     'refrigerantes-aguas': [
       { 
-        id: 66, 
+        id: 77, // ID ajustado
         name: 'Refrigerante Lata', 
         description: 'Coca-Cola, Fanta, Sprite, Ice Tea, 7UP, Pepsi', 
         price: 1.60, 
@@ -846,7 +856,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.1
       },
       { 
-        id: 67, 
+        id: 78, // ID ajustado
         name: 'Água 1.5L', 
         description: 'Água mineral natural 1.5 litros', 
         price: 1.50, 
@@ -854,7 +864,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.0
       },
       { 
-        id: 68, 
+        id: 79, // ID ajustado
         name: 'Água 0.5L', 
         description: 'Água mineral natural 500ml', 
         price: 1.00, 
@@ -862,7 +872,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.0
       },
       { 
-        id: 69, 
+        id: 80, // ID ajustado
         name: 'Água 0.33L', 
         description: 'Água mineral natural 330ml', 
         price: 0.60, 
@@ -870,7 +880,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.0
       },
       { 
-        id: 70, 
+        id: 81, // ID ajustado
         name: 'Água Castelo', 
         description: 'Água mineral gaseificada 1L', 
         price: 1.40, 
@@ -878,45 +888,52 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.2 
       },
       { 
-        id: 71, 
+        id: 82, // ID ajustado
         name: 'Água das Pedras', 
-        description: 'Água mineral gaseificada 1L', 
-        price: 1.40, 
+        description: 'Água mineral gaseificada', 
+        price: 1.50, 
         image: 'pedras', 
+        rating: 4.3 
+      },
+      { 
+        id: 83, // ID ajustado
+        name: 'Água das Pedras C/ Sabor', 
+        description: 'Água mineral gaseificada', 
+        price: 1.80, 
+        image: 'pedrassabor', 
         rating: 4.3 
       },
     ],
     salgados: [
-      { id: 73, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
-      { id: 74, name: 'Pastel de Nata', price: 1.30, image: 'pasteldenata', rating: 4.7 },
-      { id: 75, name: 'Empada de Frango', price: 2.00, image: 'empadafrango', rating: 4.4 },
-      { id: 76, name: 'Kibe', price: 2.20, image: 'kibe', rating: 4.3 },
-      { id: 77, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: 'fiambre', rating: 4.2 },
-      { id: 78, name: 'Fiambre e Queijo', price: 2.20, image: 'fiambreequeijo', rating: 4.2 },
-      { id: 79, name: 'Bauru', price: 2.20, image: 'bauru', rating: 4.1 },
-      { id: 80, name: 'Bola de Queijo', price: 2.20, image: 'bolaqueijo', rating: 4.3 },
-      { id: 81, name: 'Coxinha de Frango', price: 2.20, image: 'Coxinha', rating: 4.6 },
-      { id: 82, name: 'Coxinha com Catupiry', price: 3.00, image: 'Coxinha', rating: 4.8 },
-      { id: 83, name: 'Hamburgão', price: 3.50, image: 'hamburgao', rating: 4.7 }
+      { id: 84, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
+      { id: 85, name: 'Pastel de Nata', price: 1.30, image: 'pasteldenata', rating: 4.7 },
+      { id: 86, name: 'Empada de Frango', price: 2.00, image: 'empadafrango', rating: 4.4 },
+      { id: 87, name: 'Kibe', price: 2.20, image: 'kibe', rating: 4.3 },
+      { id: 88, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: 'fiambre', rating: 4.2 },
+      { id: 89, name: 'Fiambre e Queijo', price: 2.20, image: 'fiambreequeijo', rating: 4.2 },
+      { id: 90, name: 'Bauru', price: 2.20, image: 'bauru', rating: 4.1 },
+      { id: 91, name: 'Bola de Queijo', price: 2.20, image: 'bolaqueijo', rating: 4.3 },
+      { id: 92, name: 'Coxinha de Frango', price: 2.20, image: 'Coxinha', rating: 4.6 },
+      { id: 93, name: 'Coxinha com Catupiry', price: 3.00, image: 'Coxinha', rating: 4.8 },
+      { id: 94, name: 'Hamburgão', price: 3.50, image: 'hamburgao', rating: 4.7 }
     ],
     sobremesas: [
-      { id: 84, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'Prestígio', rating: 4.8 },
-      { id: 85, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'doces', rating: 4.9 },
-      { id: 86, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'bolopoteananas', rating: 4.7 },
-      { id: 87, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'doces', rating: 4.8 },
-      { id: 88, name: 'Cheesecake - Goiabada', price: 3.50, image: 'Cheesecake', rating: 4.7 },
-      { id: 89, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'frutosvermelhos', rating: 4.8 },
-      { id: 90, name: 'Brigadeiro Tradicional', price: 1.50, image: 'doces', rating: 4.6 },
-      { id: 91, name: 'Brigadeiro Beijinho', price: 1.50, image: 'doces', rating: 4.5 },
-      { id: 92, name: 'Brigadeiro Ninho', price: 2.00, image: 'doces', rating: 4.8 },
-      { id: 93, name: 'Brigadeiro Paçoca', price: 2.00, image: 'doces', rating: 4.7 },
-      { id: 94, name: 'Brigadeiro Morango', price: 2.00, image: 'doces', rating: 4.8 },
-      { id: 95, name: 'Brigadeiro Churros', price: 2.00, image: 'doces', rating: 4.9 },
-      { id: 96, name: 'Tarte de Toblerone', price: 2.20, image: 'toblerone', rating: 4.7 },
-      { id: 97, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'doces', rating: 4.8 }
+      { id: 95, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'Prestígio', rating: 4.8 },
+      { id: 96, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'doces', rating: 4.9 },
+      { id: 97, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'bolopoteananas', rating: 4.7 },
+      { id: 98, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'doces', rating: 4.8 },
+      { id: 99, name: 'Cheesecake - Goiabada', price: 3.50, image: 'Cheesecake', rating: 4.7 },
+      { id: 100, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'frutosvermelhos', rating: 4.8 },
+      { id: 101, name: 'Brigadeiro Tradicional', price: 1.50, image: 'doces', rating: 4.6 },
+      { id: 102, name: 'Brigadeiro Beijinho', price: 1.50, image: 'doces', rating: 4.5 },
+      { id: 103, name: 'Brigadeiro Ninho', price: 2.00, image: 'doces', rating: 4.8 },
+      { id: 104, name: 'Brigadeiro Paçoca', price: 2.00, image: 'doces', rating: 4.7 },
+      { id: 105, name: 'Brigadeiro Morango', price: 2.00, image: 'doces', rating: 4.8 },
+      { id: 106, name: 'Brigadeiro Churros', price: 2.00, image: 'doces', rating: 4.9 },
+      { id: 107, name: 'Tarte de Toblerone', price: 2.20, image: 'toblerone', rating: 4.7 },
+      { id: 108, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'doces', rating: 4.8 }
     ]
   };
-
   // Obter nome do dia da semana
   const getDayName = () => {
     const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -1856,19 +1873,6 @@ const ClientInterface = ({ tableNumber }) => {
                     ))}
                   </div>
 
-                  <div className="mb-4">
-                    <label htmlFor="orderNotes" className="block text-sm font-bold text-black mb-1">
-                      Observações para o pedido (opcional)
-                    </label>
-                    <textarea
-                      id="orderNotes"
-                      rows={3}
-                      className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
-                      placeholder="Ex: Sem cebola, bem passado, etc."
-                      value={orderNotes}
-                      onChange={(e) => setOrderNotes(e.target.value)}
-                    />
-                  </div>
 
                   <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                     <div className="flex justify-between mb-2">
@@ -1996,20 +2000,6 @@ const ClientInterface = ({ tableNumber }) => {
                       ))}
                     </div>
 
-                    <div className="mb-4">
-                      <label htmlFor="mobileOrderNotes" className="block text-sm font-bold text-black mb-1">
-                        Observações para o pedido (opcional)
-                      </label>
-                      <textarea
-                        id="mobileOrderNotes"
-                        rows={2}
-                        className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
-                        placeholder="Ex: Sem cebola, bem passado, etc."
-                        value={orderNotes}
-                        onChange={(e) => setOrderNotes(e.target.value)}
-                      />
-                    </div>
-
                     <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-700 font-bold">Subtotal:</span>
@@ -2099,19 +2089,6 @@ const ClientInterface = ({ tableNumber }) => {
                   ))}
                 </div>
 
-                <div className="mb-4">
-                  <label htmlFor="confirmationNotes" className="block text-sm font-bold text-black mb-1">
-                    Observações finais (opcional)
-                  </label>
-                  <textarea
-                    id="confirmationNotes"
-                    rows={2}
-                    className="w-full px-3 py-2 border border-[#b0aca6] rounded-md focus:outline-none focus:ring-2 focus:ring-[#e6be44] text-sm"
-                    placeholder="Ex: Sem cebola, bem passado, etc."
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                  />
-                </div>
 
                 <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
                   <div className="flex justify-between mb-2">
