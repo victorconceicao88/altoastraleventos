@@ -275,9 +275,7 @@ const QRGenerator = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {Array.from({ length: totalComandas }, (_, i) => {
             const tableNumber = i + 1;
-            const qrUrl = tableNumber <= 18 
-            ? `${baseUrl}/table/${tableNumber}` 
-            : `${baseUrl}/table/C${tableNumber}`;
+            const qrUrl = `${baseUrl}/table/${tableNumber}`;  {/* **AQUI** foi corrigido */}
             const label = getLabel(tableNumber);
 
             return (
