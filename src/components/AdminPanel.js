@@ -81,6 +81,8 @@ import frutosvermelhos from '../assets/frutosvermelhos.jpg';
 import bolopoteananas from '../assets/bolopoteananas.jpg';
 import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
+import pedrassabor from '../assets/pedrassabor.jpg';
+import superbock from '../assets/superbock.jpg';
 
 const AdminPanel = () => {
   // Authentication state
@@ -258,7 +260,9 @@ const AdminPanel = () => {
     frutosvermelhos,
     bolopoteananas,
     Prestígio,
-    toblerone
+    toblerone,
+    pedrassabor,
+    superbock,
   };
   
   const menu = {
@@ -337,14 +341,17 @@ const AdminPanel = () => {
       { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: foodImages.Imperial, rating: 4.7 },
       { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: foodImages.cerveja, rating: 4.3 },
       { id: 64, name: 'Cerveja Mini (0.20ml)', price: 1.10, image: foodImages.cerveja, rating: 4.2 },
-      { id: 65, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: foodImages.sangria, rating: 4.8 },
-      { id: 66, name: 'Refrigerante Lata', price: 1.60, image: foodImages.refrigerantes, rating: 4.1 },
-      { id: 67, name: 'Água 1.5L', price: 1.50, image: foodImages.agua, rating: 4.0 },
-      { id: 68, name: 'Água 0.5L', price: 1.00, image: foodImages.agua, rating: 4.0 },
-      { id: 69, name: 'Água 0.33L', price: 0.60, image: foodImages.agua, rating: 4.0 },
-      { id: 70, name: 'Água Castelo', price: 1.40, image: foodImages.Castelo, rating: 4.2 },
-      { id: 71, name: 'Água das Pedras', price: 1.40, image: foodImages.pedras, rating: 4.3 },
-      { id: 72, name: 'Balde de Heineken', price: 10.00, image: foodImages.baldedecerveja, rating: 4.9 }
+        { id: 65, name: 'Superbock Preta', price: 1.40, image: foodImages.superbock, rating: 4.2 },
+        { id: 66, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: foodImages.sangria, rating: 4.8 },
+        { id: 67, name: 'Refrigerante Lata', price: 1.60, image: foodImages.refrigerantes, rating: 4.1 },
+        { id: 68, name: 'Água 1.5L', price: 1.50, image: foodImages.agua, rating: 4.0 },
+        { id: 69, name: 'Água 0.5L', price: 1.00, image: foodImages.agua, rating: 4.0 },
+        { id: 70, name: 'Água 0.33L', price: 0.60, image: foodImages.agua, rating: 4.0 },
+        { id: 71, name: 'Água Castelo', price: 1.40, image: foodImages.Castelo, rating: 4.2 },
+        { id: 72, name: 'Água das Pedras', price: 1.50, image: foodImages.pedras, rating: 4.3 },
+        { id: 73, name: 'Água das Pedras C/ Sabor', price: 1.80, image: foodImages.pedrassabor, rating: 4.3 },
+        { id: 74, name: 'Balde de Heineken', price: 10.00, image: foodImages.baldedecerveja, rating: 4.9 }
+
     ],
     sumos: [
       {
@@ -503,33 +510,33 @@ const AdminPanel = () => {
       }
     ],
     salgados: [
-      { id: 73, name: 'Pão de Queijo', price: 1.60, image: foodImages.paodequeijo, rating: 4.5 },
-      { id: 74, name: 'Pastel de Nata', price: 1.30, image: foodImages.pasteldenata, rating: 4.7 },
-      { id: 75, name: 'Empada de Frango', price: 2.00, image: foodImages.empadafrango, rating: 4.4 },
-      { id: 76, name: 'Kibe', price: 2.20, image: foodImages.kibe, rating: 4.3 },
-      { id: 77, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: foodImages.fiambre, rating: 4.2 },
-      { id: 78, name: 'Fiambre e Queijo', price: 2.20, image: foodImages.fiambreequeijo, rating: 4.2 },
-      { id: 79, name: 'Bauru', price: 2.20, image: foodImages.bauru, rating: 4.1 },
-      { id: 80, name: 'Bola de Queijo', price: 2.20, image: foodImages.bolaqueijo, rating: 4.3 },
-      { id: 81, name: 'Coxinha de Frango', price: 2.20, image: foodImages.Coxinha, rating: 4.6 },
-      { id: 82, name: 'Coxinha com Catupiry', price: 3.00, image: foodImages.Coxinha, rating: 4.8 },
-      { id: 83, name: 'Hamburgão', price: 3.50, image: foodImages.hamburgao, rating: 4.7 }
+      { id: 75, name: 'Pão de Queijo', price: 1.60, image: foodImages.paodequeijo, rating: 4.5 },
+      { id: 76, name: 'Pastel de Nata', price: 1.30, image: foodImages.pasteldenata, rating: 4.7 },
+      { id: 77, name: 'Empada de Frango', price: 2.00, image: foodImages.empadafrango, rating: 4.4 },
+      { id: 78, name: 'Kibe', price: 2.20, image: foodImages.kibe, rating: 4.3 },
+      { id: 79, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: foodImages.fiambre, rating: 4.2 },
+      { id: 80, name: 'Fiambre e Queijo', price: 2.20, image: foodImages.fiambreequeijo, rating: 4.2 },
+      { id: 81, name: 'Bauru', price: 2.20, image: foodImages.bauru, rating: 4.1 },
+      { id: 82, name: 'Bola de Queijo', price: 2.20, image: foodImages.bolaqueijo, rating: 4.3 },
+      { id: 83, name: 'Coxinha de Frango', price: 2.20, image: foodImages.Coxinha, rating: 4.6 },
+      { id: 84, name: 'Coxinha com Catupiry', price: 3.00, image: foodImages.Coxinha, rating: 4.8 },
+      { id: 85, name: 'Hamburgão', price: 3.50, image: foodImages.hamburgao, rating: 4.7 }
     ],
     sobremesas: [
-      { id: 84, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: foodImages.Prestígio, rating: 4.8 },
-      { id: 85, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: foodImages.doces, rating: 4.9 },
-      { id: 86, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: foodImages.bolopoteananas, rating: 4.7 },
-      { id: 87, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: foodImages.doces, rating: 4.8 },
-      { id: 88, name: 'Cheesecake - Goiabada', price: 3.50, image: foodImages.Cheesecake, rating: 4.7 },
-      { id: 89, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: foodImages.frutosvermelhos, rating: 4.8 },
-      { id: 90, name: 'Brigadeiro Tradicional', price: 1.50, image: foodImages.doces, rating: 4.6 },
-      { id: 91, name: 'Brigadeiro Beijinho', price: 1.50, image: foodImages.doces, rating: 4.5 },
-      { id: 92, name: 'Brigadeiro Ninho', price: 2.00, image: foodImages.doces, rating: 4.8 },
-      { id: 93, name: 'Brigadeiro Paçoca', price: 2.00, image: foodImages.doces, rating: 4.7 },
-      { id: 94, name: 'Brigadeiro Morango', price: 2.00, image: foodImages.doces, rating: 4.8 },
-      { id: 95, name: 'Brigadeiro Churros', price: 2.00, image: foodImages.doces, rating: 4.9 },
-      { id: 96, name: 'Tarte de Toblerone', price: 2.20, image: foodImages.toblerone, rating: 4.7 },
-      { id: 97, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: foodImages.doces, rating: 4.8 }
+      { id: 86, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: foodImages.Prestígio, rating: 4.8 },
+      { id: 87, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: foodImages.doces, rating: 4.9 },
+      { id: 88, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: foodImages.bolopoteananas, rating: 4.7 },
+      { id: 89, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: foodImages.doces, rating: 4.8 },
+      { id: 90, name: 'Cheesecake - Goiabada', price: 3.50, image: foodImages.Cheesecake, rating: 4.7 },
+      { id: 91, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: foodImages.frutosvermelhos, rating: 4.8 },
+      { id: 92, name: 'Brigadeiro Tradicional', price: 1.50, image: foodImages.doces, rating: 4.6 },
+      { id: 93, name: 'Brigadeiro Beijinho', price: 1.50, image: foodImages.doces, rating: 4.5 },
+      { id: 94, name: 'Brigadeiro Ninho', price: 2.00, image: foodImages.doces, rating: 4.8 },
+      { id: 95, name: 'Brigadeiro Paçoca', price: 2.00, image: foodImages.doces, rating: 4.7 },
+      { id: 96, name: 'Brigadeiro Morango', price: 2.00, image: foodImages.doces, rating: 4.8 },
+      { id: 97, name: 'Brigadeiro Churros', price: 2.00, image: foodImages.doces, rating: 4.9 },
+      { id: 98, name: 'Tarte de Toblerone', price: 2.20, image: foodImages.toblerone, rating: 4.7 },
+      { id: 99, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: foodImages.doces, rating: 4.8 }
     ]
   };
 
@@ -1708,280 +1715,284 @@ const loadOrderHistory = useCallback(async () => {
   );
 
   // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
-  const renderHistoryModal = () => {
-    const filteredOrders = filteredHistory();
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
-    const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
-    const topItems = {};
-    const topCustomers = {};
-    const revenueByDay = {};
-    const revenueByPaymentMethod = {
-      dinheiro: 0,
-      cartao: 0
-    };
-    
-    filteredOrders.forEach(order => {
-      // Contagem de itens
-      order.items?.forEach(item => {
-        const key = `${item.name}-${item.price.toFixed(2)}`;
-        topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
-      });
-      
-      // Clientes frequentes (para comandas com endereço)
-      if (order.tableType === 'comanda' && order.deliveryAddress) {
-        topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
-      }
+const renderHistoryModal = () => {
+  const filteredOrders = filteredHistory();
+  const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
+  const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
+  const topItems = {};
+  const topCustomers = {};
+  const revenueByPaymentMethod = {
+    dinheiro: 0,
+    cartao: 0
+  };
 
-      // Receita por método de pagamento
-      if (order.paymentMethod === 'dinheiro') {
-        revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
-      } else {
-        revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
-      }
+  filteredOrders.forEach(order => {
+    // Contagem de itens
+    order.items?.forEach(item => {
+      const key = `${item.name}-${item.price.toFixed(2)}`;
+      topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
     });
     
-    const sortedTopItems = Object.entries(topItems)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-    
-    const sortedTopCustomers = Object.entries(topCustomers)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-    
-    const sortedRevenueByDay = Object.entries(revenueByDay)
-      .sort((a, b) => new Date(a[0]) - new Date(b[0]))
-      .slice(-7); // Últimos 7 dias
-    
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
-            <button 
-              onClick={() => setShowHistoryModal(false)}
-              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-            {/* Filtros e estatísticas */}
-            <div className="w-full md:w-72 bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setHistoryFilter('all')}
-                      className={`flex-1 py-1 px-3 rounded-lg text-sm ${
-                        historyFilter === 'all' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Todos
-                    </button>
-                    <button
-                      onClick={() => setHistoryFilter('tables')}
-                      className={`flex-1 py-1 px-3 rounded-lg text-sm ${
-                        historyFilter === 'tables' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Mesas
-                    </button>
-                    <button
-                      onClick={() => setHistoryFilter('comandas')}
-                      className={`flex-1 py-1 px-3 rounded-lg text-sm ${
-                        historyFilter === 'comandas' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Comandas
-                    </button>
-                  </div>
+    // Clientes frequentes (para comandas com endereço)
+    if (order.tableType === 'comanda' && order.deliveryAddress) {
+      topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
+    }
+
+    // Receita por método de pagamento
+    if (order.paymentMethod === 'dinheiro') {
+      revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
+    } else {
+      revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
+    }
+  });
+
+  const sortedTopItems = Object.entries(topItems)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const sortedTopCustomers = Object.entries(topCustomers)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
+          <button 
+            onClick={() => setShowHistoryModal(false)}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          {/* Filtros e estatísticas */}
+          <div className="w-full md:w-72 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 p-4 overflow-y-auto">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setHistoryFilter('all')}
+                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                      historyFilter === 'all' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => setHistoryFilter('tables')}
+                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                      historyFilter === 'tables' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Mesas
+                  </button>
+                  <button
+                    onClick={() => setHistoryFilter('comandas')}
+                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                      historyFilter === 'comandas' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Comandas
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">De</label>
-                      <input
-                        type="date"
-                        value={historyDateRange.start.toISOString().split('T')[0]}
-                        onChange={(e) => setHistoryDateRange(prev => ({
-                          ...prev,
-                          start: new Date(e.target.value)
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Até</label>
-                      <input
-                        type="date"
-                        value={historyDateRange.end.toISOString().split('T')[0]}
-                        onChange={(e) => setHistoryDateRange(prev => ({
-                          ...prev,
-                          end: new Date(e.target.value)
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
-                  <input
-                    type="text"
-                    placeholder="Mesa, item, etc."
-                    value={historySearchTerm}
-                    onChange={(e) => setHistorySearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                </div>
-                
-                <div className="bg-white p-4 border-b border-gray-200">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="text-xs text-blue-600 font-medium">Pedidos</div>
-                        <div className="text-xl font-bold">{filteredOrders.length}</div>
-                      </div>
-                      <div className="bg-green-50 p-3 rounded-lg">
-                        <div className="text-xs text-green-600 font-medium">Faturação Total</div>
-                        <div className="text-xl font-bold text-green-600">€ {totalRevenue.toFixed(2)}</div>
-                      </div>
-                      <div className="bg-purple-50 p-3 rounded-lg">
-                        <div className="text-xs text-purple-600 font-medium">Ticket Médio</div>
-                        <div className="text-xl font-bold">€ {averageOrderValue.toFixed(2)}</div>
-                      </div>
-                    </div>
-                  </div>
-                
-                {sortedTopItems.length > 0 && (
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">Itens mais vendidos</h4>
-                    <div className="space-y-2">
-                      {sortedTopItems.map(([item, quantity]) => {
-                        const [name, price] = item.split('-');
-                        return (
-                          <div key={item} className="flex justify-between text-sm">
-                            <div className="truncate flex-1">{name}</div>
-                            <div className="font-medium ml-2">{quantity}x</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                {sortedTopCustomers.length > 0 && (
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">Clientes frequentes</h4>
-                    <div className="space-y-2">
-                      {sortedTopCustomers.map(([address, orders]) => (
-                        <div key={address} className="text-sm">
-                          <div className="font-medium truncate">{address}</div>
-                          <div className="text-gray-500 text-xs">{orders} pedidos</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
               </div>
-            </div>
-            
-            {/* Lista de pedidos */}
-            <div className="flex-1 overflow-y-auto">
-              {historyLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">De</label>
+                    <input
+                      type="date"
+                      value={historyDateRange.start.toISOString().split('T')[0]}
+                      onChange={(e) => setHistoryDateRange(prev => ({
+                        ...prev,
+                        start: new Date(e.target.value)
+                      }))}
+                      className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Até</label>
+                    <input
+                      type="date"
+                      value={historyDateRange.end.toISOString().split('T')[0]}
+                      onChange={(e) => setHistoryDateRange(prev => ({
+                        ...prev,
+                        end: new Date(e.target.value)
+                      }))}
+                      className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                    />
+                  </div>
                 </div>
-              ) : filteredOrders.length > 0 ? (
-                <div className="divide-y divide-gray-200">
-                  {filteredOrders.map((order) => {
-                    const orderTotal = order.total || calculateOrderTotal(order);
-                    const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
-                    
-                    return (
-                      <div key={order.id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                order.tableType === 'comanda' 
-                                  ? 'bg-purple-100 text-purple-800' 
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(order.closedAt).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="text-sm text-gray-500 mt-1">
-                              Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
-                          </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
+                <input
+                  type="text"
+                  placeholder="Mesa, item, etc."
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                  className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                />
+              </div>
+              
+              <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Estatísticas</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-blue-50 p-2 rounded-lg">
+                    <div className="text-xs text-blue-600">Pedidos</div>
+                    <div className="text-lg font-bold">{filteredOrders.length}</div>
+                  </div>
+                  <div className="bg-green-50 p-2 rounded-lg">
+                    <div className="text-xs text-green-600">Faturação</div>
+                    <div className="text-lg font-bold text-green-600">€ {totalRevenue.toFixed(2)}</div>
+                  </div>
+                  <div className="bg-purple-50 p-2 rounded-lg">
+                    <div className="text-xs text-purple-600">Ticket Médio</div>
+                    <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+              
+              {sortedTopItems.length > 0 && (
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Itens mais vendidos</h4>
+                  <div className="space-y-2">
+                    {sortedTopItems.map(([item, quantity]) => {
+                      const [name, price] = item.split('-');
+                      return (
+                        <div key={item} className="flex justify-between text-xs sm:text-sm">
+                          <div className="truncate flex-1">{name}</div>
+                          <div className="font-medium ml-2">{quantity}x</div>
                         </div>
-                        
-                        {isDelivery && (
-                          <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-block">
-                            🚚 Entrega: {order.deliveryAddress}
-                          </div>
-                        )}
-                        
-                        <div className="mt-2">
-                          <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
-                          <div className="space-y-2">
-                            {order.items?.map(item => (
-                              <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-sm">
-                                <div className="flex items-start gap-2">
-                                  <span className="text-gray-500">{item.quantity}x</span>
-                                  <div>
-                                    <div>{item.name}</div>
-                                    {item.notes && (
-                                      <div className="text-xs text-gray-500">Obs: {item.notes}</div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-gray-700 font-medium">
-                                  € {(item.price * (item.quantity || 1)).toFixed(2)}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {sortedTopCustomers.length > 0 && (
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Clientes frequentes</h4>
+                  <div className="space-y-2">
+                    {sortedTopCustomers.map(([address, orders]) => (
+                      <div key={address} className="text-xs sm:text-sm">
+                        <div className="font-medium truncate">{address}</div>
+                        <div className="text-gray-500 text-xs">{orders} pedidos</div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
-                  <p className="mt-1">Ajuste os filtros para ver os resultados</p>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           </div>
+          
+          {/* Lista de pedidos */}
+          <div className="flex-1 overflow-y-auto">
+            {historyLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : filteredOrders.length > 0 ? (
+              <div className="divide-y divide-gray-200">
+                {filteredOrders.map((order) => {
+                  const orderTotal = order.total || calculateOrderTotal(order);
+                  const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
+                  
+                  return (
+                    <div key={order.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                              order.tableType === 'comanda' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(order.closedAt).toLocaleString('pt-PT', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
+                          </div>
+                        </div>
+                        <div className="sm:text-right">
+                          <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
+                        </div>
+                      </div>
+                      
+                      {isDelivery && (
+                        <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                          </svg>
+                          {order.deliveryAddress}
+                        </div>
+                      )}
+                      
+                      <div className="mt-2">
+                        <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
+                        <div className="space-y-2">
+                          {order.items?.map(item => (
+                            <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-xs sm:text-sm">
+                              <div className="flex items-start gap-2">
+                                <span className="text-gray-500">{item.quantity}x</span>
+                                <div>
+                                  <div>{item.name}</div>
+                                  {item.notes && (
+                                    <div className="text-xs text-gray-500">Obs: {item.notes}</div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-gray-700 font-medium">
+                                € {(item.price * (item.quantity || 1)).toFixed(2)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
+                <p className="mt-1 text-sm">Ajuste os filtros para ver os resultados</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   // Renderização do modal para adicionar itens (MODIFICADO)
   const renderAddItemModal = () => (
