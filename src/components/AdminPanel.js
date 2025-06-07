@@ -1243,7 +1243,6 @@ const closeOrder = useCallback(async () => {
     const table = tables.find(t => t.id === selectedTable);
     let total = calculateOrderTotal(selectedOrder);
     
-    // Verificar se há itens no pedido antes de fechar
     if (selectedOrder.items?.length === 0) {
       throw new Error('Não é possível fechar um pedido sem itens');
     }
@@ -1262,13 +1261,25 @@ const closeOrder = useCallback(async () => {
       paymentMethod: paymentMethod,
       closedAt: Date.now(),
       closedBy: getAuth().currentUser?.email || 'admin',
-      status: 'closed' // Adiciona status para identificar pedidos fechados
+      status: 'closed',
+      tableType: table?.type || 'comanda' // Adiciona o tipo para o histórico
     };
 
-    // Adicionar ao histórico
+    // Adicionar ao histórico no Firebase
     const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-    await push(historyRef, orderToClose);
-    
+    const newHistoryRef = push(historyRef);
+    await set(newHistoryRef, orderToClose);
+
+    // Atualizar o estado local do histórico
+    setOrderHistory(prev => [
+      {
+        ...orderToClose,
+        id: newHistoryRef.key,
+        tableId: selectedTable
+      },
+      ...prev // Adiciona no início do array
+    ]);
+
     // Remover pedido atual
     const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
     await remove(orderRef);
@@ -1279,7 +1290,7 @@ const closeOrder = useCallback(async () => {
       status: 'available'
     });
     
-    // Atualizar estado local
+    // Atualizar estado local das mesas
     setTables(prevTables => prevTables.map(table => {
       if (table.id === selectedTable) {
         return {
@@ -1315,7 +1326,6 @@ const loadOrderHistory = useCallback(async () => {
     Object.entries(data).forEach(([tableId, tableData]) => {
       if (tableData.ordersHistory) {
         Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
-          // Filtra apenas pedidos com status 'closed' ou que tenham total > 0
           if (order.status === 'closed' || (order.total && order.total > 0)) {
             allOrders.push({
               ...order,
@@ -1343,41 +1353,40 @@ const loadOrderHistory = useCallback(async () => {
 }, [tables]);
 
   // Função para filtrar histórico
-  const filteredHistory = useCallback(() => {
-    let filtered = orderHistory;
+const filteredHistory = useCallback(() => {
+  let filtered = orderHistory;
 
-    // Filtro por tipo (mesa/comanda)
-    if (historyFilter !== 'all') {
-      filtered = filtered.filter(order => 
-        historyFilter === 'tables' 
-          ? order.tableType !== 'comanda' 
-          : order.tableType === 'comanda'
-      );
-    }
+  // Filtro por tipo (mesa/comanda)
+  if (historyFilter !== 'all') {
+    filtered = filtered.filter(order => 
+      historyFilter === 'tables' 
+        ? order.tableType !== 'comanda' 
+        : order.tableType === 'comanda'
+    );
+  }
 
-    // Filtro por termo de busca
-    if (historySearchTerm) {
-      const term = historySearchTerm.toLowerCase();
-      filtered = filtered.filter(order => 
-        order.tableId.toLowerCase().includes(term) ||
-        order.items?.some(item => 
-          item.name.toLowerCase().includes(term) ||
-          (item.description && item.description.toLowerCase().includes(term))
-        )
-      );
-    }
+  // Filtro por termo de busca - MODIFICAÇÃO AQUI
+  if (historySearchTerm) {
+    const term = historySearchTerm.trim();
+    filtered = filtered.filter(order => 
+      order.tableId === term || // Busca exata pelo número da mesa/comanda
+      order.items?.some(item => 
+        item.name.toLowerCase().includes(term.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(term.toLowerCase()))
+    ));
+  }
 
-    // Filtro por data
-    filtered = filtered.filter(order => {
-      const orderDate = new Date(order.closedAt);
-      return (
-        orderDate >= historyDateRange.start &&
-        orderDate <= historyDateRange.end
-      );
-    });
+  // Filtro por data
+  filtered = filtered.filter(order => {
+    const orderDate = new Date(order.closedAt);
+    return (
+      orderDate >= historyDateRange.start &&
+      orderDate <= historyDateRange.end
+    );
+  });
 
-    return filtered;
-  }, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
+  return filtered;
+}, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
 
   // Função para calcular total do pedido
   const calculateOrderTotal = useCallback((order) => {
