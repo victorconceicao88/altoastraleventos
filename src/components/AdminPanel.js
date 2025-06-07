@@ -1857,10 +1857,6 @@ const renderHistoryModal = () => {
                     <div className="text-xs text-blue-600">Pedidos</div>
                     <div className="text-lg font-bold">{filteredOrders.length}</div>
                   </div>
-                  <div className="bg-green-50 p-2 rounded-lg">
-                    <div className="text-xs text-green-600">Faturação</div>
-                    <div className="text-lg font-bold text-green-600">€ {totalRevenue.toFixed(2)}</div>
-                  </div>
                   <div className="bg-purple-50 p-2 rounded-lg">
                     <div className="text-xs text-purple-600">Ticket Médio</div>
                     <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
