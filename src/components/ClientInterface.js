@@ -972,12 +972,12 @@ const ClientInterface = ({ tableNumber }) => {
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col">
       {/* Header */}
-      <header className="bg-[#d5c8b6] shadow-lg sticky top-0 z-50 pt-safe-top">
+      <header className="bg-white shadow-lg sticky top-0 z-50 pt-safe-top">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 rounded-lg shadow-md">
-                <img src={logo} alt="Logo Alto Astral" className="h-8 w-8" />
+                <img src={logo} alt="Logo Alto Astral" className="h-10 w-10" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-black drop-shadow-md">Alto Astral</h1>
@@ -992,11 +992,11 @@ const ClientInterface = ({ tableNumber }) => {
               
               <button 
                 onClick={() => setShowCart(!showCart)}
-                className="relative p-3 bg-[#918e89] text-white rounded-full shadow-lg hover:bg-[#b0aca6] transition-colors flex items-center"
+                className="relative p-3  text-black rounded-full shadow-lg  transition-colors flex items-center"
               >
                 <FaCartPlus className="h-6 w-6" />
                 {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                     {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
                   </span>
                 )}
@@ -1024,7 +1024,7 @@ const ClientInterface = ({ tableNumber }) => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-20 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center"
+              className="absolute top-20 right-4 bg-[#84a66d] text-white px-4 py-2 rounded-lg shadow-lg flex items-center"
             >
               <FaCheck className="mr-2" />
               Item adicionado ao carrinho!
