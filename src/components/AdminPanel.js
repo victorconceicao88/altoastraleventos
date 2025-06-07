@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, update, push, remove, set, get } from 'firebase/database';
 import { database } from '../firebase';
 import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
+
+// Importações de imagens
 import frangoCremoso from '../assets/frango-cremoso.jpg';
 import picanha from '../assets/picanha.jpg';
 import costelaRaiz from '../assets/costela-raiz.jpg';
@@ -91,41 +93,45 @@ const AdminPanel = () => {
   // Admin panel state
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState({ items: [] });
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [editingItem, setEditingItem] = useState(null);
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
-  const [newOrders, setNewOrders] = useState([]);
-  const [showNewOrdersModal, setShowNewOrdersModal] = useState(false);
-  const [isClosingOrder, setIsClosingOrder] = useState(false);
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [billRequests, setBillRequests] = useState([]);
-  const billRequestsRef = useRef(new Set());
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [consumptionItems, setConsumptionItems] = useState([]);
-  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
-  const [showConsumptionModal, setShowConsumptionModal] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
   const [printerConnected, setPrinterConnected] = useState(false);
   const printerDeviceRef = useRef(null);
   const printerCharacteristicRef = useRef(null);
   const [printedItems, setPrintedItems] = useState({});
-  const [printerReconnectAttempted, setPrinterReconnectAttempted] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [kitchenNotes, setKitchenNotes] = useState('');
   const [itemNotes, setItemNotes] = useState({});
+  const [activeMenuTab, setActiveMenuTab] = useState('semana');
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isClosingOrder, setIsClosingOrder] = useState(false);
+  const [showTableDetailsModal, setShowTableDetailsModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('dinheiro');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [historyFilter, setHistoryFilter] = useState('all');
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
+  const [historyDateRange, setHistoryDateRange] = useState({
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    end: new Date()
+  });
 
+  // Refs para scroll
+  const menuCategoriesRef = useRef(null);
+  const menuItemsRef = useRef(null);
 
   // Configuração inicial das mesas e comandas
- const initialTables = () => {
+  const initialTables = useCallback(() => {
     const tables = [];
     
     // Mesas internas (1-8)
@@ -134,7 +140,8 @@ const AdminPanel = () => {
         id: i.toString(),
         type: 'interna',
         capacity: i <= 4 ? 4 : 6,
-        location: 'Interno'
+        location: 'Interno',
+        status: 'available'
       });
     }
     
@@ -144,7 +151,8 @@ const AdminPanel = () => {
         id: i.toString(),
         type: 'externa',
         capacity: i <= 12 ? 4 : 6,
-        location: 'Externo'
+        location: 'Externo',
+        status: 'available'
       });
     }
     
@@ -154,27 +162,25 @@ const AdminPanel = () => {
         id: i.toString(),
         type: 'comanda',
         capacity: 0,
-        location: ''
+        location: '',
+        status: 'available'
       });
     }
     
     return tables;
-  };
-
-useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => unsubscribe();
   }, []);
 
+  // Configurações da impressora Bluetooth
+  const PRINTER_CONFIG = {
+    deviceName: "BlueTooth Printer",
+    serviceUUID: "0000ff00-0000-1000-8000-00805f9b34fb",
+    characteristicUUID: "0000ff02-0000-1000-8000-00805f9b34fb",
+    maxRetries: 3,
+    chunkSize: 100,
+    delayBetweenChunks: 100
+  };
 
+  // Menu de itens
   const foodImages = {
     frangoCremoso,
     picanhaPremium: picanha,
@@ -232,7 +238,6 @@ useEffect(() => {
     pasteldestaque,
     tostamistapaoforma,
     Garoto,
-    pedras,
     vodka,
     Caipiblack,
     fiambreequeijo,
@@ -253,10 +258,7 @@ useEffect(() => {
     frutosvermelhos,
     bolopoteananas,
     Prestígio,
-    toblerone,
-    batataFrita: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    bebida: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    salgado: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+    toblerone
   };
   
   const menu = {
@@ -278,7 +280,7 @@ useEffect(() => {
       { id: 13, name: 'Sanduíche Natural', description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', price: 6.50, image: foodImages.sanduichenatural, rating: 3.9 }
     ],
     porcoes: [
-      { id: 14, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: foodImages.batataFrita, rating: 4.2 },
+      { id: 14, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: foodImages.fritascomqueijo, rating: 4.2 },
       { id: 15, name: 'Fritas com Bacon e Queijo', description: 'Porção com 400g de batatas com bacon e queijo cheddar', price: 6.50, image: foodImages.fritascomqueijo, rating: 4.6 },
       { id: 16, name: 'Chouriça com Cebola', description: 'Porção com 600g de chouriça acebolada e pão fatiado', price: 9.00, image: foodImages.chorica, rating: 4.5 },
       { id: 17, name: 'Asinha de Frango', description: 'Porção com 700g de asinhas de frango e molho barbecue', price: 12.00, image: foodImages.Asinha, rating: 4.4 },
@@ -302,7 +304,7 @@ useEffect(() => {
     cafe: [
       { id: 32, name: 'Café Expresso', price: 1.00, image: foodImages.cafe, rating: 4.5 },
       { id: 33, name: 'Café Descafeinado', price: 1.00, image: foodImages.cafe, rating: 4.3 },
-      { id: 34, name: 'Café Duplo', price: 2.00, image: foodImages.pastel, rating: 4.6 },
+      { id: 34, name: 'Café Duplo', price: 2.00, image: foodImages.cafe, rating: 4.6 },
       { id: 35, name: 'Garoto', price: 1.00, image: foodImages.Garoto, rating: 4.2 },
       { id: 36, name: 'Abatanado', price: 1.10, image: foodImages.abatanado, rating: 4.1 },
       { id: 37, name: 'Meia de Leite', price: 1.50, image: foodImages.meialeite, rating: 4.4 },
@@ -325,10 +327,10 @@ useEffect(() => {
     bebidas: [
       { id: 53, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: foodImages.caipirinha, rating: 4.8 },
       { id: 54, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: foodImages.Caipiblack, rating: 4.9 },
-      { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: foodImages.bebida, rating: 4.7 },
-      { id: 56, name: 'Whiskey J&B', price: 3.00, image: foodImages.bebida, rating: 4.5 },
-      { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: foodImages.bebida, rating: 4.8 },
-      { id: 58, name: 'Whiskey Black Label', price: 4.00, image: foodImages.bebida, rating: 4.9 },
+      { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: foodImages.vodka, rating: 4.7 },
+      { id: 56, name: 'Whiskey J&B', price: 3.00, image: foodImages.vodka, rating: 4.5 },
+      { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: foodImages.vodka, rating: 4.8 },
+      { id: 58, name: 'Whiskey Black Label', price: 4.00, image: foodImages.vodka, rating: 4.9 },
       { id: 59, name: 'Vodka', price: 4.00, image: foodImages.vodka, rating: 4.6 },
       { id: 60, name: 'Somersby', price: 2.50, image: foodImages.Somersby, rating: 4.4 },
       { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: foodImages.Imperial, rating: 4.5 },
@@ -531,7 +533,172 @@ useEffect(() => {
     ]
   };
 
-  // Search functionality
+  // Efeito para verificar autenticação
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setIsAuthenticated(true);
+        handleReconnectPrinter();
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Efeito para carregar mesas e pedidos
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    setTables(initialTables());
+    
+    const tablesRef = ref(database, 'tables');
+    const unsubscribe = onValue(tablesRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      
+      const tablesData = initialTables().map(table => {
+        const tableData = data[table.id] || {};
+        let currentOrder = null;
+        
+        if (tableData.currentOrder) {
+          const orders = Object.entries(tableData.currentOrder);
+          if (orders.length > 0) {
+            currentOrder = {
+              id: orders[0][0],
+              ...orders[0][1],
+              items: orders[0][1].items?.map(item => ({
+                ...item,
+                notes: item.notes || ''
+              })) || []
+            };
+          }
+        }
+
+        return { 
+          ...table,
+          currentOrder,
+          ordersHistory: tableData.ordersHistory || {},
+          status: tableData.status || 'available'
+        };
+      });
+
+      setTables(tablesData);
+      setLastUpdate(new Date());
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, initialTables]);
+
+  // Efeito para carregar pedido selecionado
+  useEffect(() => {
+    if (!isAuthenticated || !selectedTable) {
+      setSelectedOrder(null);
+      return;
+    }
+
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+
+    const unsubscribe = onValue(orderRef, (snapshot) => {
+      const orderData = snapshot.val();
+      
+      if (orderData) {
+        const orders = Object.entries(orderData);
+        if (orders.length > 0) {
+          const [orderId, order] = orders[0];
+          const loadedOrder = { 
+            id: orderId, 
+            ...order,
+            items: order.items?.map(item => ({
+              ...item,
+              notes: item.notes || ''
+            })) || []
+          };
+          
+          const newPrintedItems = {...printedItems};
+          let hasPrintedItems = false;
+          
+          loadedOrder.items?.forEach(item => {
+            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+            if (item.printed && !printedItems[itemKey]) {
+              newPrintedItems[itemKey] = true;
+              hasPrintedItems = true;
+            }
+          });
+          
+          if (hasPrintedItems) {
+            setPrintedItems(newPrintedItems);
+          }
+          
+          setSelectedOrder(loadedOrder);
+          setDeliveryAddress(loadedOrder.deliveryAddress || '');
+
+          // Fechar automaticamente se não houver itens
+          if (loadedOrder.items?.length === 0) {
+            closeOrderAutomatically(loadedOrder);
+          }
+        } else {
+          setSelectedOrder(null);
+        }
+      } else {
+        setSelectedOrder(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, selectedTable, printedItems]);
+
+  // Função para fechar pedido automaticamente quando não há itens
+  const closeOrderAutomatically = useCallback(async (order) => {
+    if (!selectedTable || !order?.id) return;
+    
+    try {
+      const table = tables.find(t => t.id === selectedTable);
+      
+      const orderToClose = {
+        ...order,
+        total: 0,
+        deliveryFee: 0,
+        paymentMethod: 'dinheiro',
+        closedAt: Date.now(),
+        closedBy: getAuth().currentUser?.email || 'admin',
+        autoClosed: true
+      };
+
+      // Adicionar ao histórico
+      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
+      await push(historyRef, orderToClose);
+      
+      // Remover pedido atual
+      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${order.id}`);
+      await remove(orderRef);
+      
+      // Atualizar status da mesa/comanda
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'available'
+      });
+      
+      // Atualizar estado local
+      setTables(prevTables => prevTables.map(table => {
+        if (table.id === selectedTable) {
+          return {
+            ...table,
+            currentOrder: null,
+            status: 'available'
+          };
+        }
+        return table;
+      }));
+      
+      setSelectedOrder(null);
+    } catch (error) {
+      console.error("Erro ao fechar comanda automaticamente:", error);
+    }
+  }, [selectedTable, tables]);
+
+  // Efeito para pesquisa
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setSearchResults([]);
@@ -553,19 +720,10 @@ useEffect(() => {
 
     setSearchResults(results);
     setShowSearchResults(results.length > 0);
-  }, [searchTerm]);
+  }, [searchTerm, menu]);
 
-  // Configurações da impressora Bluetooth
-  const PRINTER_CONFIG = {
-    deviceName: "BlueTooth Printer",
-    serviceUUID: "0000ff00-0000-1000-8000-00805f9b34fb",
-    characteristicUUID: "0000ff02-0000-1000-8000-00805f9b34fb",
-    maxRetries: 3,
-    chunkSize: 100,
-    delayBetweenChunks: 100
-  };
-
-  const savePrinterState = (device, characteristic) => {
+  // Funções de persistência da impressora
+  const savePrinterState = useCallback((device, characteristic) => {
     try {
       const printerState = {
         deviceId: device.id,
@@ -577,14 +735,22 @@ useEffect(() => {
     } catch (err) {
       console.error('Erro ao salvar estado da impressora:', err);
     }
-  };
+  }, []);
 
-  const clearPrinterState = () => {
+  const clearPrinterState = useCallback(() => {
     localStorage.removeItem('bluetoothPrinter');
     setPrinterConnected(false);
-  };
+  }, []);
 
-  const tryReconnectPrinter = async () => {
+  const handleDisconnection = useCallback(() => {
+    console.log('Impressora desconectada');
+    clearPrinterState();
+    printerDeviceRef.current = null;
+    printerCharacteristicRef.current = null;
+  }, [clearPrinterState]);
+
+  // Função para reconectar impressora
+  const handleReconnectPrinter = useCallback(async () => {
     try {
       const savedPrinter = localStorage.getItem('bluetoothPrinter');
       if (!savedPrinter) return false;
@@ -598,7 +764,6 @@ useEffect(() => {
         return false;
       }
 
-      setIsPrinting(true);
       console.log('Tentando reconectar à impressora...');
 
       const device = await navigator.bluetooth.requestDevice({
@@ -633,18 +798,17 @@ useEffect(() => {
       console.error('Erro na reconexão Bluetooth:', err);
       clearPrinterState();
       return false;
-    } finally {
-      setIsPrinting(false);
     }
-  };
+  }, [PRINTER_CONFIG.serviceUUID, PRINTER_CONFIG.characteristicUUID, handleDisconnection, savePrinterState, clearPrinterState]);
 
-  const connectToPrinter = async () => {
+  // Função para conectar à impressora
+  const connectToPrinter = useCallback(async () => {
     try {
       if (!navigator.bluetooth) {
         throw new Error('Bluetooth não suportado neste navegador');
       }
   
-      setIsPrinting(true);
+      setLoading(true);
       setError(null);
   
       if (printerDeviceRef.current?.gatt?.connected) {
@@ -687,68 +851,12 @@ useEffect(() => {
       setError(`Falha na conexão: ${err.message}`);
       return false;
     } finally {
-      setIsPrinting(false);
+      setLoading(false);
     }
-  };
-  
-  const handleDisconnection = () => {
-    console.log('Impressora desconectada');
-    clearPrinterState();
-    printerDeviceRef.current = null;
-    printerCharacteristicRef.current = null;
-  };
+  }, [PRINTER_CONFIG, handleDisconnection, savePrinterState]);
 
-  const handleReconnectPrinter = async () => {
-    try {
-      const savedPrinter = localStorage.getItem('bluetoothPrinter');
-      if (!savedPrinter) return false;
-  
-      const printerState = JSON.parse(savedPrinter);
-      if (!printerState.deviceId || !printerState.connected) return false;
-  
-      const isRecentConnection = Date.now() - printerState.lastConnected < 5 * 60 * 1000;
-      if (!isRecentConnection) {
-        clearPrinterState();
-        return false;
-      }
-  
-      setIsPrinting(true);
-      console.log('Tentando reconectar à impressora...');
-  
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: printerState.deviceName }],
-        optionalServices: [PRINTER_CONFIG.serviceUUID]
-      });
-  
-      if (!device) {
-        clearPrinterState();
-        return false;
-      }
-  
-      device.addEventListener('gattserverdisconnected', handleDisconnection);
-  
-      const server = await device.gatt.connect();
-      const service = await server.getPrimaryService(PRINTER_CONFIG.serviceUUID);
-      const characteristic = await service.getCharacteristic(PRINTER_CONFIG.characteristicUUID);
-  
-      printerDeviceRef.current = device;
-      printerCharacteristicRef.current = characteristic;
-      setPrinterConnected(true);
-      savePrinterState(device, characteristic);
-  
-      console.log('Reconectado com sucesso à impressora');
-      return true;
-    } catch (err) {
-      console.error('Erro na reconexão Bluetooth:', err);
-      clearPrinterState();
-      return false;
-    } finally {
-      setIsPrinting(false);
-      setPrinterReconnectAttempted(true);
-    }
-  };
-
-  const sendToPrinter = async (data) => {
+  // Função para enviar dados para impressora
+  const sendToPrinter = useCallback(async (data) => {
     let retryCount = 0;
     
     while (retryCount < PRINTER_CONFIG.maxRetries) {
@@ -793,9 +901,10 @@ useEffect(() => {
         );
       }
     }
-  };
+  }, [PRINTER_CONFIG, connectToPrinter]);
 
-  const formatReceipt = (order) => {
+  // Função para formatar recibo
+  const formatReceipt = useCallback((order) => {
     if (!order || !order.items || order.items.length === 0) return '';
   
     const ESC = '\x1B';
@@ -808,73 +917,66 @@ useEffect(() => {
     const CUT = `${GS}V0`;
     const LF = '\x0A';
     const FEED = '\x1Bd';
+    const DIVIDER = '--------------------------------';
   
     let receipt = INIT;
     receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
-    receipt += `${CENTER}${new Date().toLocaleString()}${LF}${LF}`;
+    receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
+    receipt += `${CENTER}${LF}`; // Espaço único após data
     
-    // Dados da mesa/comanda
     const table = tables.find(t => t.id === selectedTable);
-    receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}`;
+    receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
     
-    // Verificar se é delivery para adicionar taxa
-    const isDelivery = table?.type === 'comanda' && table?.location === 'Delivery';
+    const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
     let total = calculateOrderTotal(order);
     let deliveryFee = 0;
     
     if (isDelivery) {
       deliveryFee = 2.50;
       total += deliveryFee;
+      receipt += `${LEFT}Endereço: ${order.deliveryAddress}${LF}${LF}`;
     }
     
-    receipt += '--------------------------------' + LF;
-    receipt += `${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
-    receipt += '--------------------------------' + LF;
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
+    receipt += `${LEFT}${DIVIDER}${LF}`;
     
-    // Itens do pedido
     order.items.forEach(item => {
-      receipt += `${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
+      receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
       if (item.description) {
-        receipt += `${item.description}${LF}`;
+        receipt += `${LEFT}${item.description}${LF}`;
       }
       if (item.notes) {
-        receipt += `OBS: ${item.notes}${LF}${LF}`;
+        receipt += `${LEFT}OBS: ${item.notes}${LF}`;
       }
-      receipt += `Preço: € ${item.price.toFixed(2)} x ${item.quantity} = € ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
+      receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
     });
     
-    // Adicionar taxa de entrega se for delivery
     if (isDelivery) {
-      receipt += '--------------------------------' + LF;
-      receipt += `${BOLD_ON}Taxa de Entrega: € ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
+      receipt += `${LEFT}${DIVIDER}${LF}`;
+      receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
     }
     
-    // Total
-    receipt += '--------------------------------' + LF;
-    receipt += `${BOLD_ON}TOTAL: € ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
     
-    // Observações
-    if (order.notes || order.clientNotes) {
-      receipt += '--------------------------------' + LF;
-      receipt += `${BOLD_ON}OBSERVAÇÕES:${BOLD_OFF}${LF}`;
-      receipt += `${order.notes || order.clientNotes}${LF}`;
-    }
-
     if (order.kitchenNotes) {
-      receipt += '--------------------------------' + LF;
-      receipt += `${BOLD_ON}OBSERVAÇÕES DA COZINHA:${BOLD_OFF}${LF}`;
-      receipt += `${order.kitchenNotes}${LF}`;
+      receipt += `${LEFT}${DIVIDER}${LF}`;
+      receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
+      receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
     }
 
-    receipt += '--------------------------------' + LF;
-    receipt += `${CENTER}Obrigado pela sua preferência!${LF}${LF}`;
-    receipt += `${CENTER}Volte sempre${LF}${LF}`;
-    receipt += `${FEED}${FEED}${CUT}`;
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
+    receipt += `${CENTER}Volte sempre${LF}`;
+    receipt += `${LF}${LF}`; // Espaçamento final reduzido
+    receipt += `${FEED}${CUT}`;
   
     return receipt;
-  };
+  }, [selectedTable, tables]);
 
-  const markItemsAsPrinted = async (tableId, orderId, items) => {
+  // Função para marcar itens como impressos
+  const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
     try {
       const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
       
@@ -908,9 +1010,10 @@ useEffect(() => {
       setPrintedItems(revertedPrintedItems);
       throw err;
     }
-  };
-  
-  const printOrder = async () => {
+  }, [printedItems]);
+
+  // Função para imprimir pedido
+  const printOrder = useCallback(async () => {
     if (!selectedTable || !selectedOrder?.id || !selectedOrder.items?.length) {
       setError('Nenhum pedido válido para imprimir');
       return;
@@ -940,9 +1043,6 @@ useEffect(() => {
       if (success) {
         await markItemsAsPrinted(selectedTable, selectedOrder.id, itemsToPrint);
         
-        setShowSuccessNotification(true);
-        setTimeout(() => setShowSuccessNotification(false), 3000);
-        
         setSelectedOrder(prev => ({
           ...prev,
           items: prev.items.map(item => {
@@ -959,98 +1059,10 @@ useEffect(() => {
     } finally {
       setIsPrinting(false);
     }
-  };
+  }, [selectedTable, selectedOrder, printedItems, formatReceipt, sendToPrinter, markItemsAsPrinted]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    setTables(initialTables());
-    
-    const tablesRef = ref(database, 'tables');
-    const unsubscribe = onValue(tablesRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      
-      const tablesData = initialTables().map(table => {
-        const tableData = data[table.id] || {};
-        let currentOrder = null;
-        
-        if (tableData.currentOrder) {
-          const orders = Object.entries(tableData.currentOrder);
-          if (orders.length > 0) {
-            currentOrder = {
-              id: orders[0][0],
-              ...orders[0][1]
-            };
-          }
-        }
-
-        return { 
-          ...table,
-          currentOrder,
-          ordersHistory: tableData.ordersHistory || {}
-        };
-      });
-
-      setTables(tablesData);
-      setLastUpdate(new Date());
-    });
-
-    return () => unsubscribe();
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !selectedTable) {
-      setSelectedOrder(null);
-      return;
-    }
-
-    const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-
-    const unsubscribe = onValue(orderRef, (snapshot) => {
-      const orderData = snapshot.val();
-      
-      if (orderData) {
-        const orders = Object.entries(orderData);
-        if (orders.length > 0) {
-          const [orderId, order] = orders[0];
-          const loadedOrder = { 
-            id: orderId, 
-            ...order,
-            items: order.items?.map(item => ({
-              ...item,
-              notes: item.notes || ''
-            })) || []
-          };
-          
-          const newPrintedItems = {...printedItems};
-          let hasPrintedItems = false;
-          
-          loadedOrder.items?.forEach(item => {
-            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-            if (item.printed && !printedItems[itemKey]) {
-              newPrintedItems[itemKey] = true;
-              hasPrintedItems = true;
-            }
-          });
-          
-          if (hasPrintedItems) {
-            setPrintedItems(newPrintedItems);
-          }
-          
-          setSelectedOrder(loadedOrder);
-        } else {
-          setSelectedOrder(null);
-        }
-      } else {
-        setSelectedOrder(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [isAuthenticated, selectedTable]);
-
-
-  const createNewOrder = async () => {
+  // Função para criar novo pedido
+  const createNewOrder = useCallback(async () => {
     if (!selectedTable) return;
     
     setLoading(true);
@@ -1064,138 +1076,107 @@ useEffect(() => {
         status: 'open',
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        tableId: selectedTable
+        tableId: selectedTable,
+        deliveryAddress: deliveryAddress
       };
 
       await set(newOrderRef, newOrder);
       setSelectedOrder(newOrder);
+      
+      // Atualizar status da mesa/comanda
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'occupied'
+      });
     } catch (err) {
       setError('Erro ao criar novo pedido');
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTable, deliveryAddress]);
 
-   const closeOrder = async () => {
-    if (!selectedTable || !selectedOrder?.id) return;
-    
-    setIsClosingOrder(true);
+  // Função para adicionar item ao pedido (MODIFICADA)
+  const addItemToOrder = useCallback(async () => {
+    if (!selectedTable || !selectedMenuItem) return;
+
+    setLoading(true);
     try {
-      // Calculate delivery fee if applicable
-      const table = tables.find(t => t.id === selectedTable);
-      let total = calculateOrderTotal(selectedOrder);
+      let orderRef;
+      let orderData;
       
-      if (table?.type === 'comanda') {
-        // Count delivery items
-        const deliveryCount = selectedOrder.items.filter(item => 
-          item.category === 'delivery'
-        ).length;
+      if (selectedOrder?.id) {
+        orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+        const currentItems = selectedOrder.items || [];
         
-        // Add R$2.50 fee if there are 2 or more delivery items
-        if (deliveryCount >= 2) {
-          total += 2.50;
-        }
+        orderData = {
+          items: [...currentItems, {
+            ...selectedMenuItem,
+            quantity: newItemQuantity,
+            addedAt: Date.now(),
+            printed: false,
+            notes: itemNotes[selectedMenuItem.id] || ''
+          }],
+          updatedAt: Date.now(),
+          deliveryAddress: deliveryAddress
+        };
+      } else {
+        orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+        orderData = {
+          items: [{
+            ...selectedMenuItem,
+            quantity: newItemQuantity,
+            addedAt: Date.now(),
+            printed: false,
+            notes: itemNotes[selectedMenuItem.id] || ''
+          }],
+          status: 'open',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          tableId: selectedTable,
+          deliveryAddress: deliveryAddress
+        };
       }
 
-      const orderToClose = {
-        ...selectedOrder,
-        total: total,
-        closedAt: Date.now()
-      };
+      if (selectedOrder?.id) {
+        await update(orderRef, orderData);
+      } else {
+        const newOrderRef = await push(orderRef, orderData);
+        setSelectedOrder({ id: newOrderRef.key, ...orderData });
+        
+        // Atualizar status da mesa/comanda
+        const tableRef = ref(database, `tables/${selectedTable}`);
+        await update(tableRef, {
+          status: 'occupied'
+        });
+      }
 
-      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-      await push(historyRef, orderToClose);
-      
-      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      await remove(orderRef);
-      
-      // Atualiza o estado local para refletir que a mesa está disponível
-      setTables(prevTables => prevTables.map(table => {
-        if (table.id === selectedTable) {
-          return {
-            ...table,
-            currentOrder: null
-          };
-        }
-        return table;
+      // Resetar estado sem fechar o modal
+      setSelectedMenuItem(null);
+      setNewItemQuantity(1);
+      setItemNotes(prev => ({
+        ...prev,
+        [selectedMenuItem.id]: ''
       }));
       
-      setSelectedOrder(null);
-      setShowSuccessNotification(true);
-      setTimeout(() => setShowSuccessNotification(false), 3000);
-    } catch (error) {
-      console.error("Erro ao fechar comanda:", error);
-      setError('Erro ao fechar comanda');
-    } finally {
-      setIsClosingOrder(false);
-      setShowCloseConfirmation(false);
-    }
-  };
-
-
-const addItemToOrder = async () => {
-  if (!selectedTable || !selectedMenuItem) return;
-
-  setLoading(true);
-  try {
-    let orderRef;
-    let orderData;
-    
-    if (selectedOrder?.id) {
-      orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      const currentItems = selectedOrder.items || [];
+      // Scroll para o topo do menu de categorias
+      if (menuCategoriesRef.current) {
+        menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (menuItemsRef.current) {
+        menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       
-      orderData = {
-        items: [...currentItems, {
-          ...selectedMenuItem,
-          quantity: newItemQuantity,
-          addedAt: Date.now(),
-          printed: false,
-          notes: itemNotes[selectedMenuItem.id] || ''
-        }],
-        updatedAt: Date.now(),
-        kitchenNotes: kitchenNotes || null
-      };
-    } else {
-      orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-      orderData = {
-        items: [{
-          ...selectedMenuItem,
-          quantity: newItemQuantity,
-          addedAt: Date.now(),
-          printed: false,
-          notes: itemNotes[selectedMenuItem.id] || ''
-        }],
-        status: 'open',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        tableId: selectedTable,
-        kitchenNotes: kitchenNotes || null
-      };
+    } catch (err) {
+      setError('Erro ao adicionar item');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
 
-    if (selectedOrder?.id) {
-      await update(orderRef, orderData);
-    } else {
-      const newOrderRef = await push(orderRef, orderData);
-      setSelectedOrder({ id: newOrderRef.key, ...orderData });
-    }
-
-    setShowAddItemModal(false);
-    setSelectedMenuItem(null);
-    setNewItemQuantity(1);
-    setKitchenNotes('');
-    setItemNotes({});
-  } catch (err) {
-    setError('Erro ao adicionar item');
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const removeItemFromOrder = async (itemId) => {
+  // Função para remover item do pedido
+  const removeItemFromOrder = useCallback(async (itemId) => {
     if (!selectedTable || !selectedOrder?.items) return;
     
     setLoading(true);
@@ -1207,15 +1188,24 @@ const addItemToOrder = async () => {
         items: updatedItems,
         updatedAt: Date.now()
       });
+
+      // Se não houver mais itens, fechar automaticamente
+      if (updatedItems.length === 0) {
+        await closeOrderAutomatically({
+          ...selectedOrder,
+          items: updatedItems
+        });
+      }
     } catch (err) {
       setError(`Falha ao remover item: ${err.message}`);
       console.error("Erro detalhado:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTable, selectedOrder, closeOrderAutomatically]);
 
-  const updateItemQuantity = async (itemId, newQuantity) => {
+  // Função para atualizar quantidade do item
+  const updateItemQuantity = useCallback(async (itemId, newQuantity) => {
     if (!selectedTable || !selectedOrder?.items || newQuantity < 1) return;
     
     setLoading(true);
@@ -1229,75 +1219,301 @@ const addItemToOrder = async () => {
         items: updatedItems,
         updatedAt: Date.now()
       });
-      
-      setEditingItem(null);
     } catch (err) {
       setError(`Falha ao atualizar quantidade: ${err.message}`);
       console.error("Erro detalhado:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTable, selectedOrder]);
 
-  const calculateOrderTotal = (order) => {
+  // Função simplificada para fechar pedido
+  const closeOrder = useCallback(async () => {
+    if (!selectedTable || !selectedOrder?.id) return;
+    
+    setIsClosingOrder(true);
+    try {
+      const table = tables.find(t => t.id === selectedTable);
+      let total = calculateOrderTotal(selectedOrder);
+      let deliveryFee = 0;
+      
+      if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
+        deliveryFee = 2.50;
+        total += deliveryFee;
+      }
+
+      const orderToClose = {
+        ...selectedOrder,
+        total: total,
+        deliveryFee: deliveryFee,
+        paymentMethod: paymentMethod,
+        closedAt: Date.now(),
+        closedBy: getAuth().currentUser?.email || 'admin'
+      };
+
+      // Adicionar ao histórico
+      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
+      await push(historyRef, orderToClose);
+      
+      // Remover pedido atual
+      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+      await remove(orderRef);
+      
+      // Atualizar status da mesa/comanda
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'available'
+      });
+      
+      // Atualizar estado local
+      setTables(prevTables => prevTables.map(table => {
+        if (table.id === selectedTable) {
+          return {
+            ...table,
+            currentOrder: null,
+            status: 'available'
+          };
+        }
+        return table;
+      }));
+      
+      setSelectedOrder(null);
+      setShowTableDetailsModal(false);
+      setDeliveryAddress('');
+    } catch (error) {
+      console.error("Erro ao fechar comanda:", error);
+      setError('Erro ao fechar comanda');
+    } finally {
+      setIsClosingOrder(false);
+    }
+  }, [selectedTable, selectedOrder, tables, paymentMethod]);
+
+  // Função para carregar histórico de pedidos
+  const loadOrderHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const historyRef = ref(database, 'tables');
+      const snapshot = await get(historyRef);
+      const data = snapshot.val() || {};
+      
+      let allOrders = [];
+      
+      Object.entries(data).forEach(([tableId, tableData]) => {
+        if (tableData.ordersHistory) {
+          Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
+            allOrders.push({
+              ...order,
+              id: orderId,
+              tableId: tableId,
+              tableType: tables.find(t => t.id === tableId)?.type || 'comanda',
+              closedAt: order.closedAt || Date.now()
+            });
+          });
+        }
+      });
+      
+      // Ordenar por data de fechamento (mais recente primeiro)
+      allOrders.sort((a, b) => b.closedAt - a.closedAt);
+      
+      setOrderHistory(allOrders);
+      setShowHistoryModal(true);
+    } catch (err) {
+      console.error("Erro ao carregar histórico:", err);
+      setError('Erro ao carregar histórico de pedidos');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [tables]);
+
+  // Função para filtrar histórico
+  const filteredHistory = useCallback(() => {
+    let filtered = orderHistory;
+
+    // Filtro por tipo (mesa/comanda)
+    if (historyFilter !== 'all') {
+      filtered = filtered.filter(order => 
+        historyFilter === 'tables' 
+          ? order.tableType !== 'comanda' 
+          : order.tableType === 'comanda'
+      );
+    }
+
+    // Filtro por termo de busca
+    if (historySearchTerm) {
+      const term = historySearchTerm.toLowerCase();
+      filtered = filtered.filter(order => 
+        order.tableId.toLowerCase().includes(term) ||
+        order.items?.some(item => 
+          item.name.toLowerCase().includes(term) ||
+          (item.description && item.description.toLowerCase().includes(term))
+        )
+      );
+    }
+
+    // Filtro por data
+    filtered = filtered.filter(order => {
+      const orderDate = new Date(order.closedAt);
+      return (
+        orderDate >= historyDateRange.start &&
+        orderDate <= historyDateRange.end
+      );
+    });
+
+    return filtered;
+  }, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
+
+  // Função para calcular total do pedido
+  const calculateOrderTotal = useCallback((order) => {
     if (!order?.items) return 0;
     return order.items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
-  };
+  }, []);
 
- const handleTableSelect = (tableNumber) => {
+  // Função para selecionar mesa
+  const handleTableSelect = useCallback((tableNumber) => {
     const tableStr = tableNumber.toString();
     setSelectedTable(tableStr);
-  };
+    setShowTableDetailsModal(true);
+  }, []);
 
-  const hasUnprintedItems = (order) => {
+  // Função para verificar itens não impressos
+  const hasUnprintedItems = useCallback((order) => {
     if (!order?.items) return false;
     return order.items.some(item => {
       const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
       return !printedItems[itemKey] && !item.printed;
     });
-  };
+  }, [selectedTable, printedItems]);
 
-  const filteredTables = () => {
-    if (activeTab === 'active') {
-      return tables.filter(t => t.currentOrder);
-    } else if (activeTab === 'vip') {
-      return tables.filter(t => {
-        const total = t.currentOrder ? calculateOrderTotal(t.currentOrder) : 0;
-        return total > 100;
-      });
-    } else if (activeTab === 'internas') {
-      return tables.filter(t => t.type === 'interna');
-    } else if (activeTab === 'externas') {
-      return tables.filter(t => t.type === 'externa');
-    } else if (activeTab === 'comandas') {
-      return tables.filter(t => t.type === 'comanda');
+  // Função para filtrar mesas
+  const filteredTables = useCallback(() => {
+    switch (activeTab) {
+      case 'active':
+        return tables.filter(t => t.currentOrder);
+      case 'vip':
+        return tables.filter(t => {
+          const total = t.currentOrder ? calculateOrderTotal(t.currentOrder) : 0;
+          return total > 100;
+        });
+      case 'internas':
+        return tables.filter(t => t.type === 'interna');
+      case 'externas':
+        return tables.filter(t => t.type === 'externa');
+      case 'comandas':
+        return tables.filter(t => t.type === 'comanda');
+      default:
+        return tables;
     }
-    return tables;
-  };
+  }, [activeTab, tables, calculateOrderTotal]);
 
+  // Paginação de mesas
   const tablesPerPage = 12;
-  const paginatedTables = () => {
+  const paginatedTables = useCallback(() => {
     const start = currentPage * tablesPerPage;
     return filteredTables().slice(start, start + tablesPerPage);
-  };
+  }, [currentPage, filteredTables]);
 
   const totalPages = Math.ceil(filteredTables().length / tablesPerPage);
 
-  const getTableBadgeColor = (table) => {
+  // Função para obter cor do badge da mesa
+  const getTableBadgeColor = useCallback((table) => {
     if (table.currentOrder) {
       return 'bg-red-100 text-red-800';
     }
     return 'bg-green-100 text-green-800';
-  };
+  }, []);
 
-  const getTableIcon = (table) => {
+  // Função para obter ícone da mesa
+  const getTableIcon = useCallback((table) => {
     if (table.type === 'interna') return '🏠';
     if (table.type === 'externa') return '🌿';
     if (table.type === 'comanda') return '📋';
     return '🪑';
-  };
+  }, []);
 
-  const PremiumHeader = () => (
+  // Função para login
+  const handleLogin = useCallback(async (e) => {
+    e.preventDefault();
+    setIsLoadingAuth(true);
+    setAuthError('');
+    
+    try {
+      const auth = getAuth();
+      await signInWithEmailAndPassword(auth, email, password);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setAuthError('Credenciais inválidas. Por favor, tente novamente.');
+      console.error('Login error:', error);
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  }, [email, password]);
+
+  // Renderização do login
+  const renderLogin = () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Painel Administrativo</h1>
+          <p className="text-gray-600">Faça login para acessar o sistema</p>
+        </div>
+        
+        {authError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {authError}
+          </div>
+        )}
+        
+        <form onSubmit={handleLogin}>
+          <div className="mb-4">
+            <label htmlFor="email" className="block text-gray-700 mb-2">Usuário</label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="admin@example.com"
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label htmlFor="password" className="block text-gray-700 mb-2">Senha</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          
+          <button
+            type="submit"
+            disabled={isLoadingAuth}
+            className="w-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+          >
+            {isLoadingAuth ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Carregando...
+              </>
+            ) : (
+              'Entrar'
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+
+  // Renderização do cabeçalho
+  const renderHeader = () => (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
       <div className="container mx-auto px-4 py-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -1330,6 +1546,16 @@ const addItemToOrder = async () => {
                 <div className={`w-2 h-2 rounded-full ${printerConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 {printerConnected ? 'Impressora Conectada' : 'Conectar Impressora'}
               </button>
+              
+              <button
+                onClick={loadOrderHistory}
+                className="px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-50 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Histórico
+              </button>
             </div>
           </div>
         </div>
@@ -1337,7 +1563,8 @@ const addItemToOrder = async () => {
     </header>
   );
 
-  const TableTabsView = () => (
+  // Renderização das abas de mesas
+  const renderTableTabs = () => (
     <div className="bg-white border-r border-gray-200 md:h-[calc(100vh-4rem)] md:sticky md:top-16 overflow-y-auto">
       <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
         <div className="flex items-center justify-between">
@@ -1353,66 +1580,28 @@ const addItemToOrder = async () => {
         </div>
         
         <div className="flex space-x-2 mt-3 overflow-x-auto pb-2">
-          <button
-            onClick={() => { setActiveTab('all'); setCurrentPage(0); }}
-            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-              activeTab === 'all' 
-                ? 'bg-blue-100 text-blue-800 font-medium' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Todas
-          </button>
-          <button
-            onClick={() => { setActiveTab('active'); setCurrentPage(0); }}
-            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-              activeTab === 'active' 
-                ? 'bg-green-100 text-green-800 font-medium' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Ativas
-          </button>
-          <button
-            onClick={() => { setActiveTab('vip'); setCurrentPage(0); }}
-            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-              activeTab === 'vip' 
-                ? 'bg-amber-100 text-amber-800 font-medium' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            VIP
-          </button>
-          <button
-            onClick={() => { setActiveTab('internas'); setCurrentPage(0); }}
-            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-              activeTab === 'internas' 
-                ? 'bg-blue-100 text-blue-800 font-medium' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Internas
-          </button>
-          <button
-            onClick={() => { setActiveTab('externas'); setCurrentPage(0); }}
-            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-              activeTab === 'externas' 
-                ? 'bg-green-100 text-green-800 font-medium' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Externas
-          </button>
-          <button
-            onClick={() => { setActiveTab('comandas'); setCurrentPage(0); }}
-            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-              activeTab === 'comandas' 
-                ? 'bg-purple-100 text-purple-800 font-medium' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Comandas
-          </button>
+          {['all', 'active', 'vip', 'internas', 'externas', 'comandas'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => { setActiveTab(tab); setCurrentPage(0); }}
+              className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+                activeTab === tab 
+                  ? tab === 'all' ? 'bg-blue-100 text-blue-800 font-medium' :
+                    tab === 'active' ? 'bg-green-100 text-green-800 font-medium' :
+                    tab === 'vip' ? 'bg-amber-100 text-amber-800 font-medium' :
+                    tab === 'internas' ? 'bg-blue-100 text-blue-800 font-medium' :
+                    tab === 'externas' ? 'bg-green-100 text-green-800 font-medium' :
+                    'bg-purple-100 text-purple-800 font-medium'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tab === 'all' ? 'Todas' :
+               tab === 'active' ? 'Ativas' :
+               tab === 'vip' ? 'VIP' :
+               tab === 'internas' ? 'Internas' :
+               tab === 'externas' ? 'Externas' : 'Comandas'}
+            </button>
+          ))}
         </div>
       </div>
       
@@ -1444,7 +1633,7 @@ const addItemToOrder = async () => {
                     {isVIP && hasOrder && (
                       <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         VIP
                       </div>
@@ -1508,121 +1697,898 @@ const addItemToOrder = async () => {
     </div>
   );
 
-  // Login function
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsLoadingAuth(true);
-    setAuthError('');
+  // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
+  const renderHistoryModal = () => {
+    const filteredOrders = filteredHistory();
+    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
+    const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
+    const topItems = {};
+    const topCustomers = {};
+    const revenueByDay = {};
+    const revenueByPaymentMethod = {
+      dinheiro: 0,
+      cartao: 0
+    };
     
-    try {
-      const auth = getAuth();
-      await signInWithEmailAndPassword(auth, email, password);
-      setIsAuthenticated(true);
-    } catch (error) {
-      setAuthError('Credenciais inválidas. Por favor, tente novamente.');
-      console.error('Login error:', error);
-    } finally {
-      setIsLoadingAuth(false);
-    }
-  };
+    filteredOrders.forEach(order => {
+      // Contagem de itens
+      order.items?.forEach(item => {
+        const key = `${item.name}-${item.price.toFixed(2)}`;
+        topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
+      });
+      
+      // Clientes frequentes (para comandas com endereço)
+      if (order.tableType === 'comanda' && order.deliveryAddress) {
+        topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
+      }
 
-  // If not authenticated, show login form
-  if (!isAuthenticated) {
+      // Receita por método de pagamento
+      if (order.paymentMethod === 'dinheiro') {
+        revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
+      } else {
+        revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
+      }
+    });
+    
+    const sortedTopItems = Object.entries(topItems)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    const sortedTopCustomers = Object.entries(topCustomers)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    
+    const sortedRevenueByDay = Object.entries(revenueByDay)
+      .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+      .slice(-7); // Últimos 7 dias
+    
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Painel Administrativo</h1>
-            <p className="text-gray-600">Faça login para acessar o sistema</p>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
+            <button 
+              onClick={() => setShowHistoryModal(false)}
+              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
           
-          {authError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {authError}
-            </div>
-          )}
-          
-          <form onSubmit={handleLogin}>
-            <div className="mb-4">
-              <label htmlFor="email" className="block text-gray-700 mb-2">Usuário</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="admin@example.com"
-                required
-              />
+          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+            {/* Filtros e estatísticas */}
+            <div className="w-full md:w-72 bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setHistoryFilter('all')}
+                      className={`flex-1 py-1 px-3 rounded-lg text-sm ${
+                        historyFilter === 'all' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setHistoryFilter('tables')}
+                      className={`flex-1 py-1 px-3 rounded-lg text-sm ${
+                        historyFilter === 'tables' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Mesas
+                    </button>
+                    <button
+                      onClick={() => setHistoryFilter('comandas')}
+                      className={`flex-1 py-1 px-3 rounded-lg text-sm ${
+                        historyFilter === 'comandas' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Comandas
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">De</label>
+                      <input
+                        type="date"
+                        value={historyDateRange.start.toISOString().split('T')[0]}
+                        onChange={(e) => setHistoryDateRange(prev => ({
+                          ...prev,
+                          start: new Date(e.target.value)
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Até</label>
+                      <input
+                        type="date"
+                        value={historyDateRange.end.toISOString().split('T')[0]}
+                        onChange={(e) => setHistoryDateRange(prev => ({
+                          ...prev,
+                          end: new Date(e.target.value)
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
+                  <input
+                    type="text"
+                    placeholder="Mesa, item, etc."
+                    value={historySearchTerm}
+                    onChange={(e) => setHistorySearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+                
+                <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-3">Estatísticas</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs text-gray-500">Pedidos</div>
+                      <div className="text-lg font-bold">{filteredOrders.length}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Faturação Total</div>
+                      <div className="text-lg font-bold text-green-600">€ {totalRevenue.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Ticket Médio</div>
+                      <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                    </div>
+                  </div>
+                </div>
+                
+                {sortedTopItems.length > 0 && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-3">Itens mais vendidos</h4>
+                    <div className="space-y-2">
+                      {sortedTopItems.map(([item, quantity]) => {
+                        const [name, price] = item.split('-');
+                        return (
+                          <div key={item} className="flex justify-between text-sm">
+                            <div className="truncate flex-1">{name}</div>
+                            <div className="font-medium ml-2">{quantity}x</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {sortedTopCustomers.length > 0 && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-3">Clientes frequentes</h4>
+                    <div className="space-y-2">
+                      {sortedTopCustomers.map(([address, orders]) => (
+                        <div key={address} className="text-sm">
+                          <div className="font-medium truncate">{address}</div>
+                          <div className="text-gray-500 text-xs">{orders} pedidos</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+              </div>
             </div>
             
-            <div className="mb-6">
-              <label htmlFor="password" className="block text-gray-700 mb-2">Senha</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={isLoadingAuth}
-              className="w-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-            >
-              {isLoadingAuth ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Carregando...
-                </>
+            {/* Lista de pedidos */}
+            <div className="flex-1 overflow-y-auto">
+              {historyLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : filteredOrders.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {filteredOrders.map((order) => {
+                    const orderTotal = order.total || calculateOrderTotal(order);
+                    const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
+                    
+                    return (
+                      <div key={order.id} className="p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                                order.tableType === 'comanda' 
+                                  ? 'bg-purple-100 text-purple-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(order.closedAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
+                          </div>
+                        </div>
+                        
+                        {isDelivery && (
+                          <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-block">
+                            🚚 Entrega: {order.deliveryAddress}
+                          </div>
+                        )}
+                        
+                        <div className="mt-2">
+                          <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
+                          <div className="space-y-2">
+                            {order.items?.map(item => (
+                              <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-sm">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-gray-500">{item.quantity}x</span>
+                                  <div>
+                                    <div>{item.name}</div>
+                                    {item.notes && (
+                                      <div className="text-xs text-gray-500">Obs: {item.notes}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-gray-700 font-medium">
+                                  € {(item.price * (item.quantity || 1)).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
-                'Entrar'
+                <div className="text-center py-12 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
+                  <p className="mt-1">Ajuste os filtros para ver os resultados</p>
+                </div>
               )}
-            </button>
-            
-          </form>
+            </div>
+          </div>
         </div>
       </div>
     );
-  }
+  };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {showSuccessNotification && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          {isPrinting ? 'Pedido enviado para impressora!' : 'Operação realizada com sucesso!'}
+  // Renderização do modal para adicionar itens (MODIFICADO)
+  const renderAddItemModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-gray-800">
+            {selectedMenuItem ? selectedMenuItem.name : 'Adicionar Item'}
+          </h3>
           <button 
-            onClick={() => setShowSuccessNotification(false)} 
-            className="ml-4 p-1 rounded-full hover:bg-emerald-600 transition-colors"
+            onClick={() => {
+              setShowAddItemModal(false);
+              setSelectedMenuItem(null);
+              setSearchTerm('');
+              setShowSearchResults(false);
+            }}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-      )}
+        
+        {!selectedMenuItem ? (
+          <div className="p-4">
+            <div className="mb-4 relative">
+              <input
+                type="text"
+                placeholder="Pesquisar item..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              
+              {searchTerm && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setShowSearchResults(false);
+                  }}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            
+            {/* Abas do menu */}
+            <div 
+              ref={menuCategoriesRef}
+              className="flex space-x-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+            >
+              {Object.keys(menu).map(category => (
+                <button
+                  key={category}
+                  onClick={() => {
+                    setActiveMenuTab(category);
+                    if (menuItemsRef.current) {
+                      menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className={`px-3 py-1 text-sm rounded-full whitespace-nowrap flex-shrink-0 ${
+                    activeMenuTab === category 
+                      ? 'bg-blue-100 text-blue-800 font-medium' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
+                </button>
+              ))}
+            </div>
+            
+            {showSearchResults ? (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-gray-700 mb-2">
+                  Resultados para "{searchTerm}"
+                </h4>
+                <div 
+                  ref={menuItemsRef}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                >
+                  {searchResults.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelectedMenuItem(item)}
+                      className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
+                    >
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                        {item.image && (
+                          <img 
+                            src={item.image} 
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">{item.name}</div>
+                        {item.description && (
+                          <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
+                        )}
+                        <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
+                    {activeMenuTab.charAt(0).toUpperCase() + activeMenuTab.slice(1).replace(/([A-Z])/g, ' $1')}
+                  </h4>
+                  <div 
+                    ref={menuItemsRef}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                  >
+                    {menu[activeMenuTab]?.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedMenuItem(item)}
+                        className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
+                      >
+                        <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                          {item.image && (
+                            <img 
+                              src={item.image} 
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">{item.name}</div>
+                          {item.description && (
+                            <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
+                          )}
+                          <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 md:p-6">
+            <button
+              onClick={() => {
+                setSelectedMenuItem(null);
+                setSearchTerm('');
+                setShowSearchResults(false);
+              }}
+              className="flex items-center text-blue-600 mb-4"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Voltar para o menu
+            </button>
+            
+            <div className="flex flex-col md:flex-row gap-6 mb-6">
+              <div className="w-full md:w-1/3">
+                <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square">
+                  {selectedMenuItem.image && (
+                    <img 
+                      src={selectedMenuItem.image} 
+                      alt={selectedMenuItem.name}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex-1">
+                <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
+                {selectedMenuItem.description && (
+                  <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
+                )}
+                
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <label className="block text-gray-700 mb-3 font-medium">Quantidade:</label>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setNewItemQuantity(prev => Math.max(1, prev - 1))}
+                      className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newItemQuantity}
+                      onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="flex-1 text-center border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-medium"
+                    />
+                    <button 
+                      onClick={() => setNewItemQuantity(prev => prev + 1)}
+                      className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-gray-700 mb-2 font-medium">Observações:</label>
+                  <textarea
+                    value={itemNotes[selectedMenuItem.id] || ''}
+                    onChange={(e) => setItemNotes(prev => ({
+                      ...prev,
+                      [selectedMenuItem.id]: e.target.value
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: Sem cebola, bem passado, etc."
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
+                  <span className="font-medium text-gray-700">Subtotal:</span>
+                  <span className="text-xl font-bold text-blue-600">
+                    € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      setSelectedMenuItem(null);
+                      setSearchTerm('');
+                      setShowSearchResults(false);
+                    }}
+                    className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={addItemToOrder}
+                    className="px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+                    disabled={loading}
+                  >
+                    {loading && (
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
-      {(loading || isPrinting) && (
-        <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl shadow-xl flex items-center gap-3">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="font-medium text-gray-700">Processando...</span>
+  // Renderização dos detalhes da mesa
+  const renderTableDetailsModal = () => {
+    const table = tables.find(t => t.id === selectedTable);
+    const tableType = table?.type === 'comanda' ? 'Comanda' : 'Mesa';
+    const tableName = `${tableType} ${selectedTable}`;
+    const isDelivery = table?.type === 'comanda' && selectedOrder?.deliveryAddress;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+          <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-gray-800">{tableName}</h3>
+            <button 
+              onClick={() => {
+                setShowTableDetailsModal(false);
+                setSelectedTable(null);
+              }}
+              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="p-4 overflow-y-auto max-h-[calc(90vh-60px)]">
+            {selectedOrder ? (
+              <>
+                {/* Seção de endereço de entrega (apenas para comandas) */}
+                {table?.type === 'comanda' && (
+                  <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                    <label className="block text-gray-700 mb-1 text-sm font-medium">Endereço de Entrega</label>
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                      placeholder="Endereço completo"
+                    />
+                    <button
+                      onClick={async () => {
+                        try {
+                          const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+                          await update(orderRef, {
+                            deliveryAddress: deliveryAddress,
+                            updatedAt: Date.now()
+                          });
+                        } catch (err) {
+                          setError('Erro ao salvar endereço');
+                          console.error(err);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      Salvar Endereço
+                    </button>
+                  </div>
+                )}
+
+                {/* Seção de itens do pedido */}
+                <div className="space-y-3 mb-6">
+                  {selectedOrder.items?.length > 0 ? (
+                    selectedOrder.items.map((item) => {
+                      const isPrinted = printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed;
+
+                      return (
+                        <div
+                          key={`${item.id}-${item.addedAt || ''}`}
+                          className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border ${
+                            isPrinted
+                              ? 'bg-gray-50 border-gray-200'
+                              : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
+                          } transition-all duration-200`}
+                        >
+                          <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
+                            {!isPrinted && (
+                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                Novo!
+                              </span>
+                            )}
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                              {item.image && (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`font-medium ${
+                                  isPrinted ? 'text-gray-600' : 'text-gray-800'
+                                }`}
+                              >
+                                {item.name}
+                              </p>
+                              {item.description && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  {item.description}
+                                </p>
+                              )}
+                              {item.notes && (
+                                <div className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded">
+                                  <span className="font-semibold">Obs:</span> {item.notes}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between w-full sm:w-auto sm:gap-3">
+                            <div className="flex items-center bg-white rounded-lg px-2 py-1 border border-gray-300">
+                              <button
+                                onClick={() =>
+                                  updateItemQuantity(item.id, (item.quantity || 1) - 1)
+                                }
+                                className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
+                              >
+                                -
+                              </button>
+                              <span className="text-sm font-medium w-6 text-center">
+                                {item.quantity || 1}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  updateItemQuantity(item.id, (item.quantity || 1) + 1)
+                                }
+                                className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            <span className="text-blue-600 font-semibold min-w-[60px] text-right">
+                              € {(item.price * (item.quantity || 1)).toFixed(2)}
+                            </span>
+
+                            <button
+                              onClick={() => removeItemFromOrder(item.id)}
+                              className="text-red-500 hover:text-red-700 p-1 sm:p-2 rounded-full hover:bg-red-50 transition-colors ml-2"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-10 w-10 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1}
+                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        Comanda vazia
+                      </h3>
+                      <p className="text-gray-500 mb-4">Adicione itens para começar</p>
+                      <button
+                        onClick={() => {
+                          setShowAddItemModal(true);
+                          setShowTableDetailsModal(false);
+                        }}
+                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-2 mx-auto"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Adicionar Itens
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {selectedOrder.items?.length > 0 && (
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-lg font-bold text-gray-800">Total:</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        € {(calculateOrderTotal(selectedOrder) + (isDelivery ? 2.50 : 0)).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <button
+                        onClick={() => {
+                          setShowAddItemModal(true);
+                          setShowTableDetailsModal(false);
+                        }}
+                        className="bg-white text-blue-600 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all hover:shadow-md flex items-center justify-center gap-2 border border-gray-200 font-medium"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Adicionar Mais
+                      </button>
+
+                      <button
+                        onClick={printOrder}
+                        disabled={isPrinting || !hasUnprintedItems(selectedOrder)}
+                        className={`px-4 py-3 rounded-lg transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium ${
+                          isPrinting || !hasUnprintedItems(selectedOrder)
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-gradient-to-br from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+                        }`}
+                      >
+                        {isPrinting ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Imprimindo...
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Enviar para Cozinha
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={closeOrder}
+                        disabled={isClosingOrder}
+                        className="px-4 py-3 bg-gradient-to-br from-red-500 to-pink-500 text-white rounded-lg hover:from-red-600 hover:to-pink-600 transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium"
+                      >
+                        {isClosingOrder ? (
+                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        Fechar Comanda
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-10 w-10 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-700 mb-2">
+                  Nenhum pedido ativo
+                </h3>
+                <p className="text-gray-500 mb-4">Comece criando um novo pedido</p>
+                <button
+                  onClick={() => {
+                    setShowAddItemModal(true);
+                    setShowTableDetailsModal(false);
+                  }}
+                  className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-3 mx-auto text-lg"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Criar Novo Pedido
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+    );
+  };
 
-      <PremiumHeader />
-
+  // Renderização do conteúdo principal
+  const renderMainContent = () => (
+    <div className="min-h-screen bg-gray-50">
+      {/* Notificações */}
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1640,330 +2606,23 @@ const addItemToOrder = async () => {
         </div>
       )}
 
+      {/* Loader */}
+      {(loading || isPrinting || isClosingOrder) && (
+        <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl shadow-xl flex items-center gap-3">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="font-medium text-gray-700">Processando...</span>
+          </div>
+        </div>
+      )}
+
+      {renderHeader()}
+
       <div className="container mx-auto flex flex-col md:flex-row">
-        <TableTabsView />
+        {renderTableTabs()}
         
         <main className="flex-1 p-4 bg-gray-50 min-h-[calc(100vh-4rem)]">
-          {selectedTable ? (
-            <div className="space-y-4">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 md:p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-white p-3 rounded-lg shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                          {selectedTable.startsWith('C') ? `Comanda ${selectedTable.substring(1)}` : `Mesa ${selectedTable}`}
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                          {selectedOrder?.items?.length || 0} itens • € {selectedOrder ? calculateOrderTotal(selectedOrder).toFixed(2) : '0.00'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowAddItemModal(true)}
-                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all hover:shadow-md flex items-center gap-2 whitespace-nowrap"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Adicionar Item
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-4 md:p-6">
-                  {selectedOrder ? (
-                    <>
-                      <div className="space-y-3 mb-6">
-                        {selectedOrder.items?.length > 0 ? (
-                          selectedOrder.items.map((item) => {
-                            const isPrinted = printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed;
-
-                            return (
-                                  <div
-                                    key={`${item.id}-${item.addedAt || ''}`}
-                                    className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border ${
-                                      isPrinted
-                                        ? 'bg-gray-50 border-gray-200'
-                                        : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
-                                    } transition-all duration-200`}
-                                  >
-                                <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
-                                  {!isPrinted && (
-                                    <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap flex items-center">
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                      </svg>
-                                      Novo!
-                                    </span>
-                                  )}
-                                  <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                    {item.image && (
-                                      <img
-                                        src={item.image}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p
-                                      className={`font-medium ${
-                                        isPrinted ? 'text-gray-600' : 'text-gray-800'
-                                      }`}
-                                    >
-                                      {item.name}
-                                    </p>
-                                    {item.description && (
-                                      <p className="text-xs text-gray-500 truncate">
-                                        {item.description}
-                                      </p>
-                                    )}
-                                    {item.notes && (
-                                    <div className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded">
-                                      <span className="font-semibold">Obs:</span> {item.notes}
-                                    </div>
-                                  )}
-                                  </div>
-                                </div>
-                                
-
-                                <div className="flex items-center justify-between w-full sm:w-auto sm:gap-3">
-                                  <div className="flex items-center bg-white rounded-lg px-2 py-1 border border-gray-300">
-                                    <button
-                                      onClick={() =>
-                                        updateItemQuantity(item.id, (item.quantity || 1) - 1)
-                                      }
-                                      className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
-                                    >
-                                      -
-                                    </button>
-                                    <span className="text-sm font-medium w-6 text-center">
-                                      {item.quantity || 1}
-                                    </span>
-                                    <button
-                                      onClick={() =>
-                                        updateItemQuantity(item.id, (item.quantity || 1) + 1)
-                                      }
-                                      className="text-gray-500 hover:text-blue-600 w-6 h-6 flex items-center justify-center"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-
-                                  <span className="text-blue-600 font-semibold min-w-[60px] text-right">
-                                      € {(item.price * (item.quantity || 1)).toFixed(2)}
-                                  </span>
-
-                                  <button
-                                    onClick={() => removeItemFromOrder(item.id)}
-                                    className="text-red-500 hover:text-red-700 p-1 sm:p-2 rounded-full hover:bg-red-50 transition-colors ml-2"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-5 w-5"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                      />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="text-center py-8">
-                            <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-10 w-10 text-gray-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1}
-                                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                                />
-                              </svg>
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-700 mb-2">
-                              Comanda vazia
-                            </h3>
-                            <p className="text-gray-500 mb-4">Adicione itens para começar</p>
-                            <button
-                              onClick={() => setShowAddItemModal(true)}
-                              className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-2 mx-auto"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                              </svg>
-                              Adicionar Itens
-                            </button>
-                          </div>
-                          
-                        )}
-                        
-                      </div>
-
-                      {selectedOrder.items?.length > 0 && (
-                        <div className="border-t border-gray-200 pt-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="text-lg font-bold text-gray-800">Total:</span>
-                            <span className="text-2xl font-bold text-blue-600">
-                              € {calculateOrderTotal(selectedOrder).toFixed(2)}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <button
-                              onClick={() => setShowAddItemModal(true)}
-                              className="bg-white text-blue-600 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all hover:shadow-md flex items-center justify-center gap-2 border border-gray-200 font-medium"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                              </svg>
-                              Adicionar Mais
-                            </button>
-
-                            <button
-                              onClick={printOrder}
-                              disabled={isPrinting || !hasUnprintedItems(selectedOrder)}
-                              className={`px-4 py-3 rounded-lg transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium ${
-                                isPrinting || !hasUnprintedItems(selectedOrder)
-                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                  : 'bg-gradient-to-br from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
-                              }`}
-                            >
-                              {isPrinting ? (
-                                <>
-                                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                  Imprimindo...
-                                </>
-                              ) : (
-                                <>
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                  </svg>
-                                  Enviar para Cozinha
-                                </>
-                              )}
-                            </button>
-
-                            <button
-                              onClick={() => setShowCloseConfirmation(true)}
-                              className="bg-gradient-to-br from-red-500 to-pink-500 text-white px-4 py-3 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                              Fechar Comanda
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="bg-gray-100 p-5 rounded-full inline-block mb-4">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-10 w-10 text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1}
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-700 mb-2">
-                        Nenhum pedido ativo
-                      </h3>
-                      <p className="text-gray-500 mb-4">Comece criando um novo pedido</p>
-                      <button
-                        onClick={() => setShowAddItemModal(true)}
-                        className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-3 mx-auto text-lg"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                          />
-                        </svg>
-                        Criar Novo Pedido
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
+          {!selectedTable && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center flex flex-col items-center justify-center h-[60vh]">
               <div className="bg-gray-100 p-6 rounded-full inline-block mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1983,285 +2642,15 @@ const addItemToOrder = async () => {
         </main>
       </div>
   
-      {/* Modal de confirmação para fechar comanda */}
-      {showCloseConfirmation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-red-100 p-2 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">Fechar Comanda</h3>
-              </div>
-              <p className="text-gray-600 mb-6">Tem certeza que deseja fechar esta comanda? Esta ação não pode ser desfeita.</p>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setShowCloseConfirmation(false)}
-                  className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium flex-1"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={closeOrder}
-                  disabled={isClosingOrder}
-                  className="px-4 py-3 bg-gradient-to-br from-red-600 to-pink-600 text-white rounded-lg hover:from-red-700 hover:to-pink-700 transition-colors font-medium flex-1 flex items-center justify-center gap-2"
-                >
-                  {isClosingOrder ? (
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  Confirmar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAddItemModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">
-                {selectedMenuItem ? selectedMenuItem.name : 'Adicionar Item'}
-              </h3>
-              <button 
-                onClick={() => {
-                  setShowAddItemModal(false);
-                  setSelectedMenuItem(null);
-                  setSearchTerm('');
-                  setShowSearchResults(false);
-                }}
-                className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              
-            </div>
-            
-            {!selectedMenuItem ? (
-              <div className="p-4">
-                <div className="mb-4 relative">
-                  <input
-                    type="text"
-                    placeholder="Pesquisar item..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  
-                  {searchTerm && (
-                    <button
-                      onClick={() => {
-                        setSearchTerm('');
-                        setShowSearchResults(false);
-                      }}
-                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                
-                {showSearchResults ? (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-700 mb-2">
-                      Resultados para "{searchTerm}"
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {searchResults.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => setSelectedMenuItem(item)}
-                          className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
-                        >
-                          <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                            {item.image && (
-                              <img 
-                                src={item.image} 
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-800">{item.name}</div>
-                            {item.description && (
-                              <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
-                            )}
-                            <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {Object.entries(menu).map(([category, items]) => (
-                      <div key={category}>
-                        <h4 className="font-semibold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
-                          {category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {items.map(item => (
-                            <button
-                              key={item.id}
-                              onClick={() => setSelectedMenuItem(item)}
-                              className="text-left p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-3 h-full"
-                            >
-                              <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                {item.image && (
-                                  <img 
-                                    src={item.image} 
-                                    alt={item.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-semibold text-gray-800">{item.name}</div>
-                                {item.description && (
-                                  <div className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</div>
-                                )}
-                                <div className="text-blue-600 font-bold text-sm mt-2">€ {item.price.toFixed(2)}</div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-4 md:p-6">
-                <button
-                  onClick={() => {
-                    setSelectedMenuItem(null);
-                    setSearchTerm('');
-                    setShowSearchResults(false);
-                  }}
-                  className="flex items-center text-blue-600 mb-4"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Voltar para o menu
-                </button>
-                
-                <div className="flex flex-col md:flex-row gap-6 mb-6">
-                  <div className="w-full md:w-1/3">
-                    <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square">
-                      {selectedMenuItem.image && (
-                        <img 
-                          src={selectedMenuItem.image} 
-                          alt={selectedMenuItem.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
-                    {selectedMenuItem.description && (
-                      <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
-                    )}
-                    
-                    <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                      <label className="block text-gray-700 mb-3 font-medium">Quantidade:</label>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => setNewItemQuantity(prev => Math.max(1, prev - 1))}
-                          className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          value={newItemQuantity}
-                          onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="flex-1 text-center border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-medium"
-                        />
-                        <button 
-                          onClick={() => setNewItemQuantity(prev => prev + 1)}
-                          className="w-12 h-12 bg-white rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-300 text-xl"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-6">
-                      <label className="block text-gray-700 mb-2 font-medium">Observações:</label>
-                      <textarea
-                        value={itemNotes[selectedMenuItem.id] || ''}
-                        onChange={(e) => setItemNotes(prev => ({
-                          ...prev,
-                          [selectedMenuItem.id]: e.target.value
-                        }))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Ex: Sem cebola, bem passado, etc."
-                        rows={3}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
-                      <span className="font-medium text-gray-700">Subtotal:</span>
-                      <span className="text-xl font-bold text-blue-600">
-                        € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        onClick={() => {
-                          setSelectedMenuItem(null);
-                          setSearchTerm('');
-                          setShowSearchResults(false);
-                        }}
-                        className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={addItemToOrder}
-                        className="px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-                        disabled={loading}
-                      >
-                        {loading && (
-                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
-                        {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Modais */}
+      {showAddItemModal && renderAddItemModal()}
+      {showHistoryModal && renderHistoryModal()}
+      {showTableDetailsModal && renderTableDetailsModal()}
     </div>
   );
+
+  // Renderização condicional
+  return !isAuthenticated ? renderLogin() : renderMainContent();
 };
 
 export default AdminPanel;
