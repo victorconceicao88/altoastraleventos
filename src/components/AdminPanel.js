@@ -904,76 +904,76 @@ const AdminPanel = () => {
   }, [PRINTER_CONFIG, connectToPrinter]);
 
   // Função para formatar recibo
-  const formatReceipt = useCallback((order) => {
-    if (!order || !order.items || order.items.length === 0) return '';
-  
-    const ESC = '\x1B';
-    const GS = '\x1D';
-    const INIT = `${ESC}@`;
-    const CENTER = `${ESC}a1`;
-    const LEFT = `${ESC}a0`;
-    const BOLD_ON = `${ESC}!${String.fromCharCode(8)}`;
-    const BOLD_OFF = `${ESC}!${String.fromCharCode(0)}`;
-    const CUT = `${GS}V0`;
-    const LF = '\x0A';
-    const FEED = '\x1Bd';
-    const DIVIDER = '--------------------------------';
-  
-    let receipt = INIT;
-    receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
-    receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
-    receipt += `${CENTER}${LF}`; // Espaço único após data
-    
-    const table = tables.find(t => t.id === selectedTable);
-    receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
-    
-    const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
-    let total = calculateOrderTotal(order);
-    let deliveryFee = 0;
-    
-    if (isDelivery) {
-      deliveryFee = 2.50;
-      total += deliveryFee;
-      receipt += `${LEFT}Endereço: ${order.deliveryAddress}${LF}${LF}`;
-    }
-    
-    receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
-    receipt += `${LEFT}${DIVIDER}${LF}`;
-    
-    order.items.forEach(item => {
-      receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
-      if (item.description) {
-        receipt += `${LEFT}${item.description}${LF}`;
-      }
-      if (item.notes) {
-        receipt += `${LEFT}OBS: ${item.notes}${LF}`;
-      }
-      receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
-    });
-    
-    if (isDelivery) {
-      receipt += `${LEFT}${DIVIDER}${LF}`;
-      receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
-    }
-    
-    receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
-    
-    if (order.kitchenNotes) {
-      receipt += `${LEFT}${DIVIDER}${LF}`;
-      receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
-      receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
-    }
+const formatReceipt = useCallback((order) => {
+  if (!order || !order.items || order.items.length === 0) return '';
 
-    receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
-    receipt += `${CENTER}Volte sempre${LF}`;
-    receipt += `${LF}${LF}`; // Espaçamento final reduzido
-    receipt += `${FEED}${CUT}`;
+  const ESC = '\x1B';
+  const GS = '\x1D';
+  const INIT = `${ESC}@`;
+  const CENTER = `${ESC}a1`;
+  const LEFT = `${ESC}a0`;
+  const BOLD_ON = `${ESC}!${String.fromCharCode(8)}`;
+  const BOLD_OFF = `${ESC}!${String.fromCharCode(0)}`;
+  const CUT = `${GS}V0`;
+  const LF = '\x0A';
+  const FEED = '\x1Bd';
+  const DIVIDER = '--------------------------------';
+
+  let receipt = INIT;
+  receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
+  receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
+  receipt += `${CENTER}${LF}`;
   
-    return receipt;
-  }, [selectedTable, tables]);
+  const table = tables.find(t => t.id === selectedTable);
+  receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
+  
+  const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
+  let total = calculateOrderTotal(order);
+  let deliveryFee = 0;
+  
+  if (isDelivery) {
+    deliveryFee = 2.50;
+    total += deliveryFee;
+    receipt += `${LEFT}Endereço: ${order.deliveryAddress}${LF}${LF}`;
+  }
+  
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  
+  order.items.forEach(item => {
+    receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
+    if (item.description) {
+      receipt += `${LEFT}${item.description}${LF}`;
+    }
+    if (item.notes) {
+      receipt += `${LEFT}OBS: ${item.notes}${LF}`;
+    }
+    receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
+  });
+  
+  if (isDelivery) {
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
+  }
+  
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
+  
+  if (order.kitchenNotes) {
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
+    receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
+  }
+
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
+  receipt += `${CENTER}Volte sempre${LF}`;
+  receipt += `${LF}`; // Reduzido para apenas 1 linha de espaço
+  receipt += `${CUT}`;
+
+  return receipt;
+}, [selectedTable, tables]);
 
   // Função para marcar itens como impressos
   const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
@@ -1228,79 +1228,88 @@ const AdminPanel = () => {
   }, [selectedTable, selectedOrder]);
 
   // Função simplificada para fechar pedido
-  const closeOrder = useCallback(async () => {
-    if (!selectedTable || !selectedOrder?.id) return;
+const closeOrder = useCallback(async () => {
+  if (!selectedTable || !selectedOrder?.id) return;
+  
+  setIsClosingOrder(true);
+  try {
+    const table = tables.find(t => t.id === selectedTable);
+    let total = calculateOrderTotal(selectedOrder);
     
-    setIsClosingOrder(true);
-    try {
-      const table = tables.find(t => t.id === selectedTable);
-      let total = calculateOrderTotal(selectedOrder);
-      let deliveryFee = 0;
-      
-      if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
-        deliveryFee = 2.50;
-        total += deliveryFee;
-      }
-
-      const orderToClose = {
-        ...selectedOrder,
-        total: total,
-        deliveryFee: deliveryFee,
-        paymentMethod: paymentMethod,
-        closedAt: Date.now(),
-        closedBy: getAuth().currentUser?.email || 'admin'
-      };
-
-      // Adicionar ao histórico
-      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-      await push(historyRef, orderToClose);
-      
-      // Remover pedido atual
-      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      await remove(orderRef);
-      
-      // Atualizar status da mesa/comanda
-      const tableRef = ref(database, `tables/${selectedTable}`);
-      await update(tableRef, {
-        status: 'available'
-      });
-      
-      // Atualizar estado local
-      setTables(prevTables => prevTables.map(table => {
-        if (table.id === selectedTable) {
-          return {
-            ...table,
-            currentOrder: null,
-            status: 'available'
-          };
-        }
-        return table;
-      }));
-      
-      setSelectedOrder(null);
-      setShowTableDetailsModal(false);
-      setDeliveryAddress('');
-    } catch (error) {
-      console.error("Erro ao fechar comanda:", error);
-      setError('Erro ao fechar comanda');
-    } finally {
-      setIsClosingOrder(false);
+    // Verificar se há itens no pedido antes de fechar
+    if (selectedOrder.items?.length === 0) {
+      throw new Error('Não é possível fechar um pedido sem itens');
     }
-  }, [selectedTable, selectedOrder, tables, paymentMethod]);
+    
+    let deliveryFee = 0;
+    
+    if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
+      deliveryFee = 2.50;
+      total += deliveryFee;
+    }
+
+    const orderToClose = {
+      ...selectedOrder,
+      total: total,
+      deliveryFee: deliveryFee,
+      paymentMethod: paymentMethod,
+      closedAt: Date.now(),
+      closedBy: getAuth().currentUser?.email || 'admin',
+      status: 'closed' // Adiciona status para identificar pedidos fechados
+    };
+
+    // Adicionar ao histórico
+    const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
+    await push(historyRef, orderToClose);
+    
+    // Remover pedido atual
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+    await remove(orderRef);
+    
+    // Atualizar status da mesa/comanda
+    const tableRef = ref(database, `tables/${selectedTable}`);
+    await update(tableRef, {
+      status: 'available'
+    });
+    
+    // Atualizar estado local
+    setTables(prevTables => prevTables.map(table => {
+      if (table.id === selectedTable) {
+        return {
+          ...table,
+          currentOrder: null,
+          status: 'available'
+        };
+      }
+      return table;
+    }));
+    
+    setSelectedOrder(null);
+    setShowTableDetailsModal(false);
+    setDeliveryAddress('');
+  } catch (error) {
+    console.error("Erro ao fechar comanda:", error);
+    setError(error.message || 'Erro ao fechar comanda');
+  } finally {
+    setIsClosingOrder(false);
+  }
+}, [selectedTable, selectedOrder, tables, paymentMethod]);
 
   // Função para carregar histórico de pedidos
-  const loadOrderHistory = useCallback(async () => {
-    setHistoryLoading(true);
-    try {
-      const historyRef = ref(database, 'tables');
-      const snapshot = await get(historyRef);
-      const data = snapshot.val() || {};
-      
-      let allOrders = [];
-      
-      Object.entries(data).forEach(([tableId, tableData]) => {
-        if (tableData.ordersHistory) {
-          Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
+const loadOrderHistory = useCallback(async () => {
+  setHistoryLoading(true);
+  try {
+    const historyRef = ref(database, 'tables');
+    const snapshot = await get(historyRef);
+    const data = snapshot.val() || {};
+    
+    let allOrders = [];
+    
+    Object.entries(data).forEach(([tableId, tableData]) => {
+      if (tableData.ordersHistory) {
+        Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
+          // Filtra apenas pedidos com status 'closed' ou que tenham total > 0
+          if (order.status === 'closed' || (order.total && order.total > 0)) {
             allOrders.push({
               ...order,
               id: orderId,
@@ -1308,22 +1317,23 @@ const AdminPanel = () => {
               tableType: tables.find(t => t.id === tableId)?.type || 'comanda',
               closedAt: order.closedAt || Date.now()
             });
-          });
-        }
-      });
-      
-      // Ordenar por data de fechamento (mais recente primeiro)
-      allOrders.sort((a, b) => b.closedAt - a.closedAt);
-      
-      setOrderHistory(allOrders);
-      setShowHistoryModal(true);
-    } catch (err) {
-      console.error("Erro ao carregar histórico:", err);
-      setError('Erro ao carregar histórico de pedidos');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [tables]);
+          }
+        });
+      }
+    });
+    
+    // Ordenar por data de fechamento (mais recente primeiro)
+    allOrders.sort((a, b) => b.closedAt - a.closedAt);
+    
+    setOrderHistory(allOrders);
+    setShowHistoryModal(true);
+  } catch (err) {
+    console.error("Erro ao carregar histórico:", err);
+    setError('Erro ao carregar histórico de pedidos');
+  } finally {
+    setHistoryLoading(false);
+  }
+}, [tables]);
 
   // Função para filtrar histórico
   const filteredHistory = useCallback(() => {
@@ -1838,25 +1848,22 @@ const AdminPanel = () => {
                   />
                 </div>
                 
-                <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                  <h4 className="font-medium text-gray-700 mb-3">Estatísticas</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-xs text-gray-500">Pedidos</div>
-                      <div className="text-lg font-bold">{filteredOrders.length}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Faturação Total</div>
-                      <div className="text-lg font-bold text-green-600">€ {totalRevenue.toFixed(2)}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Ticket Médio</div>
-                      <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white p-4 border-b border-gray-200">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="text-xs text-blue-600 font-medium">Pedidos</div>
+                        <div className="text-xl font-bold">{filteredOrders.length}</div>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <div className="text-xs text-green-600 font-medium">Faturação Total</div>
+                        <div className="text-xl font-bold text-green-600">€ {totalRevenue.toFixed(2)}</div>
+                      </div>
+                      <div className="bg-purple-50 p-3 rounded-lg">
+                        <div className="text-xs text-purple-600 font-medium">Ticket Médio</div>
+                        <div className="text-xl font-bold">€ {averageOrderValue.toFixed(2)}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
                 
                 {sortedTopItems.length > 0 && (
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
@@ -2266,37 +2273,6 @@ const AdminPanel = () => {
           <div className="p-4 overflow-y-auto max-h-[calc(90vh-60px)]">
             {selectedOrder ? (
               <>
-                {/* Seção de endereço de entrega (apenas para comandas) */}
-                {table?.type === 'comanda' && (
-                  <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                    <label className="block text-gray-700 mb-1 text-sm font-medium">Endereço de Entrega</label>
-                    <input
-                      type="text"
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
-                      placeholder="Endereço completo"
-                    />
-                    <button
-                      onClick={async () => {
-                        try {
-                          const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-                          await update(orderRef, {
-                            deliveryAddress: deliveryAddress,
-                            updatedAt: Date.now()
-                          });
-                        } catch (err) {
-                          setError('Erro ao salvar endereço');
-                          console.error(err);
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    >
-                      Salvar Endereço
-                    </button>
-                  </div>
-                )}
-
                 {/* Seção de itens do pedido */}
                 <div className="space-y-3 mb-6">
                   {selectedOrder.items?.length > 0 ? (
