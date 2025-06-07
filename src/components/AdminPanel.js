@@ -941,7 +941,7 @@ const formatReceipt = useCallback((order) => {
   if (isDelivery) {
     deliveryFee = 2.50;
     total += deliveryFee;
-    receipt += `${LEFT}Endereço: ${order.deliveryAddress}${LF}${LF}`;
+    receipt += `${LEFT}Endereco: ${order.deliveryAddress}${LF}${LF}`;
   }
   
   receipt += `${LEFT}${DIVIDER}${LF}`;
