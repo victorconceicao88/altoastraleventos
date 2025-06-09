@@ -123,6 +123,7 @@ const AdminPanel = () => {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historySearchTerm, setHistorySearchTerm] = useState('');
+  const [sentItems, setSentItems] = useState({});
   const [historyDateRange, setHistoryDateRange] = useState({
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
@@ -983,41 +984,47 @@ const formatReceipt = useCallback((order) => {
 }, [selectedTable, tables]);
 
   // Função para marcar itens como impressos
-  const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
-    try {
-      const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
-      
-      const newPrintedItems = {...printedItems};
-      items.forEach(item => {
-        newPrintedItems[`${tableId}-${item.id}-${item.addedAt}`] = true;
-      });
-      setPrintedItems(newPrintedItems);
-  
-      const currentOrderSnapshot = await get(orderRef);
-      const currentOrder = currentOrderSnapshot.val();
-      
-      const updatedItems = currentOrder.items.map(orderItem => {
-        const wasPrinted = items.some(
-          printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
-        );
-        return wasPrinted ? { ...orderItem, printed: true } : orderItem;
-      });
-  
-      await update(orderRef, {
-        items: updatedItems,
-        updatedAt: Date.now()
-      });
-  
-    } catch (err) {
-      console.error("Erro ao marcar itens como impressos:", err);
-      const revertedPrintedItems = {...printedItems};
-      items.forEach(item => {
-        delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
-      });
-      setPrintedItems(revertedPrintedItems);
-      throw err;
-    }
-  }, [printedItems]);
+const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
+  try {
+    const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
+    
+    const newPrintedItems = {...printedItems};
+    const newSentItems = {...sentItems};
+    
+    items.forEach(item => {
+      const itemKey = `${tableId}-${item.id}-${item.addedAt}`;
+      newPrintedItems[itemKey] = true;
+      newSentItems[itemKey] = true;
+    });
+    
+    setPrintedItems(newPrintedItems);
+    setSentItems(newSentItems);
+
+    const currentOrderSnapshot = await get(orderRef);
+    const currentOrder = currentOrderSnapshot.val();
+    
+    const updatedItems = currentOrder.items.map(orderItem => {
+      const wasPrinted = items.some(
+        printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
+      );
+      return wasPrinted ? { ...orderItem, printed: true } : orderItem;
+    });
+
+    await update(orderRef, {
+      items: updatedItems,
+      updatedAt: Date.now()
+    });
+
+  } catch (err) {
+    console.error("Erro ao marcar itens como impressos:", err);
+    const revertedPrintedItems = {...printedItems};
+    items.forEach(item => {
+      delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
+    });
+    setPrintedItems(revertedPrintedItems);
+    throw err;
+  }
+}, [printedItems, sentItems]);
 
   // Função para imprimir pedido
   const printOrder = useCallback(async () => {
@@ -1104,44 +1111,47 @@ const formatReceipt = useCallback((order) => {
   }, [selectedTable, deliveryAddress]);
 
   // Função para adicionar item ao pedido (MODIFICADA)
-  const addItemToOrder = useCallback(async () => {
-    if (!selectedTable || !selectedMenuItem) return;
+const addItemToOrder = useCallback(async () => {
+  if (!selectedTable || !selectedMenuItem) return;
 
-    setLoading(true);
-    try {
-      let orderRef;
-      let orderData;
+  setLoading(true);
+  try {
+    let orderRef;
+    let orderData;
+    
+    if (selectedOrder?.id) {
+      // Limpa os itens enviados quando um novo item é adicionado
+      setSentItems({});
       
-      if (selectedOrder?.id) {
-        orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-        const currentItems = selectedOrder.items || [];
-        
-        orderData = {
-          items: [...currentItems, {
-            ...selectedMenuItem,
-            quantity: newItemQuantity,
-            addedAt: Date.now(),
-            printed: false,
-            notes: itemNotes[selectedMenuItem.id] || ''
-          }],
-          updatedAt: Date.now(),
-          deliveryAddress: deliveryAddress
-        };
-      } else {
-        orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-        orderData = {
-          items: [{
-            ...selectedMenuItem,
-            quantity: newItemQuantity,
-            addedAt: Date.now(),
-            printed: false,
-            notes: itemNotes[selectedMenuItem.id] || ''
-          }],
-          status: 'open',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          tableId: selectedTable,
-          deliveryAddress: deliveryAddress
+      orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+      const currentItems = selectedOrder.items || [];
+      
+      orderData = {
+        items: [...currentItems, {
+          ...selectedMenuItem,
+          quantity: newItemQuantity,
+          addedAt: Date.now(),
+          printed: false,
+          notes: itemNotes[selectedMenuItem.id] || ''
+        }],
+        updatedAt: Date.now(),
+        deliveryAddress: deliveryAddress
+      };
+    } else {
+      orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+      orderData = {
+        items: [{
+          ...selectedMenuItem,
+          quantity: newItemQuantity,
+          addedAt: Date.now(),
+          printed: false,
+          notes: itemNotes[selectedMenuItem.id] || ''
+        }],
+        status: 'open',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        tableId: selectedTable,
+        deliveryAddress: deliveryAddress
         };
       }
 
@@ -1402,13 +1412,13 @@ const filteredHistory = useCallback(() => {
   }, []);
 
   // Função para verificar itens não impressos
-  const hasUnprintedItems = useCallback((order) => {
-    if (!order?.items) return false;
-    return order.items.some(item => {
-      const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-      return !printedItems[itemKey] && !item.printed;
-    });
-  }, [selectedTable, printedItems]);
+const hasUnprintedItems = useCallback((order) => {
+  if (!order?.items) return false;
+  return order.items.some(item => {
+    const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+    return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
+  });
+}, [selectedTable, printedItems, sentItems]);
 
   // Função para filtrar mesas
   const filteredTables = useCallback(() => {
@@ -2498,7 +2508,7 @@ const renderHistoryModal = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
-                            Enviar para Cozinha
+                            {hasUnprintedItems(selectedOrder) ? 'Enviar para Cozinha' : 'Enviado'}
                           </>
                         )}
                       </button>
