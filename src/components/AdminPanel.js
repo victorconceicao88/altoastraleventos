@@ -137,6 +137,7 @@ const AdminPanel = () => {
   const [currentQrOrder, setCurrentQrOrder] = useState(null);
   const audioRef = useRef(null);
   const notificationTimeoutRef = useRef(null);
+  const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -715,46 +716,76 @@ const AdminPanel = () => {
     };
   }, [showQrNotification]);
 
-  // Função para lidar com novo pedido via QR Code
-const handleNewQrOrder = useCallback((order) => {
-  // Tentar tocar o som de notificação
-  const playSound = async () => {
+  // Solicitar permissão para áudio no login
+  const requestAudioPermission = useCallback(async () => {
     try {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0; // Reinicia o áudio se já estiver tocando
-        await audioRef.current.play();
-      }
+      // Tentar reproduzir um áudio silencioso para ativar a permissão
+      const audio = new Audio();
+      audio.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+      audio.volume = 0;
+      await audio.play();
+      await audio.pause();
+      setAudioPermissionGranted(true);
     } catch (err) {
-      console.error("Erro ao tocar som de notificação:", err);
+      console.error('Erro ao solicitar permissão de áudio:', err);
+      setAudioPermissionGranted(false);
     }
-  };
-  
-  playSound();
-  
-  // Mostrar notificação
-  setCurrentQrOrder(order);
-  setShowQrNotification(true);
-  
-  // Atualizar a mesa correspondente
-  setTables(prevTables => prevTables.map(table => {
-    if (table.id === order.tableId) {
-      return {
-        ...table,
-        currentOrder: {
-          id: order.id,
-          items: order.items,
-          status: 'open',
-          createdAt: order.createdAt,
-          updatedAt: order.createdAt,
-          tableId: order.tableId,
-          deliveryAddress: order.deliveryAddress || ''
-        },
-        status: 'occupied'
-      };
+  }, []);
+
+  // Função para lidar com novo pedido via QR Code
+  const handleNewQrOrder = useCallback(async (order) => {
+    // Tentar tocar o som de notificação
+    const playSound = async () => {
+      try {
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0; // Reinicia o áudio se já estiver tocando
+          audioRef.current.volume = 1.0;
+          await audioRef.current.play().catch(e => {
+            console.error('Erro ao reproduzir som:', e);
+            // Se falhar, tentar solicitar permissão novamente
+            requestAudioPermission();
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao tocar som de notificação:", err);
+      }
+    };
+    
+    // Verificar se temos permissão para tocar o som
+    if (audioPermissionGranted) {
+      playSound();
+    } else {
+      // Tentar obter permissão
+      await requestAudioPermission();
+      if (audioPermissionGranted) {
+        playSound();
+      }
     }
-    return table;
-  }));
-}, []);
+    
+    // Mostrar notificação
+    setCurrentQrOrder(order);
+    setShowQrNotification(true);
+    
+    // Atualizar a mesa correspondente
+    setTables(prevTables => prevTables.map(table => {
+      if (table.id === order.tableId) {
+        return {
+          ...table,
+          currentOrder: {
+            id: order.id,
+            items: order.items,
+            status: 'open',
+            createdAt: order.createdAt,
+            updatedAt: order.createdAt,
+            tableId: order.tableId,
+            deliveryAddress: order.deliveryAddress || ''
+          },
+          status: 'occupied'
+        };
+      }
+      return table;
+    }));
+  }, [audioPermissionGranted, requestAudioPermission]);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -1575,32 +1606,37 @@ const handleNewQrOrder = useCallback((order) => {
       const auth = getAuth();
       await signInWithEmailAndPassword(auth, email, password);
       setIsAuthenticated(true);
+      // Solicitar permissão para áudio após login
+      await requestAudioPermission();
     } catch (error) {
       setAuthError('Credenciais inválidas. Por favor, tente novamente.');
       console.error('Login error:', error);
     } finally {
       setIsLoadingAuth(false);
     }
-  }, [email, password]);
+  }, [email, password, requestAudioPermission]);
 
   // Função para fechar notificação de QR Code
-const closeQrNotification = useCallback((viewDetails = false) => {
-  if (viewDetails && currentQrOrder) {
-    // Se o usuário clicou em "Ver Detalhes", seleciona a mesa e abre o modal
-    setSelectedTable(currentQrOrder.tableId);
-    setShowTableDetailsModal(true);
-  }
-  
-  // Fecha a notificação e limpa o estado
-  setShowQrNotification(false);
-  setCurrentQrOrder(null);
-  
-  // Limpa o timeout se existir
-  if (notificationTimeoutRef.current) {
-    clearTimeout(notificationTimeoutRef.current);
-    notificationTimeoutRef.current = null;
-  }
-}, [currentQrOrder]);
+  const closeQrNotification = useCallback((viewDetails = false) => {
+    if (viewDetails && currentQrOrder) {
+      // Se o usuário clicou em "Ver Detalhes", seleciona a mesa e abre o modal
+      setSelectedTable(currentQrOrder.tableId);
+      setShowTableDetailsModal(true);
+      setShowQrNotification(false);
+    } else {
+      // Fecha apenas a notificação
+      setShowQrNotification(false);
+    }
+    
+    // Limpa o pedido atual
+    setCurrentQrOrder(null);
+    
+    // Limpa o timeout se existir
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+      notificationTimeoutRef.current = null;
+    }
+  }, [currentQrOrder]);
 
   // Renderização do login
   const renderLogin = () => (
@@ -2125,7 +2161,7 @@ const closeQrNotification = useCallback((viewDetails = false) => {
         </div>
       </div>
     );
-};
+  };
 
   // Renderização do modal para adicionar itens
   const renderAddItemModal = () => (
@@ -2725,7 +2761,7 @@ const closeQrNotification = useCallback((viewDetails = false) => {
               <h3 className="text-lg font-bold text-white">Novo Pedido via QR Code</h3>
             </div>
             <button 
-              onClick={closeQrNotification}
+              onClick={() => closeQrNotification()}
               className="text-white hover:text-blue-200 p-1 rounded-full"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2779,12 +2815,12 @@ const closeQrNotification = useCallback((viewDetails = false) => {
                 </svg>
                 Ver Detalhes
               </button>
-            <button
-              onClick={() => closeQrNotification()} // Não passa parâmetro (viewDetails = false)
-              className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-            >
-              Fechar
-            </button>
+              <button
+                onClick={() => closeQrNotification()} // Não passa parâmetro (viewDetails = false)
+                className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>
@@ -2800,15 +2836,12 @@ const closeQrNotification = useCallback((viewDetails = false) => {
         ref={audioRef} 
         src={notificationSound} 
         preload="auto"
-        // Adicione isso para contornar políticas de autoplay
-        muted={false}
-        loop={false}
       />
       {/* Notificações */}
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 0v6m0-6h.01M12 9h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 0v6m0-6h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
           </svg>
           {error}
           <button 
