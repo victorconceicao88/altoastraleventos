@@ -130,6 +130,7 @@ const AdminPanel = () => {
   });
   const [newOrders, setNewOrders] = useState([]);
   const [showNewOrdersNotification, setShowNewOrdersNotification] = useState(false);
+  const [pulseElements, setPulseElements] = useState({});
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -605,6 +606,21 @@ const AdminPanel = () => {
                 item: item,
                 timestamp: item.addedAt || Date.now()
               });
+              
+              // Adicionar efeito de pulso para novos itens
+              setPulseElements(prev => ({
+                ...prev,
+                [itemKey]: true
+              }));
+              
+              // Remover o efeito após 30 segundos
+              setTimeout(() => {
+                setPulseElements(prev => {
+                  const newState = {...prev};
+                  delete newState[itemKey];
+                  return newState;
+                });
+              }, 30000);
             }
           });
         }
@@ -1838,7 +1854,7 @@ const AdminPanel = () => {
   );
 
   // Renderização do modal de histórico
- const renderHistoryModal = () => {
+  const renderHistoryModal = () => {
     const filteredOrders = filteredHistory();
     const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
     const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
@@ -2408,6 +2424,8 @@ const AdminPanel = () => {
                   {selectedOrder.items?.length > 0 ? (
                     selectedOrder.items.map((item) => {
                       const isPrinted = printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed;
+                      const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+                      const isPulsing = pulseElements[itemKey];
 
                       return (
                         <div
@@ -2416,17 +2434,29 @@ const AdminPanel = () => {
                             isPrinted
                               ? 'bg-gray-50 border-gray-200'
                               : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
-                          } transition-all duration-200`}
+                          } transition-all duration-200 relative overflow-hidden`}
                         >
+                          {/* Efeito de pulso para novos itens */}
+                          {isPulsing && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-100/30 to-yellow-100/30 animate-pulse"></div>
+                          )}
+                          
+                          {/* Efeito de borda pulsante */}
+                          {isPulsing && (
+                            <div className="absolute inset-0 border-2 border-amber-400 rounded-lg animate-ping opacity-30 pointer-events-none"></div>
+                          )}
+                          
+                          {/* Ícone de alerta para novos itens */}
+                          {!isPrinted && (
+                            <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center z-10">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                              </svg>
+                              Novo!
+                            </div>
+                          )}
+                          
                           <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
-                            {!isPrinted && (
-                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-0.5 rounded-full whitespace-nowrap flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                                </svg>
-                                Novo!
-                              </span>
-                            )}
                             <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                               {item.image && (
                                 <img
@@ -2691,7 +2721,6 @@ const AdminPanel = () => {
     );
   };
 
-  // Renderização do conteúdo principal
   // Renderização do conteúdo principal
   const renderMainContent = () => (
     <div className="min-h-screen bg-gray-50">
