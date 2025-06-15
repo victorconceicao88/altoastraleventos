@@ -84,6 +84,9 @@ import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
 
+// Importação do som de notificação
+import notificationSound from '../assets/notification.mp3';
+
 const AdminPanel = () => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -128,6 +131,13 @@ const AdminPanel = () => {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
+
+  // Novos estados para notificação de pedidos via QR Code
+  const [qrCodeOrders, setQrCodeOrders] = useState([]);
+  const [showQrNotification, setShowQrNotification] = useState(false);
+  const [currentQrOrder, setCurrentQrOrder] = useState(null);
+  const audioRef = useRef(null);
+  const notificationTimeoutRef = useRef(null);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -657,6 +667,86 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, [isAuthenticated, selectedTable, printedItems]);
 
+  // Efeito para monitorar pedidos via QR Code
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const qrOrdersRef = ref(database, 'qrCodeOrders');
+    const unsubscribe = onValue(qrOrdersRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const qrOrders = Object.entries(data).map(([id, order]) => ({
+        id,
+        ...order,
+        createdAt: order.createdAt || Date.now()
+      }));
+
+      setQrCodeOrders(qrOrders);
+
+      // Verificar se há novos pedidos
+      if (qrOrders.length > 0) {
+        const latestOrder = qrOrders[qrOrders.length - 1];
+        
+        // Verificar se é um pedido novo (últimos 5 segundos)
+        if (Date.now() - latestOrder.createdAt < 5000) {
+          handleNewQrOrder(latestOrder);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated]);
+
+  // Efeito para limpar notificação após 10 segundos
+  useEffect(() => {
+    if (showQrNotification) {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+      
+      notificationTimeoutRef.current = setTimeout(() => {
+        setShowQrNotification(false);
+        setCurrentQrOrder(null);
+      }, 10000);
+    }
+
+    return () => {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+    };
+  }, [showQrNotification]);
+
+  // Função para lidar com novo pedido via QR Code
+  const handleNewQrOrder = useCallback((order) => {
+    // Tocar som de notificação
+    if (audioRef.current) {
+      audioRef.current.play().catch(e => console.log("Erro ao tocar som:", e));
+    }
+    
+    // Mostrar notificação
+    setCurrentQrOrder(order);
+    setShowQrNotification(true);
+    
+    // Atualizar a mesa correspondente para refletir o pedido
+    setTables(prevTables => prevTables.map(table => {
+      if (table.id === order.tableId) {
+        return {
+          ...table,
+          currentOrder: {
+            id: order.id,
+            items: order.items,
+            status: 'open',
+            createdAt: order.createdAt,
+            updatedAt: order.createdAt,
+            tableId: order.tableId
+          },
+          status: 'occupied'
+        };
+      }
+      return table;
+    }));
+  }, []);
+
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
     if (!selectedTable || !order?.id) return;
@@ -912,119 +1002,119 @@ const AdminPanel = () => {
   }, [PRINTER_CONFIG, connectToPrinter]);
 
   // Função para formatar recibo
-const formatReceipt = useCallback((order) => {
-  if (!order || !order.items || order.items.length === 0) return '';
+  const formatReceipt = useCallback((order) => {
+    if (!order || !order.items || order.items.length === 0) return '';
 
-  const ESC = '\x1B';
-  const GS = '\x1D';
-  const INIT = `${ESC}@`;
-  const CENTER = `${ESC}a1`;
-  const LEFT = `${ESC}a0`;
-  const BOLD_ON = `${ESC}!${String.fromCharCode(8)}`;
-  const BOLD_OFF = `${ESC}!${String.fromCharCode(0)}`;
-  const CUT = `${GS}V0`;
-  const LF = '\x0A';
-  const FEED = '\x1Bd';
-  const DIVIDER = '--------------------------------';
+    const ESC = '\x1B';
+    const GS = '\x1D';
+    const INIT = `${ESC}@`;
+    const CENTER = `${ESC}a1`;
+    const LEFT = `${ESC}a0`;
+    const BOLD_ON = `${ESC}!${String.fromCharCode(8)}`;
+    const BOLD_OFF = `${ESC}!${String.fromCharCode(0)}`;
+    const CUT = `${GS}V0`;
+    const LF = '\x0A';
+    const FEED = '\x1Bd';
+    const DIVIDER = '--------------------------------';
 
-  let receipt = INIT;
-  receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
-  receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
-  receipt += `${CENTER}${LF}`;
-  
-  const table = tables.find(t => t.id === selectedTable);
-  receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
-  
-  const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
-  let total = calculateOrderTotal(order);
-  let deliveryFee = 0;
-  
-  if (isDelivery) {
-    deliveryFee = 2.50;
-    total += deliveryFee;
-    receipt += `${LEFT}Endereco: ${order.deliveryAddress}${LF}${LF}`;
-  }
-  
-  receipt += `${LEFT}${DIVIDER}${LF}`;
-  receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
-  receipt += `${LEFT}${DIVIDER}${LF}`;
-  
-  order.items.forEach(item => {
-    receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
-    if (item.description) {
-      receipt += `${LEFT}${item.description}${LF}`;
+    let receipt = INIT;
+    receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
+    receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
+    receipt += `${CENTER}${LF}`;
+    
+    const table = tables.find(t => t.id === selectedTable);
+    receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
+    
+    const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
+    let total = calculateOrderTotal(order);
+    let deliveryFee = 0;
+    
+    if (isDelivery) {
+      deliveryFee = 2.50;
+      total += deliveryFee;
+      receipt += `${LEFT}Endereco: ${order.deliveryAddress}${LF}${LF}`;
     }
-    if (item.notes) {
-      receipt += `${LEFT}OBS: ${item.notes}${LF}`;
+    
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
+    receipt += `${LEFT}${DIVIDER}${LF}`;
+    
+    order.items.forEach(item => {
+      receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
+      if (item.description) {
+        receipt += `${LEFT}${item.description}${LF}`;
+      }
+      if (item.notes) {
+        receipt += `${LEFT}OBS: ${item.notes}${LF}`;
+      }
+      receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
+    });
+    
+    if (isDelivery) {
+      receipt += `${LEFT}${DIVIDER}${LF}`;
+      receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
     }
-    receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
-  });
-  
-  if (isDelivery) {
+    
     receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
-  }
-  
-  receipt += `${LEFT}${DIVIDER}${LF}`;
-  receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
-  
-  if (order.kitchenNotes) {
+    receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
+    
+    if (order.kitchenNotes) {
+      receipt += `${LEFT}${DIVIDER}${LF}`;
+      receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
+      receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
+    }
+
     receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
-    receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
-  }
+    receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
+    receipt += `${CENTER}Volte sempre${LF}`;
+    receipt += `${LF}`; // Reduzido para apenas 1 linha de espaço
+    receipt += `${CUT}`;
 
-  receipt += `${LEFT}${DIVIDER}${LF}`;
-  receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
-  receipt += `${CENTER}Volte sempre${LF}`;
-  receipt += `${LF}`; // Reduzido para apenas 1 linha de espaço
-  receipt += `${CUT}`;
-
-  return receipt;
-}, [selectedTable, tables]);
+    return receipt;
+  }, [selectedTable, tables]);
 
   // Função para marcar itens como impressos
-const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
-  try {
-    const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
-    
-    const newPrintedItems = {...printedItems};
-    const newSentItems = {...sentItems};
-    
-    items.forEach(item => {
-      const itemKey = `${tableId}-${item.id}-${item.addedAt}`;
-      newPrintedItems[itemKey] = true;
-      newSentItems[itemKey] = true;
-    });
-    
-    setPrintedItems(newPrintedItems);
-    setSentItems(newSentItems);
+  const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
+    try {
+      const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
+      
+      const newPrintedItems = {...printedItems};
+      const newSentItems = {...sentItems};
+      
+      items.forEach(item => {
+        const itemKey = `${tableId}-${item.id}-${item.addedAt}`;
+        newPrintedItems[itemKey] = true;
+        newSentItems[itemKey] = true;
+      });
+      
+      setPrintedItems(newPrintedItems);
+      setSentItems(newSentItems);
 
-    const currentOrderSnapshot = await get(orderRef);
-    const currentOrder = currentOrderSnapshot.val();
-    
-    const updatedItems = currentOrder.items.map(orderItem => {
-      const wasPrinted = items.some(
-        printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
-      );
-      return wasPrinted ? { ...orderItem, printed: true } : orderItem;
-    });
+      const currentOrderSnapshot = await get(orderRef);
+      const currentOrder = currentOrderSnapshot.val();
+      
+      const updatedItems = currentOrder.items.map(orderItem => {
+        const wasPrinted = items.some(
+          printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
+        );
+        return wasPrinted ? { ...orderItem, printed: true } : orderItem;
+      });
 
-    await update(orderRef, {
-      items: updatedItems,
-      updatedAt: Date.now()
-    });
+      await update(orderRef, {
+        items: updatedItems,
+        updatedAt: Date.now()
+      });
 
-  } catch (err) {
-    console.error("Erro ao marcar itens como impressos:", err);
-    const revertedPrintedItems = {...printedItems};
-    items.forEach(item => {
-      delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
-    });
-    setPrintedItems(revertedPrintedItems);
-    throw err;
-  }
-}, [printedItems, sentItems]);
+    } catch (err) {
+      console.error("Erro ao marcar itens como impressos:", err);
+      const revertedPrintedItems = {...printedItems};
+      items.forEach(item => {
+        delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
+      });
+      setPrintedItems(revertedPrintedItems);
+      throw err;
+    }
+  }, [printedItems, sentItems]);
 
   // Função para imprimir pedido
   const printOrder = useCallback(async () => {
@@ -1110,87 +1200,87 @@ const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
     }
   }, [selectedTable, deliveryAddress]);
 
-  // Função para adicionar item ao pedido (MODIFICADA)
-const addItemToOrder = useCallback(async () => {
-  if (!selectedTable || !selectedMenuItem) return;
+  // Função para adicionar item ao pedido
+  const addItemToOrder = useCallback(async () => {
+    if (!selectedTable || !selectedMenuItem) return;
 
-  setLoading(true);
-  try {
-    let orderRef;
-    let orderData;
-    
-    if (selectedOrder?.id) {
-      // Limpa os itens enviados quando um novo item é adicionado
-      setSentItems({});
+    setLoading(true);
+    try {
+      let orderRef;
+      let orderData;
       
-      orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      const currentItems = selectedOrder.items || [];
-      
-      orderData = {
-        items: [...currentItems, {
-          ...selectedMenuItem,
-          quantity: newItemQuantity,
-          addedAt: Date.now(),
-          printed: false,
-          notes: itemNotes[selectedMenuItem.id] || ''
-        }],
-        updatedAt: Date.now(),
-        deliveryAddress: deliveryAddress
-      };
-    } else {
-      orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-      orderData = {
-        items: [{
-          ...selectedMenuItem,
-          quantity: newItemQuantity,
-          addedAt: Date.now(),
-          printed: false,
-          notes: itemNotes[selectedMenuItem.id] || ''
-        }],
-        status: 'open',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        tableId: selectedTable,
-        deliveryAddress: deliveryAddress
-        };
-      }
-
       if (selectedOrder?.id) {
-        await update(orderRef, orderData);
-      } else {
-        const newOrderRef = await push(orderRef, orderData);
-        setSelectedOrder({ id: newOrderRef.key, ...orderData });
+        // Limpa os itens enviados quando um novo item é adicionado
+        setSentItems({});
         
-        // Atualizar status da mesa/comanda
-        const tableRef = ref(database, `tables/${selectedTable}`);
-        await update(tableRef, {
-          status: 'occupied'
-        });
-      }
+        orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+        const currentItems = selectedOrder.items || [];
+        
+        orderData = {
+          items: [...currentItems, {
+            ...selectedMenuItem,
+            quantity: newItemQuantity,
+            addedAt: Date.now(),
+            printed: false,
+            notes: itemNotes[selectedMenuItem.id] || ''
+          }],
+          updatedAt: Date.now(),
+          deliveryAddress: deliveryAddress
+        };
+      } else {
+        orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+        orderData = {
+          items: [{
+            ...selectedMenuItem,
+            quantity: newItemQuantity,
+            addedAt: Date.now(),
+            printed: false,
+            notes: itemNotes[selectedMenuItem.id] || ''
+          }],
+          status: 'open',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          tableId: selectedTable,
+          deliveryAddress: deliveryAddress
+          };
+        }
 
-      // Resetar estado sem fechar o modal
-      setSelectedMenuItem(null);
-      setNewItemQuantity(1);
-      setItemNotes(prev => ({
-        ...prev,
-        [selectedMenuItem.id]: ''
-      }));
-      
-      // Scroll para o topo do menu de categorias
-      if (menuCategoriesRef.current) {
-        menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        if (selectedOrder?.id) {
+          await update(orderRef, orderData);
+        } else {
+          const newOrderRef = await push(orderRef, orderData);
+          setSelectedOrder({ id: newOrderRef.key, ...orderData });
+          
+          // Atualizar status da mesa/comanda
+          const tableRef = ref(database, `tables/${selectedTable}`);
+          await update(tableRef, {
+            status: 'occupied'
+          });
+        }
+
+        // Resetar estado sem fechar o modal
+        setSelectedMenuItem(null);
+        setNewItemQuantity(1);
+        setItemNotes(prev => ({
+          ...prev,
+          [selectedMenuItem.id]: ''
+        }));
+        
+        // Scroll para o topo do menu de categorias
+        if (menuCategoriesRef.current) {
+          menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        if (menuItemsRef.current) {
+          menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+      } catch (err) {
+        setError('Erro ao adicionar item');
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      if (menuItemsRef.current) {
-        menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      
-    } catch (err) {
-      setError('Erro ao adicionar item');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
+    }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
 
   // Função para remover item do pedido
   const removeItemFromOrder = useCallback(async (itemId) => {
@@ -1245,158 +1335,158 @@ const addItemToOrder = useCallback(async () => {
   }, [selectedTable, selectedOrder]);
 
   // Função simplificada para fechar pedido
-const closeOrder = useCallback(async () => {
-  if (!selectedTable || !selectedOrder?.id) return;
-  
-  setIsClosingOrder(true);
-  try {
-    const table = tables.find(t => t.id === selectedTable);
-    let total = calculateOrderTotal(selectedOrder);
+  const closeOrder = useCallback(async () => {
+    if (!selectedTable || !selectedOrder?.id) return;
     
-    if (selectedOrder.items?.length === 0) {
-      throw new Error('Não é possível fechar um pedido sem itens');
-    }
-    
-    let deliveryFee = 0;
-    
-    if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
-      deliveryFee = 2.50;
-      total += deliveryFee;
-    }
-
-    const orderToClose = {
-      ...selectedOrder,
-      total: total,
-      deliveryFee: deliveryFee,
-      paymentMethod: paymentMethod,
-      closedAt: Date.now(),
-      closedBy: getAuth().currentUser?.email || 'admin',
-      status: 'closed',
-      tableType: table?.type || 'comanda' // Adiciona o tipo para o histórico
-    };
-
-    // Adicionar ao histórico no Firebase
-    const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-    const newHistoryRef = push(historyRef);
-    await set(newHistoryRef, orderToClose);
-
-    // Atualizar o estado local do histórico
-    setOrderHistory(prev => [
-      {
-        ...orderToClose,
-        id: newHistoryRef.key,
-        tableId: selectedTable
-      },
-      ...prev // Adiciona no início do array
-    ]);
-
-    // Remover pedido atual
-    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-    await remove(orderRef);
-    
-    // Atualizar status da mesa/comanda
-    const tableRef = ref(database, `tables/${selectedTable}`);
-    await update(tableRef, {
-      status: 'available'
-    });
-    
-    // Atualizar estado local das mesas
-    setTables(prevTables => prevTables.map(table => {
-      if (table.id === selectedTable) {
-        return {
-          ...table,
-          currentOrder: null,
-          status: 'available'
-        };
+    setIsClosingOrder(true);
+    try {
+      const table = tables.find(t => t.id === selectedTable);
+      let total = calculateOrderTotal(selectedOrder);
+      
+      if (selectedOrder.items?.length === 0) {
+        throw new Error('Não é possível fechar um pedido sem itens');
       }
-      return table;
-    }));
-    
-    setSelectedOrder(null);
-    setShowTableDetailsModal(false);
-    setDeliveryAddress('');
-  } catch (error) {
-    console.error("Erro ao fechar comanda:", error);
-    setError(error.message || 'Erro ao fechar comanda');
-  } finally {
-    setIsClosingOrder(false);
-  }
-}, [selectedTable, selectedOrder, tables, paymentMethod]);
+      
+      let deliveryFee = 0;
+      
+      if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
+        deliveryFee = 2.50;
+        total += deliveryFee;
+      }
+
+      const orderToClose = {
+        ...selectedOrder,
+        total: total,
+        deliveryFee: deliveryFee,
+        paymentMethod: paymentMethod,
+        closedAt: Date.now(),
+        closedBy: getAuth().currentUser?.email || 'admin',
+        status: 'closed',
+        tableType: table?.type || 'comanda' // Adiciona o tipo para o histórico
+      };
+
+      // Adicionar ao histórico no Firebase
+      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
+      const newHistoryRef = push(historyRef);
+      await set(newHistoryRef, orderToClose);
+
+      // Atualizar o estado local do histórico
+      setOrderHistory(prev => [
+        {
+          ...orderToClose,
+          id: newHistoryRef.key,
+          tableId: selectedTable
+        },
+        ...prev // Adiciona no início do array
+      ]);
+
+      // Remover pedido atual
+      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+      await remove(orderRef);
+      
+      // Atualizar status da mesa/comanda
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'available'
+      });
+      
+      // Atualizar estado local das mesas
+      setTables(prevTables => prevTables.map(table => {
+        if (table.id === selectedTable) {
+          return {
+            ...table,
+            currentOrder: null,
+            status: 'available'
+          };
+        }
+        return table;
+      }));
+      
+      setSelectedOrder(null);
+      setShowTableDetailsModal(false);
+      setDeliveryAddress('');
+    } catch (error) {
+      console.error("Erro ao fechar comanda:", error);
+      setError(error.message || 'Erro ao fechar comanda');
+    } finally {
+      setIsClosingOrder(false);
+    }
+  }, [selectedTable, selectedOrder, tables, paymentMethod]);
 
   // Função para carregar histórico de pedidos
-const loadOrderHistory = useCallback(async () => {
-  setHistoryLoading(true);
-  try {
-    const historyRef = ref(database, 'tables');
-    const snapshot = await get(historyRef);
-    const data = snapshot.val() || {};
-    
-    let allOrders = [];
-    
-    Object.entries(data).forEach(([tableId, tableData]) => {
-      if (tableData.ordersHistory) {
-        Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
-          if (order.status === 'closed' || (order.total && order.total > 0)) {
-            allOrders.push({
-              ...order,
-              id: orderId,
-              tableId: tableId,
-              tableType: tables.find(t => t.id === tableId)?.type || 'comanda',
-              closedAt: order.closedAt || Date.now()
-            });
-          }
-        });
-      }
-    });
-    
-    // Ordenar por data de fechamento (mais recente primeiro)
-    allOrders.sort((a, b) => b.closedAt - a.closedAt);
-    
-    setOrderHistory(allOrders);
-    setShowHistoryModal(true);
-  } catch (err) {
-    console.error("Erro ao carregar histórico:", err);
-    setError('Erro ao carregar histórico de pedidos');
-  } finally {
-    setHistoryLoading(false);
-  }
-}, [tables]);
+  const loadOrderHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const historyRef = ref(database, 'tables');
+      const snapshot = await get(historyRef);
+      const data = snapshot.val() || {};
+      
+      let allOrders = [];
+      
+      Object.entries(data).forEach(([tableId, tableData]) => {
+        if (tableData.ordersHistory) {
+          Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
+            if (order.status === 'closed' || (order.total && order.total > 0)) {
+              allOrders.push({
+                ...order,
+                id: orderId,
+                tableId: tableId,
+                tableType: tables.find(t => t.id === tableId)?.type || 'comanda',
+                closedAt: order.closedAt || Date.now()
+              });
+            }
+          });
+        }
+      });
+      
+      // Ordenar por data de fechamento (mais recente primeiro)
+      allOrders.sort((a, b) => b.closedAt - a.closedAt);
+      
+      setOrderHistory(allOrders);
+      setShowHistoryModal(true);
+    } catch (err) {
+      console.error("Erro ao carregar histórico:", err);
+      setError('Erro ao carregar histórico de pedidos');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [tables]);
 
   // Função para filtrar histórico
-const filteredHistory = useCallback(() => {
-  let filtered = orderHistory;
+  const filteredHistory = useCallback(() => {
+    let filtered = orderHistory;
 
-  // Filtro por tipo (mesa/comanda)
-  if (historyFilter !== 'all') {
-    filtered = filtered.filter(order => 
-      historyFilter === 'tables' 
-        ? order.tableType !== 'comanda' 
-        : order.tableType === 'comanda'
-    );
-  }
+    // Filtro por tipo (mesa/comanda)
+    if (historyFilter !== 'all') {
+      filtered = filtered.filter(order => 
+        historyFilter === 'tables' 
+          ? order.tableType !== 'comanda' 
+          : order.tableType === 'comanda'
+      );
+    }
 
-  // Filtro por termo de busca - MODIFICAÇÃO AQUI
-  if (historySearchTerm) {
-    const term = historySearchTerm.trim();
-    filtered = filtered.filter(order => 
-      order.tableId === term || // Busca exata pelo número da mesa/comanda
-      order.items?.some(item => 
-        item.name.toLowerCase().includes(term.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(term.toLowerCase()))
-    ));
-  }
+    // Filtro por termo de busca
+    if (historySearchTerm) {
+      const term = historySearchTerm.trim();
+      filtered = filtered.filter(order => 
+        order.tableId === term || // Busca exata pelo número da mesa/comanda
+        order.items?.some(item => 
+          item.name.toLowerCase().includes(term.toLowerCase()) ||
+          (item.description && item.description.toLowerCase().includes(term.toLowerCase()))
+      ));
+    }
 
-  // Filtro por data
-  filtered = filtered.filter(order => {
-    const orderDate = new Date(order.closedAt);
-    return (
-      orderDate >= historyDateRange.start &&
-      orderDate <= historyDateRange.end
-    );
-  });
+    // Filtro por data
+    filtered = filtered.filter(order => {
+      const orderDate = new Date(order.closedAt);
+      return (
+        orderDate >= historyDateRange.start &&
+        orderDate <= historyDateRange.end
+      );
+    });
 
-  return filtered;
-}, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
+    return filtered;
+  }, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
 
   // Função para calcular total do pedido
   const calculateOrderTotal = useCallback((order) => {
@@ -1412,13 +1502,13 @@ const filteredHistory = useCallback(() => {
   }, []);
 
   // Função para verificar itens não impressos
-const hasUnprintedItems = useCallback((order) => {
-  if (!order?.items) return false;
-  return order.items.some(item => {
-    const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-    return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
-  });
-}, [selectedTable, printedItems, sentItems]);
+  const hasUnprintedItems = useCallback((order) => {
+    if (!order?.items) return false;
+    return order.items.some(item => {
+      const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+      return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
+    });
+  }, [selectedTable, printedItems, sentItems]);
 
   // Função para filtrar mesas
   const filteredTables = useCallback(() => {
@@ -1483,6 +1573,15 @@ const hasUnprintedItems = useCallback((order) => {
       setIsLoadingAuth(false);
     }
   }, [email, password]);
+
+  // Função para fechar notificação de QR Code
+  const closeQrNotification = useCallback(() => {
+    setShowQrNotification(false);
+    setCurrentQrOrder(null);
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+  }, []);
 
   // Renderização do login
   const renderLogin = () => (
@@ -1733,283 +1832,283 @@ const hasUnprintedItems = useCallback((order) => {
     </div>
   );
 
-  // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
-const renderHistoryModal = () => {
-  const filteredOrders = filteredHistory();
-  const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
-  const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
-  const topItems = {};
-  const topCustomers = {};
-  const revenueByPaymentMethod = {
-    dinheiro: 0,
-    cartao: 0
-  };
+  // Renderização do modal de histórico
+  const renderHistoryModal = () => {
+    const filteredOrders = filteredHistory();
+    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
+    const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
+    const topItems = {};
+    const topCustomers = {};
+    const revenueByPaymentMethod = {
+      dinheiro: 0,
+      cartao: 0
+    };
 
-  filteredOrders.forEach(order => {
-    // Contagem de itens
-    order.items?.forEach(item => {
-      const key = `${item.name}-${item.price.toFixed(2)}`;
-      topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
+    filteredOrders.forEach(order => {
+      // Contagem de itens
+      order.items?.forEach(item => {
+        const key = `${item.name}-${item.price.toFixed(2)}`;
+        topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
+      });
+      
+      // Clientes frequentes (para comandas com endereço)
+      if (order.tableType === 'comanda' && order.deliveryAddress) {
+        topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
+      }
+
+      // Receita por método de pagamento
+      if (order.paymentMethod === 'dinheiro') {
+        revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
+      } else {
+        revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
+      }
     });
-    
-    // Clientes frequentes (para comandas com endereço)
-    if (order.tableType === 'comanda' && order.deliveryAddress) {
-      topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
-    }
 
-    // Receita por método de pagamento
-    if (order.paymentMethod === 'dinheiro') {
-      revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
-    } else {
-      revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
-    }
-  });
+    const sortedTopItems = Object.entries(topItems)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
 
-  const sortedTopItems = Object.entries(topItems)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+    const sortedTopCustomers = Object.entries(topCustomers)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
 
-  const sortedTopCustomers = Object.entries(topCustomers)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
-          <button 
-            onClick={() => setShowHistoryModal(false)}
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          {/* Filtros e estatísticas */}
-          <div className="w-full md:w-72 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 p-4 overflow-y-auto">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setHistoryFilter('all')}
-                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
-                      historyFilter === 'all' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  <button
-                    onClick={() => setHistoryFilter('tables')}
-                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
-                      historyFilter === 'tables' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    Mesas
-                  </button>
-                  <button
-                    onClick={() => setHistoryFilter('comandas')}
-                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
-                      historyFilter === 'comandas' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    Comandas
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">De</label>
-                    <input
-                      type="date"
-                      value={historyDateRange.start.toISOString().split('T')[0]}
-                      onChange={(e) => setHistoryDateRange(prev => ({
-                        ...prev,
-                        start: new Date(e.target.value)
-                      }))}
-                      className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Até</label>
-                    <input
-                      type="date"
-                      value={historyDateRange.end.toISOString().split('T')[0]}
-                      onChange={(e) => setHistoryDateRange(prev => ({
-                        ...prev,
-                        end: new Date(e.target.value)
-                      }))}
-                      className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                    />
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
+            <button 
+              onClick={() => setShowHistoryModal(false)}
+              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+            {/* Filtros e estatísticas */}
+            <div className="w-full md:w-72 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 p-4 overflow-y-auto">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setHistoryFilter('all')}
+                      className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                        historyFilter === 'all' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setHistoryFilter('tables')}
+                      className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                        historyFilter === 'tables' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Mesas
+                    </button>
+                    <button
+                      onClick={() => setHistoryFilter('comandas')}
+                      className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                        historyFilter === 'comandas' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Comandas
+                    </button>
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
-                <input
-                  type="text"
-                  placeholder="Mesa, item, etc."
-                  value={historySearchTerm}
-                  onChange={(e) => setHistorySearchTerm(e.target.value)}
-                  className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                />
-              </div>
-              
-              <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
-                <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Estatísticas</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-blue-50 p-2 rounded-lg">
-                    <div className="text-xs text-blue-600">Pedidos</div>
-                    <div className="text-lg font-bold">{filteredOrders.length}</div>
-                  </div>
-                  <div className="bg-purple-50 p-2 rounded-lg">
-                    <div className="text-xs text-purple-600">Ticket Médio</div>
-                    <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">De</label>
+                      <input
+                        type="date"
+                        value={historyDateRange.start.toISOString().split('T')[0]}
+                        onChange={(e) => setHistoryDateRange(prev => ({
+                          ...prev,
+                          start: new Date(e.target.value)
+                        }))}
+                        className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Até</label>
+                      <input
+                        type="date"
+                        value={historyDateRange.end.toISOString().split('T')[0]}
+                        onChange={(e) => setHistoryDateRange(prev => ({
+                          ...prev,
+                          end: new Date(e.target.value)
+                        }))}
+                        className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {sortedTopItems.length > 0 && (
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
+                  <input
+                    type="text"
+                    placeholder="Mesa, item, etc."
+                    value={historySearchTerm}
+                    onChange={(e) => setHistorySearchTerm(e.target.value)}
+                    className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                  />
+                </div>
+                
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
-                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Itens mais vendidos</h4>
-                  <div className="space-y-2">
-                    {sortedTopItems.map(([item, quantity]) => {
-                      const [name, price] = item.split('-');
-                      return (
-                        <div key={item} className="flex justify-between text-xs sm:text-sm">
-                          <div className="truncate flex-1">{name}</div>
-                          <div className="font-medium ml-2">{quantity}x</div>
+                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Estatísticas</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-blue-50 p-2 rounded-lg">
+                      <div className="text-xs text-blue-600">Pedidos</div>
+                      <div className="text-lg font-bold">{filteredOrders.length}</div>
+                    </div>
+                    <div className="bg-purple-50 p-2 rounded-lg">
+                      <div className="text-xs text-purple-600">Ticket Médio</div>
+                      <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {sortedTopItems.length > 0 && (
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Itens mais vendidos</h4>
+                    <div className="space-y-2">
+                      {sortedTopItems.map(([item, quantity]) => {
+                        const [name, price] = item.split('-');
+                        return (
+                          <div key={item} className="flex justify-between text-xs sm:text-sm">
+                            <div className="truncate flex-1">{name}</div>
+                            <div className="font-medium ml-2">{quantity}x</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {sortedTopCustomers.length > 0 && (
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Clientes frequentes</h4>
+                    <div className="space-y-2">
+                      {sortedTopCustomers.map(([address, orders]) => (
+                        <div key={address} className="text-xs sm:text-sm">
+                          <div className="font-medium truncate">{address}</div>
+                          <div className="text-gray-500 text-xs">{orders} pedidos</div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Lista de pedidos */}
+            <div className="flex-1 overflow-y-auto">
+              {historyLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-              )}
-              
-              {sortedTopCustomers.length > 0 && (
-                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
-                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Clientes frequentes</h4>
-                  <div className="space-y-2">
-                    {sortedTopCustomers.map(([address, orders]) => (
-                      <div key={address} className="text-xs sm:text-sm">
-                        <div className="font-medium truncate">{address}</div>
-                        <div className="text-gray-500 text-xs">{orders} pedidos</div>
+              ) : filteredOrders.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {filteredOrders.map((order) => {
+                    const orderTotal = order.total || calculateOrderTotal(order);
+                    const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
+                    
+                    return (
+                      <div key={order.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                                order.tableType === 'comanda' 
+                                  ? 'bg-purple-100 text-purple-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(order.closedAt).toLocaleString('pt-PT', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
+                            </div>
+                          </div>
+                          <div className="sm:text-right">
+                            <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
+                          </div>
+                        </div>
+                        
+                        {isDelivery && (
+                          <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                            </svg>
+                            {order.deliveryAddress}
+                          </div>
+                        )}
+                        
+                        <div className="mt-2">
+                          <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
+                          <div className="space-y-2">
+                            {order.items?.map(item => (
+                              <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-xs sm:text-sm">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-gray-500">{item.quantity}x</span>
+                                  <div>
+                                    <div>{item.name}</div>
+                                    {item.notes && (
+                                      <div className="text-xs text-gray-500">Obs: {item.notes}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-gray-700 font-medium">
+                                  € {(item.price * (item.quantity || 1)).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
+                  <p className="mt-1 text-sm">Ajuste os filtros para ver os resultados</p>
                 </div>
               )}
             </div>
           </div>
-          
-          {/* Lista de pedidos */}
-          <div className="flex-1 overflow-y-auto">
-            {historyLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : filteredOrders.length > 0 ? (
-              <div className="divide-y divide-gray-200">
-                {filteredOrders.map((order) => {
-                  const orderTotal = order.total || calculateOrderTotal(order);
-                  const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
-                  
-                  return (
-                    <div key={order.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                              order.tableType === 'comanda' 
-                                ? 'bg-purple-100 text-purple-800' 
-                                : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(order.closedAt).toLocaleString('pt-PT', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
-                          </div>
-                        </div>
-                        <div className="sm:text-right">
-                          <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
-                        </div>
-                      </div>
-                      
-                      {isDelivery && (
-                        <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-flex items-center gap-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                          </svg>
-                          {order.deliveryAddress}
-                        </div>
-                      )}
-                      
-                      <div className="mt-2">
-                        <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
-                        <div className="space-y-2">
-                          {order.items?.map(item => (
-                            <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-xs sm:text-sm">
-                              <div className="flex items-start gap-2">
-                                <span className="text-gray-500">{item.quantity}x</span>
-                                <div>
-                                  <div>{item.name}</div>
-                                  {item.notes && (
-                                    <div className="text-xs text-gray-500">Obs: {item.notes}</div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-gray-700 font-medium">
-                                € {(item.price * (item.quantity || 1)).toFixed(2)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
-                <p className="mt-1 text-sm">Ajuste os filtros para ver os resultados</p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
-    </div>
-  );
+    );
 };
 
-  // Renderização do modal para adicionar itens (MODIFICADO)
+  // Renderização do modal para adicionar itens
   const renderAddItemModal = () => (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -2506,7 +2605,7 @@ const renderHistoryModal = () => {
                         ) : (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 012 2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
                             {hasUnprintedItems(selectedOrder) ? 'Enviar para Cozinha' : 'Enviado'}
                           </>
@@ -2587,14 +2686,107 @@ const renderHistoryModal = () => {
     );
   };
 
+  // Renderização da notificação de pedido via QR Code
+  const renderQrNotification = () => {
+    if (!showQrNotification || !currentQrOrder) return null;
+
+    const table = tables.find(t => t.id === currentQrOrder.tableId);
+    const tableType = table?.type === 'comanda' ? 'Comanda' : 'Mesa';
+    const tableName = `${tableType} ${currentQrOrder.tableId}`;
+    const orderTotal = calculateOrderTotal(currentQrOrder);
+
+    return (
+      <div className="fixed bottom-4 right-4 z-50 animate-bounce">
+        <div className="bg-white rounded-xl shadow-xl border-2 border-blue-500 w-full max-w-md overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              <h3 className="text-lg font-bold text-white">Novo Pedido via QR Code</h3>
+            </div>
+            <button 
+              onClick={closeQrNotification}
+              className="text-white hover:text-blue-200 p-1 rounded-full"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-3">
+              <div className="font-medium text-gray-700">{tableName}</div>
+              <div className="text-sm text-gray-500">
+                {new Date(currentQrOrder.createdAt).toLocaleTimeString()}
+              </div>
+            </div>
+            
+            <div className="space-y-2 mb-4">
+              {currentQrOrder.items?.slice(0, 3).map((item, index) => (
+                <div key={index} className="flex justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">{item.quantity}x</span>
+                    <span>{item.name}</span>
+                  </div>
+                  <div className="text-gray-700 font-medium">
+                    € {(item.price * (item.quantity || 1)).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+              
+              {currentQrOrder.items?.length > 3 && (
+                <div className="text-sm text-gray-500">
+                  + {currentQrOrder.items.length - 3} itens
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-between items-center border-t border-gray-200 pt-3">
+              <span className="font-bold text-gray-800">Total:</span>
+              <span className="text-lg font-bold text-blue-600">
+                € {orderTotal.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  handleTableSelect(currentQrOrder.tableId);
+                  closeQrNotification();
+                }}
+                className="px-3 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Ver Detalhes
+              </button>
+              <button
+                onClick={closeQrNotification}
+                className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Renderização do conteúdo principal
   const renderMainContent = () => (
     <div className="min-h-screen bg-gray-50">
+      {/* Elemento de áudio para notificação */}
+      <audio ref={audioRef} src={notificationSound} preload="auto" />
+      
       {/* Notificações */}
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 0v6m0-6h.01M12 9h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           {error}
           <button 
@@ -2607,7 +2799,7 @@ const renderHistoryModal = () => {
           </button>
         </div>
       )}
-
+      
       {/* Loader */}
       {(loading || isPrinting || isClosingOrder) && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
@@ -2648,6 +2840,7 @@ const renderHistoryModal = () => {
       {showAddItemModal && renderAddItemModal()}
       {showHistoryModal && renderHistoryModal()}
       {showTableDetailsModal && renderTableDetailsModal()}
+      {renderQrNotification()}
     </div>
   );
 
