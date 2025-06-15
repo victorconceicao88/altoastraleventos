@@ -2796,8 +2796,14 @@ const closeQrNotification = useCallback((viewDetails = false) => {
   const renderMainContent = () => (
     <div className="min-h-screen bg-gray-50">
       {/* Elemento de áudio para notificação */}
-      <audio ref={audioRef} src={notificationSound} preload="auto" />
-      
+      <audio 
+        ref={audioRef} 
+        src={notificationSound} 
+        preload="auto"
+        // Adicione isso para contornar políticas de autoplay
+        muted={false}
+        loop={false}
+      />
       {/* Notificações */}
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
