@@ -83,7 +83,6 @@ import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
-
 // Importação do som de notificação
 import notificationSound from '../assets/notification.mp3';
 
@@ -717,35 +716,45 @@ const AdminPanel = () => {
   }, [showQrNotification]);
 
   // Função para lidar com novo pedido via QR Code
-  const handleNewQrOrder = useCallback((order) => {
-    // Tocar som de notificação
-    if (audioRef.current) {
-      audioRef.current.play().catch(e => console.log("Erro ao tocar som:", e));
-    }
-    
-    // Mostrar notificação
-    setCurrentQrOrder(order);
-    setShowQrNotification(true);
-    
-    // Atualizar a mesa correspondente para refletir o pedido
-    setTables(prevTables => prevTables.map(table => {
-      if (table.id === order.tableId) {
-        return {
-          ...table,
-          currentOrder: {
-            id: order.id,
-            items: order.items,
-            status: 'open',
-            createdAt: order.createdAt,
-            updatedAt: order.createdAt,
-            tableId: order.tableId
-          },
-          status: 'occupied'
-        };
+const handleNewQrOrder = useCallback((order) => {
+  // Tentar tocar o som de notificação
+  const playSound = async () => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0; // Reinicia o áudio se já estiver tocando
+        await audioRef.current.play();
       }
-      return table;
-    }));
-  }, []);
+    } catch (err) {
+      console.error("Erro ao tocar som de notificação:", err);
+    }
+  };
+  
+  playSound();
+  
+  // Mostrar notificação
+  setCurrentQrOrder(order);
+  setShowQrNotification(true);
+  
+  // Atualizar a mesa correspondente
+  setTables(prevTables => prevTables.map(table => {
+    if (table.id === order.tableId) {
+      return {
+        ...table,
+        currentOrder: {
+          id: order.id,
+          items: order.items,
+          status: 'open',
+          createdAt: order.createdAt,
+          updatedAt: order.createdAt,
+          tableId: order.tableId,
+          deliveryAddress: order.deliveryAddress || ''
+        },
+        status: 'occupied'
+      };
+    }
+    return table;
+  }));
+}, []);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -1575,13 +1584,23 @@ const AdminPanel = () => {
   }, [email, password]);
 
   // Função para fechar notificação de QR Code
-  const closeQrNotification = useCallback(() => {
-    setShowQrNotification(false);
-    setCurrentQrOrder(null);
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-    }
-  }, []);
+const closeQrNotification = useCallback((viewDetails = false) => {
+  if (viewDetails && currentQrOrder) {
+    // Se o usuário clicou em "Ver Detalhes", seleciona a mesa e abre o modal
+    setSelectedTable(currentQrOrder.tableId);
+    setShowTableDetailsModal(true);
+  }
+  
+  // Fecha a notificação e limpa o estado
+  setShowQrNotification(false);
+  setCurrentQrOrder(null);
+  
+  // Limpa o timeout se existir
+  if (notificationTimeoutRef.current) {
+    clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = null;
+  }
+}, [currentQrOrder]);
 
   // Renderização do login
   const renderLogin = () => (
@@ -2752,10 +2771,7 @@ const AdminPanel = () => {
             
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button
-                onClick={() => {
-                  handleTableSelect(currentQrOrder.tableId);
-                  closeQrNotification();
-                }}
+                onClick={() => closeQrNotification(true)} // Passa true para viewDetails
                 className="px-3 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2763,12 +2779,12 @@ const AdminPanel = () => {
                 </svg>
                 Ver Detalhes
               </button>
-              <button
-                onClick={closeQrNotification}
-                className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-              >
-                Fechar
-              </button>
+            <button
+              onClick={() => closeQrNotification()} // Não passa parâmetro (viewDetails = false)
+              className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+            >
+              Fechar
+            </button>
             </div>
           </div>
         </div>
