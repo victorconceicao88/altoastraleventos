@@ -83,8 +83,6 @@ import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
-// Importação do som de notificação
-import notificationSound from '../assets/notification.mp3';
 
 const AdminPanel = () => {
   // Authentication state
@@ -130,17 +128,8 @@ const AdminPanel = () => {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
-
-  // Novos estados para notificação de pedidos via QR Code
-  const [qrCodeOrders, setQrCodeOrders] = useState([]);
-  const [showQrNotification, setShowQrNotification] = useState(false);
-  const [currentQrOrder, setCurrentQrOrder] = useState(null);
-  const audioRef = useRef(null);
-  const notificationTimeoutRef = useRef(null);
-  const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
-  const [audioContext, setAudioContext] = useState(null);
-  const [audioBuffer, setAudioBuffer] = useState(null);
-  const audioSourceRef = useRef(null);
+  const [newOrders, setNewOrders] = useState([]);
+  const [showNewOrdersNotification, setShowNewOrdersNotification] = useState(false);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -569,92 +558,10 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-  // Função para carregar o áudio
-  const loadAudio = async () => {
-    try {
-      // Criar AudioContext
-      const context = new (window.AudioContext || window.webkitAudioContext)();
-      setAudioContext(context);
-      
-      // Carregar o arquivo de áudio
-      const response = await fetch(notificationSound);
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = await context.decodeAudioData(arrayBuffer);
-      setAudioBuffer(buffer);
-      
-      // Tentar reproduzir um som silencioso para desbloquear o áudio
-      const source = context.createBufferSource();
-      source.buffer = context.createBuffer(1, 1, 22050);
-      source.connect(context.destination);
-      source.start(0);
-      source.onended = () => {
-        source.disconnect();
-        setAudioPermissionGranted(true);
-      };
-    } catch (err) {
-      console.error("Erro ao carregar áudio:", err);
-    }
-  };
-
-  loadAudio();
-
-  return () => {
-    // Limpeza
-    if (audioSourceRef.current) {
-      audioSourceRef.current.stop();
-      audioSourceRef.current.disconnect();
-    }
-    if (audioContext) {
-      audioContext.close();
-    }
-  };
-}, []);
-
-const playNotificationSound = useCallback(async () => {
-  try {
-    if (!audioContext || !audioBuffer) return;
-    
-    // Se o contexto estiver suspenso (por políticas de autoplay), tente retomar
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-    
-    // Parar qualquer som anterior que esteja tocando
-    if (audioSourceRef.current) {
-      audioSourceRef.current.stop();
-      audioSourceRef.current.disconnect();
-    }
-    
-    // Criar e tocar o novo som
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-    audioSourceRef.current = source;
-    
-    source.onended = () => {
-      source.disconnect();
-    };
-  } catch (err) {
-    console.error("Erro ao tocar som:", err);
-    // Tentar fallback com HTML5 Audio se Web Audio API falhar
-    try {
-      const audio = new Audio(notificationSound);
-      audio.volume = 1.0;
-      await audio.play();
-    } catch (fallbackErr) {
-      console.error("Fallback de áudio também falhou:", fallbackErr);
-    }
-  }
-}, [audioContext, audioBuffer]);
-
-  // Efeito para carregar mesas e pedidos
+  // Efeito para detectar novos pedidos
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    setTables(initialTables());
-    
     const tablesRef = ref(database, 'tables');
     const unsubscribe = onValue(tablesRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -685,12 +592,45 @@ const playNotificationSound = useCallback(async () => {
         };
       });
 
+      // Detectar novos pedidos
+      const newOrdersDetected = [];
+      tablesData.forEach(table => {
+        if (table.currentOrder) {
+          table.currentOrder.items?.forEach(item => {
+            const itemKey = `${table.id}-${item.id}-${item.addedAt || ''}`;
+            if (!printedItems[itemKey] && !item.printed) {
+              newOrdersDetected.push({
+                tableId: table.id,
+                tableType: table.type,
+                item: item,
+                timestamp: item.addedAt || Date.now()
+              });
+            }
+          });
+        }
+      });
+
+      if (newOrdersDetected.length > 0) {
+        setNewOrders(prev => [...prev, ...newOrdersDetected]);
+        setShowNewOrdersNotification(true);
+      }
+
       setTables(tablesData);
       setLastUpdate(new Date());
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated, initialTables]);
+  }, [isAuthenticated, initialTables, printedItems]);
+
+  // Efeito para limpar notificação após 5 segundos
+  useEffect(() => {
+    if (showNewOrdersNotification) {
+      const timer = setTimeout(() => {
+        setShowNewOrdersNotification(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNewOrdersNotification]);
 
   // Efeito para carregar pedido selecionado
   useEffect(() => {
@@ -749,101 +689,6 @@ const playNotificationSound = useCallback(async () => {
 
     return () => unsubscribe();
   }, [isAuthenticated, selectedTable, printedItems]);
-
-  // Efeito para monitorar pedidos via QR Code
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const qrOrdersRef = ref(database, 'qrCodeOrders');
-    const unsubscribe = onValue(qrOrdersRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const qrOrders = Object.entries(data).map(([id, order]) => ({
-        id,
-        ...order,
-        createdAt: order.createdAt || Date.now()
-      }));
-
-      setQrCodeOrders(qrOrders);
-
-      // Verificar se há novos pedidos
-      if (qrOrders.length > 0) {
-        const latestOrder = qrOrders[qrOrders.length - 1];
-        
-        // Verificar se é um pedido novo (últimos 5 segundos)
-        if (Date.now() - latestOrder.createdAt < 5000) {
-          handleNewQrOrder(latestOrder);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [isAuthenticated]);
-
-  // Efeito para limpar notificação após 10 segundos
-  useEffect(() => {
-    if (showQrNotification) {
-      if (notificationTimeoutRef.current) {
-        clearTimeout(notificationTimeoutRef.current);
-      }
-      
-      notificationTimeoutRef.current = setTimeout(() => {
-        setShowQrNotification(false);
-        setCurrentQrOrder(null);
-      }, 10000);
-    }
-
-    return () => {
-      if (notificationTimeoutRef.current) {
-        clearTimeout(notificationTimeoutRef.current);
-      }
-    };
-  }, [showQrNotification]);
-
-  // Solicitar permissão para áudio no login
-  const requestAudioPermission = useCallback(async () => {
-    try {
-      // Tentar reproduzir um áudio silencioso para ativar a permissão
-      const audio = new Audio();
-      audio.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-      audio.volume = 0;
-      await audio.play();
-      await audio.pause();
-      setAudioPermissionGranted(true);
-    } catch (err) {
-      console.error('Erro ao solicitar permissão de áudio:', err);
-      setAudioPermissionGranted(false);
-    }
-  }, []);
-
-  // Função para lidar com novo pedido via QR Code
-const handleNewQrOrder = useCallback(async (order) => {
-  // Tocar o som de notificação
-  await playNotificationSound();
-  
-  // Mostrar notificação
-  setCurrentQrOrder(order);
-  setShowQrNotification(true);
-  
-  // Atualizar a mesa correspondente
-  setTables(prevTables => prevTables.map(table => {
-    if (table.id === order.tableId) {
-      return {
-        ...table,
-        currentOrder: {
-          id: order.id,
-          items: order.items,
-          status: 'open',
-          createdAt: order.createdAt,
-          updatedAt: order.createdAt,
-          tableId: order.tableId,
-          deliveryAddress: order.deliveryAddress || ''
-        },
-        status: 'occupied'
-      };
-    }
-    return table;
-  }));
-}, [playNotificationSound]);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -1664,34 +1509,19 @@ const handleNewQrOrder = useCallback(async (order) => {
       const auth = getAuth();
       await signInWithEmailAndPassword(auth, email, password);
       setIsAuthenticated(true);
-      // Solicitar permissão para áudio após login
-      await requestAudioPermission();
     } catch (error) {
       setAuthError('Credenciais inválidas. Por favor, tente novamente.');
       console.error('Login error:', error);
     } finally {
       setIsLoadingAuth(false);
     }
-  }, [email, password, requestAudioPermission]);
+  }, [email, password]);
 
-  // Função para fechar notificação de QR Code
-const closeQrNotification = useCallback((viewDetails = false) => {
-  if (viewDetails && currentQrOrder) {
-    // Se o usuário clicou em "Ver Detalhes", seleciona a mesa e abre o modal
-    setSelectedTable(currentQrOrder.tableId);
-    setShowTableDetailsModal(true);
-  }
-  
-  // Fecha a notificação em qualquer caso
-  setShowQrNotification(false);
-  setCurrentQrOrder(null);
-  
-  // Limpa o timeout se existir
-  if (notificationTimeoutRef.current) {
-    clearTimeout(notificationTimeoutRef.current);
-    notificationTimeoutRef.current = null;
-  }
-}, [currentQrOrder]);
+  // Função para limpar notificações de novos pedidos
+  const clearNewOrders = useCallback(() => {
+    setNewOrders([]);
+    setShowNewOrdersNotification(false);
+  }, []);
 
   // Renderização do login
   const renderLogin = () => (
@@ -1860,6 +1690,7 @@ const closeQrNotification = useCallback((viewDetails = false) => {
                 const isVIP = orderTotal > 100;
                 const badgeColor = getTableBadgeColor(table);
                 const tableIcon = getTableIcon(table);
+                const hasNewItems = newOrders.some(order => order.tableId === table.id);
                 
                 return (
                   <button
@@ -1881,6 +1712,15 @@ const closeQrNotification = useCallback((viewDetails = false) => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         VIP
+                      </div>
+                    )}
+                    
+                    {hasNewItems && (
+                      <div className="absolute top-1 left-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center animate-pulse">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                        </svg>
+                        Novo
                       </div>
                     )}
                     
@@ -1942,8 +1782,63 @@ const closeQrNotification = useCallback((viewDetails = false) => {
     </div>
   );
 
+  // Renderização da notificação de novos pedidos
+  const renderNewOrdersNotification = () => (
+    <div className="fixed bottom-4 right-4 z-50">
+      <div 
+        className="bg-gradient-to-br from-red-500 to-pink-500 text-white rounded-xl shadow-xl overflow-hidden transition-all duration-300"
+        style={{
+          maxHeight: showNewOrdersNotification ? '500px' : '0',
+          opacity: showNewOrdersNotification ? '1' : '0'
+        }}
+      >
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Novos Pedidos!
+            </h3>
+            <button 
+              onClick={clearNewOrders}
+              className="text-white hover:text-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {newOrders.map((order, index) => (
+              <div key={index} className="bg-white/20 p-3 rounded-lg">
+                <div className="font-medium">
+                  {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
+                </div>
+                <div className="text-sm">
+                  {order.item.quantity}x {order.item.name}
+                </div>
+                <div className="text-xs opacity-80">
+                  {new Date(order.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <button
+            onClick={clearNewOrders}
+            className="w-full mt-3 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Renderização do modal de histórico
-  const renderHistoryModal = () => {
+ const renderHistoryModal = () => {
     const filteredOrders = filteredHistory();
     const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
     const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
@@ -2525,9 +2420,9 @@ const closeQrNotification = useCallback((viewDetails = false) => {
                         >
                           <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
                             {!isPrinted && (
-                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap flex items-center">
+                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-0.5 rounded-full whitespace-nowrap flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                                 </svg>
                                 Novo!
                               </span>
@@ -2715,7 +2610,7 @@ const closeQrNotification = useCallback((viewDetails = false) => {
                         ) : (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 012 2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
                             {hasUnprintedItems(selectedOrder) ? 'Enviar para Cozinha' : 'Enviado'}
                           </>
@@ -2796,107 +2691,15 @@ const closeQrNotification = useCallback((viewDetails = false) => {
     );
   };
 
-  // Renderização da notificação de pedido via QR Code
-  const renderQrNotification = () => {
-  if (!showQrNotification || !currentQrOrder) return null;
-
-  const table = tables.find(t => t.id === currentQrOrder.tableId);
-  const tableType = table?.type === 'comanda' ? 'Comanda' : 'Mesa';
-  const tableName = `${tableType} ${currentQrOrder.tableId}`;
-  const orderTotal = calculateOrderTotal(currentQrOrder);
-
-  return (
-    <div className="fixed bottom-4 right-4 z-50 animate-bounce">
-      <div className="bg-white rounded-xl shadow-xl border-2 border-blue-500 w-full max-w-md overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-            </svg>
-            <h3 className="text-lg font-bold text-white">Novo Pedido via QR Code</h3>
-          </div>
-          <button 
-            onClick={() => closeQrNotification()}
-            className="text-white hover:text-blue-200 p-1 rounded-full"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-3">
-            <div className="font-medium text-gray-700">{tableName}</div>
-            <div className="text-sm text-gray-500">
-              {new Date(currentQrOrder.createdAt).toLocaleTimeString()}
-            </div>
-          </div>
-          
-          <div className="space-y-2 mb-4">
-            {currentQrOrder.items?.slice(0, 3).map((item, index) => (
-              <div key={index} className="flex justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">{item.quantity}x</span>
-                  <span>{item.name}</span>
-                </div>
-                <div className="text-gray-700 font-medium">
-                  € {(item.price * (item.quantity || 1)).toFixed(2)}
-                </div>
-              </div>
-            ))}
-            
-            {currentQrOrder.items?.length > 3 && (
-              <div className="text-sm text-gray-500">
-                + {currentQrOrder.items.length - 3} itens
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-between items-center border-t border-gray-200 pt-3">
-            <span className="font-bold text-gray-800">Total:</span>
-            <span className="text-lg font-bold text-blue-600">
-              € {orderTotal.toFixed(2)}
-            </span>
-          </div>
-          
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              onClick={() => closeQrNotification(true)} // Passa true para viewDetails
-              className="px-3 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              Ver Detalhes
-            </button>
-            <button
-              onClick={() => closeQrNotification()} // Não passa parâmetro (viewDetails = false)
-              className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
+  // Renderização do conteúdo principal
   // Renderização do conteúdo principal
   const renderMainContent = () => (
     <div className="min-h-screen bg-gray-50">
-      {/* Elemento de áudio para notificação */}
-      <audio 
-        ref={audioRef} 
-        src={notificationSound} 
-        preload="auto"
-      />
       {/* Notificações */}
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 0v6m0-6h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           {error}
           <button 
@@ -2909,7 +2712,7 @@ const closeQrNotification = useCallback((viewDetails = false) => {
           </button>
         </div>
       )}
-      
+
       {/* Loader */}
       {(loading || isPrinting || isClosingOrder) && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
@@ -2945,17 +2748,19 @@ const closeQrNotification = useCallback((viewDetails = false) => {
           )}
         </main>
       </div>
-  
-      {/* Modais */}
-      {showAddItemModal && renderAddItemModal()}
-      {showHistoryModal && renderHistoryModal()}
-      {showTableDetailsModal && renderTableDetailsModal()}
-      {renderQrNotification()}
+
+      {/* Modais e notificações */}
+      <>
+        {renderNewOrdersNotification()}
+        {showAddItemModal && renderAddItemModal()}
+        {showHistoryModal && renderHistoryModal()}
+        {showTableDetailsModal && renderTableDetailsModal()}
+      </>
     </div>
   );
 
-  // Renderização condicional
-  return !isAuthenticated ? renderLogin() : renderMainContent();
+  // Renderização condicional baseada na autenticação
+  return isAuthenticated ? renderMainContent() : renderLogin();
 };
 
 export default AdminPanel;
