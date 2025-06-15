@@ -138,6 +138,9 @@ const AdminPanel = () => {
   const audioRef = useRef(null);
   const notificationTimeoutRef = useRef(null);
   const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
+  const [audioContext, setAudioContext] = useState(null);
+  const [audioBuffer, setAudioBuffer] = useState(null);
+  const audioSourceRef = useRef(null);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -566,6 +569,86 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+  // Função para carregar o áudio
+  const loadAudio = async () => {
+    try {
+      // Criar AudioContext
+      const context = new (window.AudioContext || window.webkitAudioContext)();
+      setAudioContext(context);
+      
+      // Carregar o arquivo de áudio
+      const response = await fetch(notificationSound);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = await context.decodeAudioData(arrayBuffer);
+      setAudioBuffer(buffer);
+      
+      // Tentar reproduzir um som silencioso para desbloquear o áudio
+      const source = context.createBufferSource();
+      source.buffer = context.createBuffer(1, 1, 22050);
+      source.connect(context.destination);
+      source.start(0);
+      source.onended = () => {
+        source.disconnect();
+        setAudioPermissionGranted(true);
+      };
+    } catch (err) {
+      console.error("Erro ao carregar áudio:", err);
+    }
+  };
+
+  loadAudio();
+
+  return () => {
+    // Limpeza
+    if (audioSourceRef.current) {
+      audioSourceRef.current.stop();
+      audioSourceRef.current.disconnect();
+    }
+    if (audioContext) {
+      audioContext.close();
+    }
+  };
+}, []);
+
+const playNotificationSound = useCallback(async () => {
+  try {
+    if (!audioContext || !audioBuffer) return;
+    
+    // Se o contexto estiver suspenso (por políticas de autoplay), tente retomar
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    
+    // Parar qualquer som anterior que esteja tocando
+    if (audioSourceRef.current) {
+      audioSourceRef.current.stop();
+      audioSourceRef.current.disconnect();
+    }
+    
+    // Criar e tocar o novo som
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start(0);
+    audioSourceRef.current = source;
+    
+    source.onended = () => {
+      source.disconnect();
+    };
+  } catch (err) {
+    console.error("Erro ao tocar som:", err);
+    // Tentar fallback com HTML5 Audio se Web Audio API falhar
+    try {
+      const audio = new Audio(notificationSound);
+      audio.volume = 1.0;
+      await audio.play();
+    } catch (fallbackErr) {
+      console.error("Fallback de áudio também falhou:", fallbackErr);
+    }
+  }
+}, [audioContext, audioBuffer]);
+
   // Efeito para carregar mesas e pedidos
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -733,59 +816,34 @@ const AdminPanel = () => {
   }, []);
 
   // Função para lidar com novo pedido via QR Code
-  const handleNewQrOrder = useCallback(async (order) => {
-    // Tentar tocar o som de notificação
-    const playSound = async () => {
-      try {
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0; // Reinicia o áudio se já estiver tocando
-          audioRef.current.volume = 1.0;
-          await audioRef.current.play().catch(e => {
-            console.error('Erro ao reproduzir som:', e);
-            // Se falhar, tentar solicitar permissão novamente
-            requestAudioPermission();
-          });
-        }
-      } catch (err) {
-        console.error("Erro ao tocar som de notificação:", err);
-      }
-    };
-    
-    // Verificar se temos permissão para tocar o som
-    if (audioPermissionGranted) {
-      playSound();
-    } else {
-      // Tentar obter permissão
-      await requestAudioPermission();
-      if (audioPermissionGranted) {
-        playSound();
-      }
+const handleNewQrOrder = useCallback(async (order) => {
+  // Tocar o som de notificação
+  await playNotificationSound();
+  
+  // Mostrar notificação
+  setCurrentQrOrder(order);
+  setShowQrNotification(true);
+  
+  // Atualizar a mesa correspondente
+  setTables(prevTables => prevTables.map(table => {
+    if (table.id === order.tableId) {
+      return {
+        ...table,
+        currentOrder: {
+          id: order.id,
+          items: order.items,
+          status: 'open',
+          createdAt: order.createdAt,
+          updatedAt: order.createdAt,
+          tableId: order.tableId,
+          deliveryAddress: order.deliveryAddress || ''
+        },
+        status: 'occupied'
+      };
     }
-    
-    // Mostrar notificação
-    setCurrentQrOrder(order);
-    setShowQrNotification(true);
-    
-    // Atualizar a mesa correspondente
-    setTables(prevTables => prevTables.map(table => {
-      if (table.id === order.tableId) {
-        return {
-          ...table,
-          currentOrder: {
-            id: order.id,
-            items: order.items,
-            status: 'open',
-            createdAt: order.createdAt,
-            updatedAt: order.createdAt,
-            tableId: order.tableId,
-            deliveryAddress: order.deliveryAddress || ''
-          },
-          status: 'occupied'
-        };
-      }
-      return table;
-    }));
-  }, [audioPermissionGranted, requestAudioPermission]);
+    return table;
+  }));
+}, [playNotificationSound]);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -1617,26 +1675,23 @@ const AdminPanel = () => {
   }, [email, password, requestAudioPermission]);
 
   // Função para fechar notificação de QR Code
-  const closeQrNotification = useCallback((viewDetails = false) => {
-    if (viewDetails && currentQrOrder) {
-      // Se o usuário clicou em "Ver Detalhes", seleciona a mesa e abre o modal
-      setSelectedTable(currentQrOrder.tableId);
-      setShowTableDetailsModal(true);
-      setShowQrNotification(false);
-    } else {
-      // Fecha apenas a notificação
-      setShowQrNotification(false);
-    }
-    
-    // Limpa o pedido atual
-    setCurrentQrOrder(null);
-    
-    // Limpa o timeout se existir
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-      notificationTimeoutRef.current = null;
-    }
-  }, [currentQrOrder]);
+const closeQrNotification = useCallback((viewDetails = false) => {
+  if (viewDetails && currentQrOrder) {
+    // Se o usuário clicou em "Ver Detalhes", seleciona a mesa e abre o modal
+    setSelectedTable(currentQrOrder.tableId);
+    setShowTableDetailsModal(true);
+  }
+  
+  // Fecha a notificação em qualquer caso
+  setShowQrNotification(false);
+  setCurrentQrOrder(null);
+  
+  // Limpa o timeout se existir
+  if (notificationTimeoutRef.current) {
+    clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = null;
+  }
+}, [currentQrOrder]);
 
   // Renderização do login
   const renderLogin = () => (
@@ -2743,90 +2798,90 @@ const AdminPanel = () => {
 
   // Renderização da notificação de pedido via QR Code
   const renderQrNotification = () => {
-    if (!showQrNotification || !currentQrOrder) return null;
+  if (!showQrNotification || !currentQrOrder) return null;
 
-    const table = tables.find(t => t.id === currentQrOrder.tableId);
-    const tableType = table?.type === 'comanda' ? 'Comanda' : 'Mesa';
-    const tableName = `${tableType} ${currentQrOrder.tableId}`;
-    const orderTotal = calculateOrderTotal(currentQrOrder);
+  const table = tables.find(t => t.id === currentQrOrder.tableId);
+  const tableType = table?.type === 'comanda' ? 'Comanda' : 'Mesa';
+  const tableName = `${tableType} ${currentQrOrder.tableId}`;
+  const orderTotal = calculateOrderTotal(currentQrOrder);
 
-    return (
-      <div className="fixed bottom-4 right-4 z-50 animate-bounce">
-        <div className="bg-white rounded-xl shadow-xl border-2 border-blue-500 w-full max-w-md overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-              </svg>
-              <h3 className="text-lg font-bold text-white">Novo Pedido via QR Code</h3>
+  return (
+    <div className="fixed bottom-4 right-4 z-50 animate-bounce">
+      <div className="bg-white rounded-xl shadow-xl border-2 border-blue-500 w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+            <h3 className="text-lg font-bold text-white">Novo Pedido via QR Code</h3>
+          </div>
+          <button 
+            onClick={() => closeQrNotification()}
+            className="text-white hover:text-blue-200 p-1 rounded-full"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-3">
+            <div className="font-medium text-gray-700">{tableName}</div>
+            <div className="text-sm text-gray-500">
+              {new Date(currentQrOrder.createdAt).toLocaleTimeString()}
             </div>
-            <button 
-              onClick={() => closeQrNotification()}
-              className="text-white hover:text-blue-200 p-1 rounded-full"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
           
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-3">
-              <div className="font-medium text-gray-700">{tableName}</div>
-              <div className="text-sm text-gray-500">
-                {new Date(currentQrOrder.createdAt).toLocaleTimeString()}
+          <div className="space-y-2 mb-4">
+            {currentQrOrder.items?.slice(0, 3).map((item, index) => (
+              <div key={index} className="flex justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">{item.quantity}x</span>
+                  <span>{item.name}</span>
+                </div>
+                <div className="text-gray-700 font-medium">
+                  € {(item.price * (item.quantity || 1)).toFixed(2)}
+                </div>
               </div>
-            </div>
+            ))}
             
-            <div className="space-y-2 mb-4">
-              {currentQrOrder.items?.slice(0, 3).map((item, index) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">{item.quantity}x</span>
-                    <span>{item.name}</span>
-                  </div>
-                  <div className="text-gray-700 font-medium">
-                    € {(item.price * (item.quantity || 1)).toFixed(2)}
-                  </div>
-                </div>
-              ))}
-              
-              {currentQrOrder.items?.length > 3 && (
-                <div className="text-sm text-gray-500">
-                  + {currentQrOrder.items.length - 3} itens
-                </div>
-              )}
-            </div>
-            
-            <div className="flex justify-between items-center border-t border-gray-200 pt-3">
-              <span className="font-bold text-gray-800">Total:</span>
-              <span className="text-lg font-bold text-blue-600">
-                € {orderTotal.toFixed(2)}
-              </span>
-            </div>
-            
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                onClick={() => closeQrNotification(true)} // Passa true para viewDetails
-                className="px-3 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Ver Detalhes
-              </button>
-              <button
-                onClick={() => closeQrNotification()} // Não passa parâmetro (viewDetails = false)
-                className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
-              >
-                Fechar
-              </button>
-            </div>
+            {currentQrOrder.items?.length > 3 && (
+              <div className="text-sm text-gray-500">
+                + {currentQrOrder.items.length - 3} itens
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-between items-center border-t border-gray-200 pt-3">
+            <span className="font-bold text-gray-800">Total:</span>
+            <span className="text-lg font-bold text-blue-600">
+              € {orderTotal.toFixed(2)}
+            </span>
+          </div>
+          
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => closeQrNotification(true)} // Passa true para viewDetails
+              className="px-3 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Ver Detalhes
+            </button>
+            <button
+              onClick={() => closeQrNotification()} // Não passa parâmetro (viewDetails = false)
+              className="px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   // Renderização do conteúdo principal
   const renderMainContent = () => (
