@@ -86,6 +86,18 @@ import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
+const AudioPlayer = ({ url, play, onEnded }) => {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (play && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.error("Erro ao reproduzir som:", e));
+    }
+  }, [play, url]);
+
+  return <audio ref={audioRef} src={url} preload="auto" onEnded={onEnded} />;
+};
 
 const AdminPanel = () => {
   // Authentication state
@@ -137,6 +149,8 @@ const AdminPanel = () => {
   const [showNewOrdersModal, setShowNewOrdersModal] = useState(false);
   const [lastCheckedOrders, setLastCheckedOrders] = useState({});
   const newOrdersModalRef = useRef(null);
+  const [playSound, setPlaySound] = useState(false);
+  const NOTIFICATION_SOUND_URL = "https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3";
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -646,28 +660,29 @@ const AdminPanel = () => {
       });
 
       newOrdersList.sort((a, b) => b.addedAt - a.addedAt);
+    
+    if (JSON.stringify(newOrdersList) !== JSON.stringify(newOrders)) {
+      setNewOrders(newOrdersList);
       
-      if (JSON.stringify(newOrdersList) !== JSON.stringify(newOrders)) {
-        setNewOrders(newOrdersList);
+      if (newOrdersList.length > 0 && newOrdersList.length !== newOrders.length) {
+        setShowNewOrdersModal(true);
+        setPlaySound(true); 
         
-        if (newOrdersList.length > 0 && newOrdersList.length !== newOrders.length) {
-          setShowNewOrdersModal(true);
-          
-          toast.info(`${newOrdersList.length} novo(s) pedido(s) recebido(s)`, {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            theme: "light",
-          });
-        }
+        toast.info(`${newOrdersList.length} novo(s) pedido(s) recebido(s)`, {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "light",
+        });
       }
+    }
     });
 
-    return () => unsubscribe();
-  }, [isAuthenticated, tables, lastCheckedOrders, newOrders]);
+  return () => unsubscribe();
+}, [isAuthenticated, tables, lastCheckedOrders, newOrders]);
 
   // Efeito para carregar pedido selecionado
   useEffect(() => {
@@ -675,6 +690,21 @@ const AdminPanel = () => {
       setSelectedOrder(null);
       return;
     }
+ 
+
+   const AudioPlayer = ({ url, play }) => {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (play && audioRef.current) {
+      audioRef.current.currentTime = 0; // Reinicia o áudio
+      audioRef.current.play().catch(e => console.error("Erro ao reproduzir som:", e));
+    }
+  }, [play, url]);
+
+  return <audio ref={audioRef} src={url} preload="auto" />;
+};
+
 
     const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
 
@@ -2793,6 +2823,21 @@ const AdminPanel = () => {
   const renderMainContent = () => (
     <div className="min-h-screen bg-gray-50">
       <ToastContainer />
+       
+  return !isAuthenticated ? renderLogin() : (
+  <>
+    {renderMainContent()}
+    <AudioPlayer 
+      url={NOTIFICATION_SOUND_URL} 
+      play={playSound} 
+      onEnded={() => setPlaySound(false)}
+    />
+    {renderNewOrdersModal()}
+    {showAddItemModal && renderAddItemModal()}
+    {showHistoryModal && renderHistoryModal()}
+    {showTableDetailsModal && renderTableDetailsModal()}
+  </>
+);
       
       {error && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center animate-fade-in">
