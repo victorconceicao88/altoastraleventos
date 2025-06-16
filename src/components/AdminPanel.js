@@ -131,6 +131,7 @@ const AdminPanel = () => {
   const [newOrders, setNewOrders] = useState({});
   const [flashingTables, setFlashingTables] = useState({});
   const [tablesWithNewItems, setTablesWithNewItems] = useState({});
+  const [showPendingOrdersModal, setShowPendingOrdersModal] = useState(false);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -1220,33 +1221,45 @@ const addItemToOrder = useCallback(async () => {
   }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
 
   // Função para remover item do pedido
-  const removeItemFromOrder = useCallback(async (itemId) => {
-    if (!selectedTable || !selectedOrder?.items) return;
+const removeItemFromOrder = useCallback(async (itemId) => {
+  if (!selectedTable || !selectedOrder?.items) return;
+  
+  setLoading(true);
+  try {
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+    const updatedItems = selectedOrder.items.filter(item => item.id !== itemId);
     
-    setLoading(true);
-    try {
-      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      const updatedItems = selectedOrder.items.filter(item => item.id !== itemId);
+    if (updatedItems.length === 0) {
+      // Fecha a comanda automaticamente se não houver itens
+      await remove(orderRef);
       
+      // Atualiza status da mesa
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'available'
+      });
+      
+      // Atualiza estado local
+      setTables(prevTables => prevTables.map(table => 
+        table.id === selectedTable 
+          ? { ...table, currentOrder: null, status: 'available' } 
+          : table
+      ));
+      setSelectedOrder(null);
+    } else {
+      // Atualiza apenas os itens se ainda houver pedidos
       await update(orderRef, {
         items: updatedItems,
         updatedAt: Date.now()
       });
-
-      // Se não houver mais itens, fechar automaticamente
-      if (updatedItems.length === 0) {
-        await closeOrderAutomatically({
-          ...selectedOrder,
-          items: updatedItems
-        });
-      }
-    } catch (err) {
-      setError(`Falha ao remover item: ${err.message}`);
-      console.error("Erro detalhado:", err);
-    } finally {
-      setLoading(false);
     }
-  }, [selectedTable, selectedOrder, closeOrderAutomatically]);
+  } catch (err) {
+    setError(`Falha ao remover item: ${err.message}`);
+    console.error("Erro detalhado:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [selectedTable, selectedOrder]);
 
   // Função para atualizar quantidade do item
   const updateItemQuantity = useCallback(async (itemId, newQuantity) => {
@@ -1700,6 +1713,15 @@ const renderNewOrdersPanel = () => {
                 <div className={`w-2 h-2 rounded-full ${printerConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 {printerConnected ? 'Impressora Conectada' : 'Conectar Impressora'}
               </button>
+              <button
+                onClick={() => setShowPendingOrdersModal(true)}
+                className="px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-50 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                Pedidos ({tables.filter(t => t.currentOrder?.items?.some(i => !i.printed)).length})
+              </button>
               
               <button
                 onClick={loadOrderHistory}
@@ -1863,6 +1885,61 @@ const renderTableTabs = () => (
     </div>
   </div>
 );
+
+const renderPendingOrdersModal = () => {
+  const pendingTables = tables
+    .filter(table => 
+      table.currentOrder && 
+      table.currentOrder.items?.some(item => !item.printed)
+    )
+    .sort((a, b) => 
+      new Date(b.currentOrder.updatedAt) - new Date(a.currentOrder.updatedAt)
+    );
+
+  if (!showPendingOrdersModal || pendingTables.length === 0) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden">
+        <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-gray-800">Pedidos Pendentes</h3>
+          <button 
+            onClick={() => setShowPendingOrdersModal(false)}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-60px)]">
+          {pendingTables.map(table => (
+            <div 
+              key={table.id}
+              onClick={() => {
+                handleTableSelect(table.id);
+                setShowPendingOrdersModal(false);
+              }}
+              className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+            >
+              <div className="flex justify-between items-center">
+                <div className="font-medium">
+                  {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
+                </div>
+                <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  {table.currentOrder.items.filter(i => !i.printed).length} itens
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {new Date(table.currentOrder.updatedAt).toLocaleTimeString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
   // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
 const renderHistoryModal = () => {
@@ -2617,11 +2694,11 @@ const renderHistoryModal = () => {
                         Adicionar Mais
                       </button>
 
-                      <button
+                        <button
                         onClick={printOrder}
-                        disabled={isPrinting || !hasUnprintedItems(selectedOrder)}
+                        disabled={isPrinting || selectedOrder.items?.length === 0}
                         className={`px-4 py-3 rounded-lg transition-all hover:shadow-md flex items-center justify-center gap-2 font-medium ${
-                          isPrinting || !hasUnprintedItems(selectedOrder)
+                          isPrinting || selectedOrder.items?.length === 0
                             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             : 'bg-gradient-to-br from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
                         }`}
@@ -2639,7 +2716,7 @@ const renderHistoryModal = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
-                            {hasUnprintedItems(selectedOrder) ? 'Enviar para Cozinha' : 'Enviado'}
+                            Enviar para Cozinha
                           </>
                         )}
                       </button>
@@ -2780,6 +2857,7 @@ const renderHistoryModal = () => {
       {showHistoryModal && renderHistoryModal()}
       {showTableDetailsModal && renderTableDetailsModal()}
       {renderNewOrdersPanel()}
+      {renderPendingOrdersModal()}
     </div>
   );
 
