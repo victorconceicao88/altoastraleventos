@@ -2,10 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, update, push, remove, set, get } from 'firebase/database';
 import { database } from '../firebase';
 import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiAlertCircle, FiX, FiShoppingBag, FiCheck, FiPrinter } from 'react-icons/fi';
 
-// Importações de imagens (mantidas como no código original)
+// Importações de imagens
 import frangoCremoso from '../assets/frango-cremoso.jpg';
 import picanha from '../assets/picanha.jpg';
 import costelaRaiz from '../assets/costela-raiz.jpg';
@@ -85,6 +83,254 @@ import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiAlertCircle, FiX, FiShoppingBag, FiCheck, FiPrinter } from 'react-icons/fi';
+import { FaBell, FaUtensils, FaRegClock, FaShoppingBasket } from 'react-icons/fa';
+import { BsFillLightningFill, BsThreeDotsVertical, BsArrowRight } from 'react-icons/bs';
+import { IoClose, IoRestaurantSharp } from 'react-icons/io5';
+import { RiRestaurantFill, RiMoneyEuroCircleFill } from 'react-icons/ri';
+import { GiCook, GiSaucepan } from 'react-icons/gi';
+import { MdDeliveryDining, MdTableRestaurant } from 'react-icons/md';
+
+// Componente de Notificação Premium Completo
+const NewItemsNotification = ({ 
+  notification, 
+  onClose, 
+  onMarkAsSeen,
+  onViewOrder,
+  tables 
+}) => {
+  const [progress, setProgress] = useState(100);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const progressInterval = useRef(null);
+  const timeoutRef = useRef(null);
+  
+  const table = tables.find(t => t.id === notification.tableId);
+  const isComanda = table?.type === 'comanda';
+  const totalItems = notification.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  const totalValue = notification.items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+
+  // Efeitos para controle do tempo e interações
+  useEffect(() => {
+    if (notification.show) {
+      setProgress(100);
+      setIsExpanded(false);
+      
+      const startTime = Date.now();
+      const duration = 30000; // 30 segundos
+      
+      progressInterval.current = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, duration - elapsed);
+        setProgress((remaining / duration) * 100);
+        
+        if (remaining <= 0) {
+          clearInterval(progressInterval.current);
+        }
+      }, 100);
+
+      timeoutRef.current = setTimeout(() => {
+        if (!isHovering) {
+          onClose();
+        }
+      }, duration);
+
+      return () => {
+        clearInterval(progressInterval.current);
+        clearTimeout(timeoutRef.current);
+      };
+    }
+  }, [notification.show, isHovering, onClose]);
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    // Reinicia o timer quando o mouse sai
+    if (notification.show) {
+      const remainingTime = (progress / 100) * 30000;
+      timeoutRef.current = setTimeout(() => {
+        onClose();
+      }, remainingTime);
+    }
+  };
+
+  if (!notification.show) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 50, scale: 0.95 }}
+        transition={{ 
+          type: 'spring', 
+          damping: 25, 
+          stiffness: 300,
+          mass: 0.5
+        }}
+        className="fixed bottom-6 right-6 z-[1000] w-full max-w-md"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-2xl overflow-hidden border border-white/10">
+          {/* Barra de progresso com efeito de brilho */}
+          <div className="absolute top-0 left-0 h-1 bg-white/30 w-full overflow-hidden">
+            <motion.div 
+              className="h-full bg-white/80 relative"
+              style={{ width: `${progress}%` }}
+              transition={{ ease: 'linear' }}
+            >
+              <div className="absolute inset-0 bg-white animate-pulse opacity-20"></div>
+            </motion.div>
+          </div>
+          
+          {/* Cabeçalho com efeito de destaque */}
+          <div className="relative p-5 flex justify-between items-start bg-gradient-to-r from-blue-700/30 to-indigo-700/30 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-75"></div>
+                <div className="relative bg-white/20 p-3 rounded-full flex items-center justify-center">
+                  <FaBell className="text-white text-xl" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-white">
+                    Novo Pedido Recebido!
+                  </h3>
+                  <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                    <BsFillLightningFill className="mr-1" /> NOVO
+                  </span>
+                </div>
+                <p className="text-white/90 text-sm mt-1 flex items-center gap-1">
+                  {isComanda ? (
+                    <>
+                      <MdDeliveryDining className="text-amber-300" />
+                      <span>Comanda {notification.tableId} • {totalItems} itens</span>
+                    </>
+                  ) : (
+                    <>
+                      <MdTableRestaurant className="text-emerald-300" />
+                      <span>Mesa {notification.tableId} • {totalItems} itens</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white/70 hover:text-white p-1 rounded-full transition-colors hover:bg-white/10"
+            >
+              <IoClose className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Resumo rápido */}
+          <div className="px-5 pt-3 pb-4 bg-white/5 backdrop-blur-sm border-b border-white/10">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2 text-sm">
+                <RiMoneyEuroCircleFill className="text-amber-300" />
+                <span className="text-white/90">Total:</span>
+                <span className="font-bold text-white">€ {totalValue.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <FaRegClock className="text-blue-300" />
+                <span className="text-white/90">Agora</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de itens com scroll */}
+          <div className={`bg-white/5 backdrop-blur-sm transition-all duration-300 ${isExpanded ? 'max-h-96' : 'max-h-64'} overflow-y-auto`}>
+            <ul className="divide-y divide-white/10">
+              {notification.items.map((item, index) => (
+                <motion.li
+                  key={`${item.id}-${item.addedAt || index}`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="p-3 hover:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-12 h-12 bg-white/10 rounded-lg overflow-hidden flex items-center justify-center">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <RiRestaurantFill className="text-white/40 text-xl" />
+                        )}
+                      </div>
+                      <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {item.quantity || 1}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <h4 className="text-white font-medium truncate">{item.name}</h4>
+                        <span className="text-white font-semibold ml-2 whitespace-nowrap">
+                          € {(item.price * (item.quantity || 1)).toFixed(2)}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <p className="text-white/60 text-xs mt-1 truncate">{item.description}</p>
+                      )}
+                      {item.notes && (
+                        <div className="mt-2 bg-white/10 px-2 py-1 rounded text-xs text-white/80">
+                          <span className="font-semibold">Obs:</span> {item.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Rodapé com ações */}
+          <div className="bg-gradient-to-r from-blue-700/30 to-indigo-700/30 p-4 backdrop-blur-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  onMarkAsSeen();
+                  onClose();
+                }}
+                className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <FiCheck className="text-lg" />
+                Marcar como visto
+              </button>
+              <button
+                onClick={() => {
+                  onViewOrder();
+                  onClose();
+                }}
+                className="px-3 py-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <FiShoppingBag className="text-lg" />
+                Ver {isComanda ? 'Comanda' : 'Mesa'}
+                <BsArrowRight className="ml-1" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 const AdminPanel = () => {
   // Authentication state
@@ -130,14 +376,6 @@ const AdminPanel = () => {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
-
-  // Novo estado para notificações
-  const [newItemsNotification, setNewItemsNotification] = useState({
-    show: false,
-    tableId: null,
-    items: []
-  });
-  const notificationTimeoutRef = useRef(null);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -193,7 +431,7 @@ const AdminPanel = () => {
     delayBetweenChunks: 100
   };
 
-  // Menu de itens (mantido igual ao original)
+  // Menu de itens
   const foodImages = {
     frangoCremoso,
     picanhaPremium: picanha,
@@ -609,7 +847,7 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, [isAuthenticated, initialTables]);
 
-  // Efeito para carregar pedido selecionado e verificar novos itens
+  // Efeito para carregar pedido selecionado
   useEffect(() => {
     if (!isAuthenticated || !selectedTable) {
       setSelectedOrder(null);
@@ -652,38 +890,6 @@ const AdminPanel = () => {
           setSelectedOrder(loadedOrder);
           setDeliveryAddress(loadedOrder.deliveryAddress || '');
 
-          // Verificar se há novos itens não impressos/não enviados
-          const unprintedItems = loadedOrder.items?.filter(item => {
-            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-            return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
-          });
-
-          // Mostrar notificação apenas se houver novos itens não vistos
-          if (unprintedItems?.length > 0 && !newItemsNotification.show) {
-            const hasNewItems = unprintedItems.some(item => {
-              const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-              return !sentItems[itemKey];
-            });
-
-            if (hasNewItems) {
-              setNewItemsNotification({
-                show: true,
-                tableId: selectedTable,
-                items: unprintedItems
-              });
-
-              // Limpar timeout anterior se existir
-              if (notificationTimeoutRef.current) {
-                clearTimeout(notificationTimeoutRef.current);
-              }
-
-              // Configurar timeout para fechar automaticamente após 30 segundos
-              notificationTimeoutRef.current = setTimeout(() => {
-                setNewItemsNotification(prev => ({ ...prev, show: false }));
-              }, 30000);
-            }
-          }
-
           // Fechar automaticamente se não houver itens
           if (loadedOrder.items?.length === 0) {
             closeOrderAutomatically(loadedOrder);
@@ -697,29 +903,7 @@ const AdminPanel = () => {
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated, selectedTable, printedItems, sentItems, newItemsNotification.show]);
-
-  // Função para fechar a notificação
-  const closeNotification = useCallback(() => {
-    setNewItemsNotification(prev => ({ ...prev, show: false }));
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-    }
-  }, []);
-
-  // Função para marcar itens como vistos
-  const markItemsAsSeen = useCallback(() => {
-    if (!newItemsNotification.tableId || newItemsNotification.items.length === 0) return;
-
-    const newSentItems = { ...sentItems };
-    newItemsNotification.items.forEach(item => {
-      const itemKey = `${newItemsNotification.tableId}-${item.id}-${item.addedAt || ''}`;
-      newSentItems[itemKey] = true;
-    });
-
-    setSentItems(newSentItems);
-    closeNotification();
-  }, [newItemsNotification, sentItems, closeNotification]);
+  }, [isAuthenticated, selectedTable, printedItems]);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -976,119 +1160,119 @@ const AdminPanel = () => {
   }, [PRINTER_CONFIG, connectToPrinter]);
 
   // Função para formatar recibo
-  const formatReceipt = useCallback((order) => {
-    if (!order || !order.items || order.items.length === 0) return '';
+const formatReceipt = useCallback((order) => {
+  if (!order || !order.items || order.items.length === 0) return '';
 
-    const ESC = '\x1B';
-    const GS = '\x1D';
-    const INIT = `${ESC}@`;
-    const CENTER = `${ESC}a1`;
-    const LEFT = `${ESC}a0`;
-    const BOLD_ON = `${ESC}!${String.fromCharCode(8)}`;
-    const BOLD_OFF = `${ESC}!${String.fromCharCode(0)}`;
-    const CUT = `${GS}V0`;
-    const LF = '\x0A';
-    const FEED = '\x1Bd';
-    const DIVIDER = '--------------------------------';
+  const ESC = '\x1B';
+  const GS = '\x1D';
+  const INIT = `${ESC}@`;
+  const CENTER = `${ESC}a1`;
+  const LEFT = `${ESC}a0`;
+  const BOLD_ON = `${ESC}!${String.fromCharCode(8)}`;
+  const BOLD_OFF = `${ESC}!${String.fromCharCode(0)}`;
+  const CUT = `${GS}V0`;
+  const LF = '\x0A';
+  const FEED = '\x1Bd';
+  const DIVIDER = '--------------------------------';
 
-    let receipt = INIT;
-    receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
-    receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
-    receipt += `${CENTER}${LF}`;
-    
-    const table = tables.find(t => t.id === selectedTable);
-    receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
-    
-    const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
-    let total = calculateOrderTotal(order);
-    let deliveryFee = 0;
-    
-    if (isDelivery) {
-      deliveryFee = 2.50;
-      total += deliveryFee;
-      receipt += `${LEFT}Endereco: ${order.deliveryAddress}${LF}${LF}`;
+  let receipt = INIT;
+  receipt += `${CENTER}${BOLD_ON}ALTO ASTRAL${BOLD_OFF}${LF}`;
+  receipt += `${CENTER}${new Date().toLocaleString()}${LF}`;
+  receipt += `${CENTER}${LF}`;
+  
+  const table = tables.find(t => t.id === selectedTable);
+  receipt += `${LEFT}${BOLD_ON}${table?.type === 'comanda' ? 'COMANDA' : 'MESA'}: ${selectedTable}${BOLD_OFF}${LF}${LF}`;
+  
+  const isDelivery = table?.type === 'comanda' && order.deliveryAddress;
+  let total = calculateOrderTotal(order);
+  let deliveryFee = 0;
+  
+  if (isDelivery) {
+    deliveryFee = 2.50;
+    total += deliveryFee;
+    receipt += `${LEFT}Endereco: ${order.deliveryAddress}${LF}${LF}`;
+  }
+  
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  
+  order.items.forEach(item => {
+    receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
+    if (item.description) {
+      receipt += `${LEFT}${item.description}${LF}`;
     }
-    
-    receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${LEFT}${BOLD_ON}ITENS${BOLD_OFF}${LF}`;
-    receipt += `${LEFT}${DIVIDER}${LF}`;
-    
-    order.items.forEach(item => {
-      receipt += `${LEFT}${BOLD_ON}${item.quantity}x ${item.name}${BOLD_OFF}${LF}`;
-      if (item.description) {
-        receipt += `${LEFT}${item.description}${LF}`;
-      }
-      if (item.notes) {
-        receipt += `${LEFT}OBS: ${item.notes}${LF}`;
-      }
-      receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
-    });
-    
-    if (isDelivery) {
-      receipt += `${LEFT}${DIVIDER}${LF}`;
-      receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
+    if (item.notes) {
+      receipt += `${LEFT}OBS: ${item.notes}${LF}`;
     }
-    
+    receipt += `${LEFT}Preço:  ${item.price.toFixed(2)} x ${item.quantity} =  ${(item.price * item.quantity).toFixed(2)}${LF}${LF}`;
+  });
+  
+  if (isDelivery) {
     receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
-    
-    if (order.kitchenNotes) {
-      receipt += `${LEFT}${DIVIDER}${LF}`;
-      receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
-      receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
-    }
-
+    receipt += `${LEFT}${BOLD_ON}Taxa de Entrega:  ${deliveryFee.toFixed(2)}${BOLD_OFF}${LF}`;
+  }
+  
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  receipt += `${LEFT}${BOLD_ON}TOTAL:  ${total.toFixed(2)}${BOLD_OFF}${LF}${LF}`;
+  
+  if (order.kitchenNotes) {
     receipt += `${LEFT}${DIVIDER}${LF}`;
-    receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
-    receipt += `${CENTER}Volte sempre${LF}`;
-    receipt += `${LF}`; // Reduzido para apenas 1 linha de espaço
-    receipt += `${CUT}`;
+    receipt += `${LEFT}${BOLD_ON}OBSERVACOES DA COZINHA:${BOLD_OFF}${LF}`;
+    receipt += `${LEFT}${order.kitchenNotes}${LF}${LF}`;
+  }
 
-    return receipt;
-  }, [selectedTable, tables]);
+  receipt += `${LEFT}${DIVIDER}${LF}`;
+  receipt += `${CENTER}Obrigado pela sua preferencia!${LF}`;
+  receipt += `${CENTER}Volte sempre${LF}`;
+  receipt += `${LF}`; // Reduzido para apenas 1 linha de espaço
+  receipt += `${CUT}`;
+
+  return receipt;
+}, [selectedTable, tables]);
 
   // Função para marcar itens como impressos
-  const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
-    try {
-      const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
-      
-      const newPrintedItems = {...printedItems};
-      const newSentItems = {...sentItems};
-      
-      items.forEach(item => {
-        const itemKey = `${tableId}-${item.id}-${item.addedAt}`;
-        newPrintedItems[itemKey] = true;
-        newSentItems[itemKey] = true;
-      });
-      
-      setPrintedItems(newPrintedItems);
-      setSentItems(newSentItems);
+const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
+  try {
+    const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
+    
+    const newPrintedItems = {...printedItems};
+    const newSentItems = {...sentItems};
+    
+    items.forEach(item => {
+      const itemKey = `${tableId}-${item.id}-${item.addedAt}`;
+      newPrintedItems[itemKey] = true;
+      newSentItems[itemKey] = true;
+    });
+    
+    setPrintedItems(newPrintedItems);
+    setSentItems(newSentItems);
 
-      const currentOrderSnapshot = await get(orderRef);
-      const currentOrder = currentOrderSnapshot.val();
-      
-      const updatedItems = currentOrder.items.map(orderItem => {
-        const wasPrinted = items.some(
-          printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
-        );
-        return wasPrinted ? { ...orderItem, printed: true } : orderItem;
-      });
+    const currentOrderSnapshot = await get(orderRef);
+    const currentOrder = currentOrderSnapshot.val();
+    
+    const updatedItems = currentOrder.items.map(orderItem => {
+      const wasPrinted = items.some(
+        printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
+      );
+      return wasPrinted ? { ...orderItem, printed: true } : orderItem;
+    });
 
-      await update(orderRef, {
-        items: updatedItems,
-        updatedAt: Date.now()
-      });
+    await update(orderRef, {
+      items: updatedItems,
+      updatedAt: Date.now()
+    });
 
-    } catch (err) {
-      console.error("Erro ao marcar itens como impressos:", err);
-      const revertedPrintedItems = {...printedItems};
-      items.forEach(item => {
-        delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
-      });
-      setPrintedItems(revertedPrintedItems);
-      throw err;
-    }
-  }, [printedItems, sentItems]);
+  } catch (err) {
+    console.error("Erro ao marcar itens como impressos:", err);
+    const revertedPrintedItems = {...printedItems};
+    items.forEach(item => {
+      delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
+    });
+    setPrintedItems(revertedPrintedItems);
+    throw err;
+  }
+}, [printedItems, sentItems]);
 
   // Função para imprimir pedido
   const printOrder = useCallback(async () => {
@@ -1130,11 +1314,6 @@ const AdminPanel = () => {
             return wasPrinted ? { ...item, printed: true } : item;
           })
         }));
-
-        // Fechar a notificação se estiver aberta
-        if (newItemsNotification.show && newItemsNotification.tableId === selectedTable) {
-          closeNotification();
-        }
       }
     } catch (err) {
       console.error('Erro ao imprimir:', err);
@@ -1142,7 +1321,7 @@ const AdminPanel = () => {
     } finally {
       setIsPrinting(false);
     }
-  }, [selectedTable, selectedOrder, printedItems, formatReceipt, sendToPrinter, markItemsAsPrinted, newItemsNotification, closeNotification]);
+  }, [selectedTable, selectedOrder, printedItems, formatReceipt, sendToPrinter, markItemsAsPrinted]);
 
   // Função para criar novo pedido
   const createNewOrder = useCallback(async () => {
@@ -1179,87 +1358,87 @@ const AdminPanel = () => {
     }
   }, [selectedTable, deliveryAddress]);
 
-  // Função para adicionar item ao pedido
-  const addItemToOrder = useCallback(async () => {
-    if (!selectedTable || !selectedMenuItem) return;
+  // Função para adicionar item ao pedido (MODIFICADA)
+const addItemToOrder = useCallback(async () => {
+  if (!selectedTable || !selectedMenuItem) return;
 
-    setLoading(true);
-    try {
-      let orderRef;
-      let orderData;
+  setLoading(true);
+  try {
+    let orderRef;
+    let orderData;
+    
+    if (selectedOrder?.id) {
+      // Limpa os itens enviados quando um novo item é adicionado
+      setSentItems({});
       
-      if (selectedOrder?.id) {
-        // Limpa os itens enviados quando um novo item é adicionado
-        setSentItems({});
-        
-        orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-        const currentItems = selectedOrder.items || [];
-        
-        orderData = {
-          items: [...currentItems, {
-            ...selectedMenuItem,
-            quantity: newItemQuantity,
-            addedAt: Date.now(),
-            printed: false,
-            notes: itemNotes[selectedMenuItem.id] || ''
-          }],
-          updatedAt: Date.now(),
-          deliveryAddress: deliveryAddress
+      orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+      const currentItems = selectedOrder.items || [];
+      
+      orderData = {
+        items: [...currentItems, {
+          ...selectedMenuItem,
+          quantity: newItemQuantity,
+          addedAt: Date.now(),
+          printed: false,
+          notes: itemNotes[selectedMenuItem.id] || ''
+        }],
+        updatedAt: Date.now(),
+        deliveryAddress: deliveryAddress
+      };
+    } else {
+      orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
+      orderData = {
+        items: [{
+          ...selectedMenuItem,
+          quantity: newItemQuantity,
+          addedAt: Date.now(),
+          printed: false,
+          notes: itemNotes[selectedMenuItem.id] || ''
+        }],
+        status: 'open',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        tableId: selectedTable,
+        deliveryAddress: deliveryAddress
         };
-      } else {
-        orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-        orderData = {
-          items: [{
-            ...selectedMenuItem,
-            quantity: newItemQuantity,
-            addedAt: Date.now(),
-            printed: false,
-            notes: itemNotes[selectedMenuItem.id] || ''
-          }],
-          status: 'open',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          tableId: selectedTable,
-          deliveryAddress: deliveryAddress
-          };
-        }
-
-        if (selectedOrder?.id) {
-          await update(orderRef, orderData);
-        } else {
-          const newOrderRef = await push(orderRef, orderData);
-          setSelectedOrder({ id: newOrderRef.key, ...orderData });
-          
-          // Atualizar status da mesa/comanda
-          const tableRef = ref(database, `tables/${selectedTable}`);
-          await update(tableRef, {
-            status: 'occupied'
-          });
-        }
-
-        // Resetar estado sem fechar o modal
-        setSelectedMenuItem(null);
-        setNewItemQuantity(1);
-        setItemNotes(prev => ({
-          ...prev,
-          [selectedMenuItem.id]: ''
-        }));
-        
-        // Scroll para o topo do menu de categorias
-        if (menuCategoriesRef.current) {
-          menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        if (menuItemsRef.current) {
-          menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
-      } catch (err) {
-        setError('Erro ao adicionar item');
-        console.error(err);
-      } finally {
-        setLoading(false);
       }
-    }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
+
+      if (selectedOrder?.id) {
+        await update(orderRef, orderData);
+      } else {
+        const newOrderRef = await push(orderRef, orderData);
+        setSelectedOrder({ id: newOrderRef.key, ...orderData });
+        
+        // Atualizar status da mesa/comanda
+        const tableRef = ref(database, `tables/${selectedTable}`);
+        await update(tableRef, {
+          status: 'occupied'
+        });
+      }
+
+      // Resetar estado sem fechar o modal
+      setSelectedMenuItem(null);
+      setNewItemQuantity(1);
+      setItemNotes(prev => ({
+        ...prev,
+        [selectedMenuItem.id]: ''
+      }));
+      
+      // Scroll para o topo do menu de categorias
+      if (menuCategoriesRef.current) {
+        menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (menuItemsRef.current) {
+        menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      
+    } catch (err) {
+      setError('Erro ao adicionar item');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
 
   // Função para remover item do pedido
   const removeItemFromOrder = useCallback(async (itemId) => {
@@ -1314,158 +1493,158 @@ const AdminPanel = () => {
   }, [selectedTable, selectedOrder]);
 
   // Função simplificada para fechar pedido
-  const closeOrder = useCallback(async () => {
-    if (!selectedTable || !selectedOrder?.id) return;
+const closeOrder = useCallback(async () => {
+  if (!selectedTable || !selectedOrder?.id) return;
+  
+  setIsClosingOrder(true);
+  try {
+    const table = tables.find(t => t.id === selectedTable);
+    let total = calculateOrderTotal(selectedOrder);
     
-    setIsClosingOrder(true);
-    try {
-      const table = tables.find(t => t.id === selectedTable);
-      let total = calculateOrderTotal(selectedOrder);
-      
-      if (selectedOrder.items?.length === 0) {
-        throw new Error('Não é possível fechar um pedido sem itens');
-      }
-      
-      let deliveryFee = 0;
-      
-      if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
-        deliveryFee = 2.50;
-        total += deliveryFee;
-      }
-
-      const orderToClose = {
-        ...selectedOrder,
-        total: total,
-        deliveryFee: deliveryFee,
-        paymentMethod: paymentMethod,
-        closedAt: Date.now(),
-        closedBy: getAuth().currentUser?.email || 'admin',
-        status: 'closed',
-        tableType: table?.type || 'comanda' // Adiciona o tipo para o histórico
-      };
-
-      // Adicionar ao histórico no Firebase
-      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-      const newHistoryRef = push(historyRef);
-      await set(newHistoryRef, orderToClose);
-
-      // Atualizar o estado local do histórico
-      setOrderHistory(prev => [
-        {
-          ...orderToClose,
-          id: newHistoryRef.key,
-          tableId: selectedTable
-        },
-        ...prev // Adiciona no início do array
-      ]);
-
-      // Remover pedido atual
-      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      await remove(orderRef);
-      
-      // Atualizar status da mesa/comanda
-      const tableRef = ref(database, `tables/${selectedTable}`);
-      await update(tableRef, {
-        status: 'available'
-      });
-      
-      // Atualizar estado local das mesas
-      setTables(prevTables => prevTables.map(table => {
-        if (table.id === selectedTable) {
-          return {
-            ...table,
-            currentOrder: null,
-            status: 'available'
-          };
-        }
-        return table;
-      }));
-      
-      setSelectedOrder(null);
-      setShowTableDetailsModal(false);
-      setDeliveryAddress('');
-    } catch (error) {
-      console.error("Erro ao fechar comanda:", error);
-      setError(error.message || 'Erro ao fechar comanda');
-    } finally {
-      setIsClosingOrder(false);
+    if (selectedOrder.items?.length === 0) {
+      throw new Error('Não é possível fechar um pedido sem itens');
     }
-  }, [selectedTable, selectedOrder, tables, paymentMethod]);
+    
+    let deliveryFee = 0;
+    
+    if (table?.type === 'comanda' && selectedOrder.deliveryAddress) {
+      deliveryFee = 2.50;
+      total += deliveryFee;
+    }
+
+    const orderToClose = {
+      ...selectedOrder,
+      total: total,
+      deliveryFee: deliveryFee,
+      paymentMethod: paymentMethod,
+      closedAt: Date.now(),
+      closedBy: getAuth().currentUser?.email || 'admin',
+      status: 'closed',
+      tableType: table?.type || 'comanda' // Adiciona o tipo para o histórico
+    };
+
+    // Adicionar ao histórico no Firebase
+    const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
+    const newHistoryRef = push(historyRef);
+    await set(newHistoryRef, orderToClose);
+
+    // Atualizar o estado local do histórico
+    setOrderHistory(prev => [
+      {
+        ...orderToClose,
+        id: newHistoryRef.key,
+        tableId: selectedTable
+      },
+      ...prev // Adiciona no início do array
+    ]);
+
+    // Remover pedido atual
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+    await remove(orderRef);
+    
+    // Atualizar status da mesa/comanda
+    const tableRef = ref(database, `tables/${selectedTable}`);
+    await update(tableRef, {
+      status: 'available'
+    });
+    
+    // Atualizar estado local das mesas
+    setTables(prevTables => prevTables.map(table => {
+      if (table.id === selectedTable) {
+        return {
+          ...table,
+          currentOrder: null,
+          status: 'available'
+        };
+      }
+      return table;
+    }));
+    
+    setSelectedOrder(null);
+    setShowTableDetailsModal(false);
+    setDeliveryAddress('');
+  } catch (error) {
+    console.error("Erro ao fechar comanda:", error);
+    setError(error.message || 'Erro ao fechar comanda');
+  } finally {
+    setIsClosingOrder(false);
+  }
+}, [selectedTable, selectedOrder, tables, paymentMethod]);
 
   // Função para carregar histórico de pedidos
-  const loadOrderHistory = useCallback(async () => {
-    setHistoryLoading(true);
-    try {
-      const historyRef = ref(database, 'tables');
-      const snapshot = await get(historyRef);
-      const data = snapshot.val() || {};
-      
-      let allOrders = [];
-      
-      Object.entries(data).forEach(([tableId, tableData]) => {
-        if (tableData.ordersHistory) {
-          Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
-            if (order.status === 'closed' || (order.total && order.total > 0)) {
-              allOrders.push({
-                ...order,
-                id: orderId,
-                tableId: tableId,
-                tableType: tables.find(t => t.id === tableId)?.type || 'comanda',
-                closedAt: order.closedAt || Date.now()
-              });
-            }
-          });
-        }
-      });
-      
-      // Ordenar por data de fechamento (mais recente primeiro)
-      allOrders.sort((a, b) => b.closedAt - a.closedAt);
-      
-      setOrderHistory(allOrders);
-      setShowHistoryModal(true);
-    } catch (err) {
-      console.error("Erro ao carregar histórico:", err);
-      setError('Erro ao carregar histórico de pedidos');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [tables]);
+const loadOrderHistory = useCallback(async () => {
+  setHistoryLoading(true);
+  try {
+    const historyRef = ref(database, 'tables');
+    const snapshot = await get(historyRef);
+    const data = snapshot.val() || {};
+    
+    let allOrders = [];
+    
+    Object.entries(data).forEach(([tableId, tableData]) => {
+      if (tableData.ordersHistory) {
+        Object.entries(tableData.ordersHistory).forEach(([orderId, order]) => {
+          if (order.status === 'closed' || (order.total && order.total > 0)) {
+            allOrders.push({
+              ...order,
+              id: orderId,
+              tableId: tableId,
+              tableType: tables.find(t => t.id === tableId)?.type || 'comanda',
+              closedAt: order.closedAt || Date.now()
+            });
+          }
+        });
+      }
+    });
+    
+    // Ordenar por data de fechamento (mais recente primeiro)
+    allOrders.sort((a, b) => b.closedAt - a.closedAt);
+    
+    setOrderHistory(allOrders);
+    setShowHistoryModal(true);
+  } catch (err) {
+    console.error("Erro ao carregar histórico:", err);
+    setError('Erro ao carregar histórico de pedidos');
+  } finally {
+    setHistoryLoading(false);
+  }
+}, [tables]);
 
   // Função para filtrar histórico
-  const filteredHistory = useCallback(() => {
-    let filtered = orderHistory;
+const filteredHistory = useCallback(() => {
+  let filtered = orderHistory;
 
-    // Filtro por tipo (mesa/comanda)
-    if (historyFilter !== 'all') {
-      filtered = filtered.filter(order => 
-        historyFilter === 'tables' 
-          ? order.tableType !== 'comanda' 
-          : order.tableType === 'comanda'
-      );
-    }
+  // Filtro por tipo (mesa/comanda)
+  if (historyFilter !== 'all') {
+    filtered = filtered.filter(order => 
+      historyFilter === 'tables' 
+        ? order.tableType !== 'comanda' 
+        : order.tableType === 'comanda'
+    );
+  }
 
-    // Filtro por termo de busca
-    if (historySearchTerm) {
-      const term = historySearchTerm.trim();
-      filtered = filtered.filter(order => 
-        order.tableId === term || // Busca exata pelo número da mesa/comanda
-        order.items?.some(item => 
-          item.name.toLowerCase().includes(term.toLowerCase()) ||
-          (item.description && item.description.toLowerCase().includes(term.toLowerCase()))
-      ));
-    }
+  // Filtro por termo de busca - MODIFICAÇÃO AQUI
+  if (historySearchTerm) {
+    const term = historySearchTerm.trim();
+    filtered = filtered.filter(order => 
+      order.tableId === term || // Busca exata pelo número da mesa/comanda
+      order.items?.some(item => 
+        item.name.toLowerCase().includes(term.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(term.toLowerCase()))
+    ));
+  }
 
-    // Filtro por data
-    filtered = filtered.filter(order => {
-      const orderDate = new Date(order.closedAt);
-      return (
-        orderDate >= historyDateRange.start &&
-        orderDate <= historyDateRange.end
-      );
-    });
+  // Filtro por data
+  filtered = filtered.filter(order => {
+    const orderDate = new Date(order.closedAt);
+    return (
+      orderDate >= historyDateRange.start &&
+      orderDate <= historyDateRange.end
+    );
+  });
 
-    return filtered;
-  }, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
+  return filtered;
+}, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
 
   // Função para calcular total do pedido
   const calculateOrderTotal = useCallback((order) => {
@@ -1481,13 +1660,13 @@ const AdminPanel = () => {
   }, []);
 
   // Função para verificar itens não impressos
-  const hasUnprintedItems = useCallback((order) => {
-    if (!order?.items) return false;
-    return order.items.some(item => {
-      const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-      return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
-    });
-  }, [selectedTable, printedItems, sentItems]);
+const hasUnprintedItems = useCallback((order) => {
+  if (!order?.items) return false;
+  return order.items.some(item => {
+    const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+    return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
+  });
+}, [selectedTable, printedItems, sentItems]);
 
   // Função para filtrar mesas
   const filteredTables = useCallback(() => {
@@ -1552,104 +1731,6 @@ const AdminPanel = () => {
       setIsLoadingAuth(false);
     }
   }, [email, password]);
-
-  // Renderização do modal de notificação de novos itens
-  const renderNewItemsNotification = () => (
-    <AnimatePresence>
-      {newItemsNotification.show && (
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 50 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-4 right-4 z-50 w-full max-w-md"
-        >
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-xl overflow-hidden">
-            <div className="p-4 flex justify-between items-start">
-              <div className="flex items-start gap-3">
-                <div className="bg-white/20 p-2 rounded-full">
-                  <FiAlertCircle className="text-white h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">
-                    Novos Itens Adicionados!
-                  </h3>
-                  <p className="text-white/90 text-sm mt-1">
-                    {newItemsNotification.items.length} novo(s) item(ns) na {newItemsNotification.tableId.startsWith('1') ? 'Mesa' : 'Comanda'} {newItemsNotification.tableId}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={closeNotification}
-                className="text-white/70 hover:text-white p-1 rounded-full transition-colors"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm p-4 max-h-64 overflow-y-auto">
-              <ul className="space-y-3">
-                {newItemsNotification.items.map((item, index) => (
-                  <motion.li
-                    key={`${item.id}-${item.addedAt || index}`}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-white/10 backdrop-blur-sm rounded-lg p-3 flex items-start gap-3 border border-white/20"
-                  >
-                    <div className="w-12 h-12 bg-white/20 rounded-lg overflow-hidden flex-shrink-0">
-                      {item.image && (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-white font-medium truncate">{item.quantity}x {item.name}</h4>
-                      {item.description && (
-                        <p className="text-white/70 text-xs truncate">{item.description}</p>
-                      )}
-                      {item.notes && (
-                        <p className="text-white/80 text-xs mt-1">
-                          <span className="font-semibold">Obs:</span> {item.notes}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-white font-bold text-sm">
-                      € {(item.price * item.quantity).toFixed(2)}
-                    </div>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="p-4 bg-white/10 flex justify-between gap-3">
-              <button
-                onClick={markItemsAsSeen}
-                className="flex-1 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <FiCheck className="h-5 w-5" />
-                Marcar como visto
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedTable(newItemsNotification.tableId);
-                  setShowTableDetailsModal(true);
-                  markItemsAsSeen();
-                }}
-                className="flex-1 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 font-medium"
-              >
-                <FiShoppingBag className="h-5 w-5" />
-                Ver Comanda
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
 
   // Renderização do login
   const renderLogin = () => (
@@ -1900,283 +1981,283 @@ const AdminPanel = () => {
     </div>
   );
 
-  // Renderização do modal de histórico
-  const renderHistoryModal = () => {
-    const filteredOrders = filteredHistory();
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
-    const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
-    const topItems = {};
-    const topCustomers = {};
-    const revenueByPaymentMethod = {
-      dinheiro: 0,
-      cartao: 0
-    };
+  // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
+const renderHistoryModal = () => {
+  const filteredOrders = filteredHistory();
+  const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || calculateOrderTotal(order)), 0);
+  const averageOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
+  const topItems = {};
+  const topCustomers = {};
+  const revenueByPaymentMethod = {
+    dinheiro: 0,
+    cartao: 0
+  };
 
-    filteredOrders.forEach(order => {
-      // Contagem de itens
-      order.items?.forEach(item => {
-        const key = `${item.name}-${item.price.toFixed(2)}`;
-        topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
-      });
-      
-      // Clientes frequentes (para comandas com endereço)
-      if (order.tableType === 'comanda' && order.deliveryAddress) {
-        topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
-      }
-
-      // Receita por método de pagamento
-      if (order.paymentMethod === 'dinheiro') {
-        revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
-      } else {
-        revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
-      }
+  filteredOrders.forEach(order => {
+    // Contagem de itens
+    order.items?.forEach(item => {
+      const key = `${item.name}-${item.price.toFixed(2)}`;
+      topItems[key] = (topItems[key] || 0) + (item.quantity || 1);
     });
+    
+    // Clientes frequentes (para comandas com endereço)
+    if (order.tableType === 'comanda' && order.deliveryAddress) {
+      topCustomers[order.deliveryAddress] = (topCustomers[order.deliveryAddress] || 0) + 1;
+    }
 
-    const sortedTopItems = Object.entries(topItems)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+    // Receita por método de pagamento
+    if (order.paymentMethod === 'dinheiro') {
+      revenueByPaymentMethod.dinheiro += order.total || calculateOrderTotal(order);
+    } else {
+      revenueByPaymentMethod.cartao += order.total || calculateOrderTotal(order);
+    }
+  });
 
-    const sortedTopCustomers = Object.entries(topCustomers)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
+  const sortedTopItems = Object.entries(topItems)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
 
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
-            <button 
-              onClick={() => setShowHistoryModal(false)}
-              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-            {/* Filtros e estatísticas */}
-            <div className="w-full md:w-72 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 p-4 overflow-y-auto">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setHistoryFilter('all')}
-                      className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
-                        historyFilter === 'all' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Todos
-                    </button>
-                    <button
-                      onClick={() => setHistoryFilter('tables')}
-                      className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
-                        historyFilter === 'tables' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Mesas
-                    </button>
-                    <button
-                      onClick={() => setHistoryFilter('comandas')}
-                      className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
-                        historyFilter === 'comandas' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Comandas
-                    </button>
-                  </div>
+  const sortedTopCustomers = Object.entries(topCustomers)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-gray-800">Histórico de Pedidos</h3>
+          <button 
+            onClick={() => setShowHistoryModal(false)}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          {/* Filtros e estatísticas */}
+          <div className="w-full md:w-72 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 p-4 overflow-y-auto">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setHistoryFilter('all')}
+                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                      historyFilter === 'all' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => setHistoryFilter('tables')}
+                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                      historyFilter === 'tables' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Mesas
+                  </button>
+                  <button
+                    onClick={() => setHistoryFilter('comandas')}
+                    className={`py-1 px-2 rounded-lg text-xs sm:text-sm ${
+                      historyFilter === 'comandas' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Comandas
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">De</label>
-                      <input
-                        type="date"
-                        value={historyDateRange.start.toISOString().split('T')[0]}
-                        onChange={(e) => setHistoryDateRange(prev => ({
-                          ...prev,
-                          start: new Date(e.target.value)
-                        }))}
-                        className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Até</label>
-                      <input
-                        type="date"
-                        value={historyDateRange.end.toISOString().split('T')[0]}
-                        onChange={(e) => setHistoryDateRange(prev => ({
-                          ...prev,
-                          end: new Date(e.target.value)
-                        }))}
-                        className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
-                  <input
-                    type="text"
-                    placeholder="Mesa, item, etc."
-                    value={historySearchTerm}
-                    onChange={(e) => setHistorySearchTerm(e.target.value)}
-                    className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-                  />
-                </div>
-                
-                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
-                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Estatísticas</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-blue-50 p-2 rounded-lg">
-                      <div className="text-xs text-blue-600">Pedidos</div>
-                      <div className="text-lg font-bold">{filteredOrders.length}</div>
-                    </div>
-                    <div className="bg-purple-50 p-2 rounded-lg">
-                      <div className="text-xs text-purple-600">Ticket Médio</div>
-                      <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {sortedTopItems.length > 0 && (
-                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Itens mais vendidos</h4>
-                    <div className="space-y-2">
-                      {sortedTopItems.map(([item, quantity]) => {
-                        const [name, price] = item.split('-');
-                        return (
-                          <div key={item} className="flex justify-between text-xs sm:text-sm">
-                            <div className="truncate flex-1">{name}</div>
-                            <div className="font-medium ml-2">{quantity}x</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                {sortedTopCustomers.length > 0 && (
-                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Clientes frequentes</h4>
-                    <div className="space-y-2">
-                      {sortedTopCustomers.map(([address, orders]) => (
-                        <div key={address} className="text-xs sm:text-sm">
-                          <div className="font-medium truncate">{address}</div>
-                          <div className="text-gray-500 text-xs">{orders} pedidos</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
-            
-            {/* Lista de pedidos */}
-            <div className="flex-1 overflow-y-auto">
-              {historyLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">De</label>
+                    <input
+                      type="date"
+                      value={historyDateRange.start.toISOString().split('T')[0]}
+                      onChange={(e) => setHistoryDateRange(prev => ({
+                        ...prev,
+                        start: new Date(e.target.value)
+                      }))}
+                      className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Até</label>
+                    <input
+                      type="date"
+                      value={historyDateRange.end.toISOString().split('T')[0]}
+                      onChange={(e) => setHistoryDateRange(prev => ({
+                        ...prev,
+                        end: new Date(e.target.value)
+                      }))}
+                      className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                    />
+                  </div>
                 </div>
-              ) : filteredOrders.length > 0 ? (
-                <div className="divide-y divide-gray-200">
-                  {filteredOrders.map((order) => {
-                    const orderTotal = order.total || calculateOrderTotal(order);
-                    const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
-                    
-                    return (
-                      <div key={order.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
-                          <div className="flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                order.tableType === 'comanda' 
-                                  ? 'bg-purple-100 text-purple-800' 
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(order.closedAt).toLocaleString('pt-PT', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
-                            </div>
-                          </div>
-                          <div className="sm:text-right">
-                            <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
-                          </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pesquisar</label>
+                <input
+                  type="text"
+                  placeholder="Mesa, item, etc."
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                  className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
+                />
+              </div>
+              
+              <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Estatísticas</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-blue-50 p-2 rounded-lg">
+                    <div className="text-xs text-blue-600">Pedidos</div>
+                    <div className="text-lg font-bold">{filteredOrders.length}</div>
+                  </div>
+                  <div className="bg-purple-50 p-2 rounded-lg">
+                    <div className="text-xs text-purple-600">Ticket Médio</div>
+                    <div className="text-lg font-bold">€ {averageOrderValue.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+              
+              {sortedTopItems.length > 0 && (
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Itens mais vendidos</h4>
+                  <div className="space-y-2">
+                    {sortedTopItems.map(([item, quantity]) => {
+                      const [name, price] = item.split('-');
+                      return (
+                        <div key={item} className="flex justify-between text-xs sm:text-sm">
+                          <div className="truncate flex-1">{name}</div>
+                          <div className="font-medium ml-2">{quantity}x</div>
                         </div>
-                        
-                        {isDelivery && (
-                          <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                            </svg>
-                            {order.deliveryAddress}
-                          </div>
-                        )}
-                        
-                        <div className="mt-2">
-                          <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
-                          <div className="space-y-2">
-                            {order.items?.map(item => (
-                              <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-xs sm:text-sm">
-                                <div className="flex items-start gap-2">
-                                  <span className="text-gray-500">{item.quantity}x</span>
-                                  <div>
-                                    <div>{item.name}</div>
-                                    {item.notes && (
-                                      <div className="text-xs text-gray-500">Obs: {item.notes}</div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-gray-700 font-medium">
-                                  € {(item.price * (item.quantity || 1)).toFixed(2)}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {sortedTopCustomers.length > 0 && (
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-2 sm:mb-3">Clientes frequentes</h4>
+                  <div className="space-y-2">
+                    {sortedTopCustomers.map(([address, orders]) => (
+                      <div key={address} className="text-xs sm:text-sm">
+                        <div className="font-medium truncate">{address}</div>
+                        <div className="text-gray-500 text-xs">{orders} pedidos</div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
-                  <p className="mt-1 text-sm">Ajuste os filtros para ver os resultados</p>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           </div>
+          
+          {/* Lista de pedidos */}
+          <div className="flex-1 overflow-y-auto">
+            {historyLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : filteredOrders.length > 0 ? (
+              <div className="divide-y divide-gray-200">
+                {filteredOrders.map((order) => {
+                  const orderTotal = order.total || calculateOrderTotal(order);
+                  const isDelivery = order.tableType === 'comanda' && order.deliveryAddress;
+                  
+                  return (
+                    <div key={order.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                              order.tableType === 'comanda' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(order.closedAt).toLocaleString('pt-PT', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
+                          </div>
+                        </div>
+                        <div className="sm:text-right">
+                          <div className="text-lg font-bold text-green-600">€ {orderTotal.toFixed(2)}</div>
+                        </div>
+                      </div>
+                      
+                      {isDelivery && (
+                        <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mb-2 inline-flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                          </svg>
+                          {order.deliveryAddress}
+                        </div>
+                      )}
+                      
+                      <div className="mt-2">
+                        <div className="text-xs font-medium text-gray-500 mb-1">ITENS ({order.items?.length || 0})</div>
+                        <div className="space-y-2">
+                          {order.items?.map(item => (
+                            <div key={`${order.id}-${item.id}-${item.addedAt}`} className="flex justify-between text-xs sm:text-sm">
+                              <div className="flex items-start gap-2">
+                                <span className="text-gray-500">{item.quantity}x</span>
+                                <div>
+                                  <div>{item.name}</div>
+                                  {item.notes && (
+                                    <div className="text-xs text-gray-500">Obs: {item.notes}</div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-gray-700 font-medium">
+                                € {(item.price * (item.quantity || 1)).toFixed(2)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-700 mt-2">Nenhum pedido encontrado</h3>
+                <p className="mt-1 text-sm">Ajuste os filtros para ver os resultados</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
-  // Renderização do modal para adicionar itens
+  // Renderização do modal para adicionar itens (MODIFICADO)
   const renderAddItemModal = () => (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -2672,7 +2753,9 @@ const AdminPanel = () => {
                           </>
                         ) : (
                           <>
-                            <FiPrinter className="h-5 w-5" />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
                             {hasUnprintedItems(selectedOrder) ? 'Enviar para Cozinha' : 'Enviado'}
                           </>
                         )}
@@ -2813,7 +2896,6 @@ const AdminPanel = () => {
       {showAddItemModal && renderAddItemModal()}
       {showHistoryModal && renderHistoryModal()}
       {showTableDetailsModal && renderTableDetailsModal()}
-      {renderNewItemsNotification()}
     </div>
   );
 
