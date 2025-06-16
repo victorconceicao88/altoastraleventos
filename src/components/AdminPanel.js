@@ -128,6 +128,8 @@ const AdminPanel = () => {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
+  const [newOrders, setNewOrders] = useState({});
+  const [flashingTables, setFlashingTables] = useState({});
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -182,6 +184,9 @@ const AdminPanel = () => {
     chunkSize: 100,
     delayBetweenChunks: 100
   };
+
+  const NEW_ORDER_FLASH_DURATION = 5000; // 5 segundos de animação
+  const NEW_ORDER_BADGE_DURATION = 30000; // 30 segundos do badge visível
 
   // Menu de itens
   const foodImages = {
@@ -657,6 +662,45 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, [isAuthenticated, selectedTable, printedItems]);
 
+  useEffect(() => {
+  if (!isAuthenticated) return;
+
+  const tablesRef = ref(database, 'tables');
+  const unsubscribe = onValue(tablesRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const now = Date.now();
+    
+    const updatedNewOrders = {...newOrders};
+    const updatedFlashingTables = {...flashingTables};
+    
+    Object.entries(data).forEach(([tableId, tableData]) => {
+      if (tableData.currentOrder) {
+        const order = Object.values(tableData.currentOrder)[0];
+        
+        // Verifica se é um pedido novo (criado nos últimos 30 segundos)
+        if (order.createdAt && (now - order.createdAt) < NEW_ORDER_BADGE_DURATION) {
+          if (!newOrders[tableId] || newOrders[tableId] < order.createdAt) {
+            updatedNewOrders[tableId] = order.createdAt;
+            
+            // Ativa o efeito de piscar por 5 segundos
+            if (!flashingTables[tableId]) {
+              updatedFlashingTables[tableId] = true;
+              setTimeout(() => {
+                setFlashingTables(prev => ({...prev, [tableId]: false}));
+              }, NEW_ORDER_FLASH_DURATION);
+            }
+          }
+        }
+      }
+    });
+    
+    setNewOrders(updatedNewOrders);
+    setFlashingTables(updatedFlashingTables);
+  });
+
+  return () => unsubscribe();
+}, [isAuthenticated, newOrders, flashingTables]);
+
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
     if (!selectedTable || !order?.id) return;
@@ -1110,6 +1154,20 @@ const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
     }
   }, [selectedTable, deliveryAddress]);
 
+  const markOrderAsViewed = useCallback((tableId) => {
+  setNewOrders(prev => {
+    const newState = {...prev};
+    delete newState[tableId];
+    return newState;
+  });
+  
+  setFlashingTables(prev => {
+    const newState = {...prev};
+    delete newState[tableId];
+    return newState;
+  });
+}, []);
+
   // Função para adicionar item ao pedido (MODIFICADA)
 const addItemToOrder = useCallback(async () => {
   if (!selectedTable || !selectedMenuItem) return;
@@ -1405,11 +1463,12 @@ const filteredHistory = useCallback(() => {
   }, []);
 
   // Função para selecionar mesa
-  const handleTableSelect = useCallback((tableNumber) => {
-    const tableStr = tableNumber.toString();
-    setSelectedTable(tableStr);
-    setShowTableDetailsModal(true);
-  }, []);
+const handleTableSelect = useCallback((tableNumber) => {
+  const tableStr = tableNumber.toString();
+  setSelectedTable(tableStr);
+  setShowTableDetailsModal(true);
+  markOrderAsViewed(tableStr);
+}, [markOrderAsViewed]);
 
   // Função para verificar itens não impressos
 const hasUnprintedItems = useCallback((order) => {
@@ -1548,6 +1607,65 @@ const hasUnprintedItems = useCallback((order) => {
     </div>
   );
 
+const renderNewOrdersPanel = () => {
+  const newOrdersList = tables.filter(table => 
+    newOrders[table.id] && table.currentOrder
+  ).sort((a, b) => newOrders[b.id] - newOrders[a.id]);
+
+  if (newOrdersList.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-40">
+      <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden w-72">
+        <div className="bg-gradient-to-r from-red-600 to-amber-600 text-white px-4 py-3 flex items-center justify-between">
+          <h3 className="font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Novos Pedidos
+          </h3>
+          <button 
+            onClick={() => {
+              setNewOrders({});
+              setFlashingTables({});
+            }}
+            className="text-white/80 hover:text-white p-1 rounded-full"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="max-h-64 overflow-y-auto">
+          {newOrdersList.map(table => (
+            <div 
+              key={table.id}
+              onClick={() => {
+                handleTableSelect(table.id);
+                markOrderAsViewed(table.id);
+              }}
+              className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+            >
+              <div className="flex justify-between items-center">
+                <div className="font-medium">
+                  {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
+                </div>
+                <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  {table.currentOrder.items?.length || 0} itens
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {new Date(table.currentOrder.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
   // Renderização do cabeçalho
   const renderHeader = () => (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
@@ -1600,138 +1718,151 @@ const hasUnprintedItems = useCallback((order) => {
   );
 
   // Renderização das abas de mesas
-  const renderTableTabs = () => (
-    <div className="bg-white border-r border-gray-200 md:h-[calc(100vh-4rem)] md:sticky md:top-16 overflow-y-auto">
-      <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800">Mesas & Comandas</h2>
-            <p className="text-sm text-gray-500">Total: {tables.length} disponíveis</p>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">
-              {tables.filter(t => t.currentOrder).length} ativas
-            </span>
-          </div>
+const renderTableTabs = () => (
+  <div className="bg-white border-r border-gray-200 md:h-[calc(100vh-4rem)] md:sticky md:top-16 overflow-y-auto">
+    <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800">Mesas & Comandas</h2>
+          <p className="text-sm text-gray-500">Total: {tables.length} disponíveis</p>
         </div>
-        
-        <div className="flex space-x-2 mt-3 overflow-x-auto pb-2">
-          {['all', 'active', 'vip', 'internas', 'externas', 'comandas'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setCurrentPage(0); }}
-              className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
-                activeTab === tab 
-                  ? tab === 'all' ? 'bg-blue-100 text-blue-800 font-medium' :
-                    tab === 'active' ? 'bg-green-100 text-green-800 font-medium' :
-                    tab === 'vip' ? 'bg-amber-100 text-amber-800 font-medium' :
-                    tab === 'internas' ? 'bg-blue-100 text-blue-800 font-medium' :
-                    tab === 'externas' ? 'bg-green-100 text-green-800 font-medium' :
-                    'bg-purple-100 text-purple-800 font-medium'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tab === 'all' ? 'Todas' :
-               tab === 'active' ? 'Ativas' :
-               tab === 'vip' ? 'VIP' :
-               tab === 'internas' ? 'Internas' :
-               tab === 'externas' ? 'Externas' : 'Comandas'}
-            </button>
-          ))}
+        <div className="flex items-center gap-1">
+          <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">
+            {tables.filter(t => t.currentOrder).length} ativas
+          </span>
         </div>
       </div>
       
-      <div className="p-3">
-        {paginatedTables().length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {paginatedTables().map((table) => {
-                const hasOrder = table.currentOrder;
-                const orderTotal = hasOrder ? calculateOrderTotal(table.currentOrder) : 0;
-                const isVIP = orderTotal > 100;
-                const badgeColor = getTableBadgeColor(table);
-                const tableIcon = getTableIcon(table);
-                
-                return (
-                  <button
-                    key={table.id}
-                    onClick={() => handleTableSelect(table.id)}
-                    className={`relative p-3 rounded-xl transition-all duration-200 ${
-                      selectedTable === table.id 
-                        ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-inner' 
-                        : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
-                    } flex flex-col items-center justify-center h-full min-h-[100px]`}
-                  >
-                    <div className={`absolute top-1 right-1 ${badgeColor} text-xs px-2 py-0.5 rounded-full flex items-center`}>
-                      {hasOrder ? 'Ocupada' : 'Disponível'}
-                    </div>
-                    
-                    {isVIP && hasOrder && (
-                      <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        VIP
-                      </div>
-                    )}
-                    
-                    <span className="font-bold text-gray-800 text-lg mb-1">
-                      {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
-                    </span>
-                    
-                    {hasOrder ? (
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500">
-                          {table.currentOrder.items?.length || 0} itens
-                        </div>
-                        <div className="text-sm font-semibold mt-1 text-blue-600">
-                          € {orderTotal.toFixed(2)}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">Disponível</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center mt-4 gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                  disabled={currentPage === 0}
-                  className="p-2 rounded-full bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                
-                <span className="text-sm text-gray-600">
-                  Página {currentPage + 1} de {totalPages}
-                </span>
-                
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                  disabled={currentPage >= totalPages - 1}
-                  className="p-2 rounded-full bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            Nenhuma mesa encontrada com este filtro
-          </div>
-        )}
+      <div className="flex space-x-2 mt-3 overflow-x-auto pb-2">
+        {['all', 'active', 'vip', 'internas', 'externas', 'comandas'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => { setActiveTab(tab); setCurrentPage(0); }}
+            className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${
+              activeTab === tab 
+                ? tab === 'all' ? 'bg-blue-100 text-blue-800 font-medium' :
+                  tab === 'active' ? 'bg-green-100 text-green-800 font-medium' :
+                  tab === 'vip' ? 'bg-amber-100 text-amber-800 font-medium' :
+                  tab === 'internas' ? 'bg-blue-100 text-blue-800 font-medium' :
+                  tab === 'externas' ? 'bg-green-100 text-green-800 font-medium' :
+                  'bg-purple-100 text-purple-800 font-medium'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {tab === 'all' ? 'Todas' :
+             tab === 'active' ? 'Ativas' :
+             tab === 'vip' ? 'VIP' :
+             tab === 'internas' ? 'Internas' :
+             tab === 'externas' ? 'Externas' : 'Comandas'}
+          </button>
+        ))}
       </div>
     </div>
-  );
+    
+    <div className="p-3">
+      {paginatedTables().length > 0 ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {paginatedTables().map((table) => {
+              const hasOrder = table.currentOrder;
+              const orderTotal = hasOrder ? calculateOrderTotal(table.currentOrder) : 0;
+              const isVIP = orderTotal > 100;
+              const badgeColor = hasOrder ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+              const tableIcon = table.type === 'interna' ? '🏠' : 
+                               table.type === 'externa' ? '🌿' : 
+                               table.type === 'comanda' ? '📋' : '🪑';
+              
+              return (
+                <button
+                  key={table.id}
+                  onClick={() => handleTableSelect(table.id)}
+                  className={`relative p-3 rounded-xl transition-all duration-200 ${
+                    selectedTable === table.id 
+                      ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-inner' 
+                      : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
+                  } flex flex-col items-center justify-center h-full min-h-[100px] ${
+                    flashingTables[table.id] ? 'animate-pulse border-2 border-amber-400' : ''
+                  }`}
+                >
+                  {newOrders[table.id] && (
+                    <div className="absolute top-0 left-0 transform -translate-y-1/2 -translate-x-1/2 bg-gradient-to-r from-red-500 to-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center shadow-lg z-10">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Novo Pedido!
+                    </div>
+                  )}
+                  
+                  <div className={`absolute top-1 right-1 ${badgeColor} text-xs px-2 py-0.5 rounded-full flex items-center`}>
+                    {hasOrder ? 'Ocupada' : 'Disponível'}
+                  </div>
+                  
+                  {isVIP && hasOrder && (
+                    <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      VIP
+                    </div>
+                  )}
+                  
+                  <span className="font-bold text-gray-800 text-lg mb-1">
+                    {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
+                  </span>
+                  
+                  {hasOrder ? (
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500">
+                        {table.currentOrder.items?.length || 0} itens
+                      </div>
+                      <div className="text-sm font-semibold mt-1 text-blue-600">
+                        € {orderTotal.toFixed(2)}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Disponível</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center mt-4 gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="p-2 rounded-full bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <span className="text-sm text-gray-600">
+                Página {currentPage + 1} de {totalPages}
+              </span>
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="p-2 rounded-full bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          Nenhuma mesa encontrada com este filtro
+        </div>
+      )}
+    </div>
+  </div>
+);
 
   // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
 const renderHistoryModal = () => {
@@ -2648,11 +2779,13 @@ const renderHistoryModal = () => {
       {showAddItemModal && renderAddItemModal()}
       {showHistoryModal && renderHistoryModal()}
       {showTableDetailsModal && renderTableDetailsModal()}
+      {renderNewOrdersPanel()}
     </div>
   );
 
   // Renderização condicional
   return !isAuthenticated ? renderLogin() : renderMainContent();
+
 };
 
 export default AdminPanel;

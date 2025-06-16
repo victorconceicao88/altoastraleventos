@@ -75,3 +75,18 @@ code {
 .shadow-gold {
   box-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
 }
+
+@keyframes pulse {
+  0%, 100% {
+    border-color: rgba(251, 191, 36, 0.7);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
+  }
+  50% {
+    border-color: rgba(251, 191, 36, 1);
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 1.5s infinite;
+}
