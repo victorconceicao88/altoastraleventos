@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, update, push, remove, set, get } from 'firebase/database';
 import { database } from '../firebase';
 import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiAlertCircle, FiX, FiShoppingBag, FiCheck, FiPrinter } from 'react-icons/fi';
 
-// Importações de imagens
+// Importações de imagens (mantidas como no código original)
 import frangoCremoso from '../assets/frango-cremoso.jpg';
 import picanha from '../assets/picanha.jpg';
 import costelaRaiz from '../assets/costela-raiz.jpg';
@@ -128,9 +130,14 @@ const AdminPanel = () => {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
-  const [newOrders, setNewOrders] = useState([]);
-  const [showNewOrdersNotification, setShowNewOrdersNotification] = useState(false);
-  const [pulseElements, setPulseElements] = useState({});
+
+  // Novo estado para notificações
+  const [newItemsNotification, setNewItemsNotification] = useState({
+    show: false,
+    tableId: null,
+    items: []
+  });
+  const notificationTimeoutRef = useRef(null);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -186,7 +193,7 @@ const AdminPanel = () => {
     delayBetweenChunks: 100
   };
 
-  // Menu de itens
+  // Menu de itens (mantido igual ao original)
   const foodImages = {
     frangoCremoso,
     picanhaPremium: picanha,
@@ -559,10 +566,12 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, []);
 
-  // Efeito para detectar novos pedidos
+  // Efeito para carregar mesas e pedidos
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    setTables(initialTables());
+    
     const tablesRef = ref(database, 'tables');
     const unsubscribe = onValue(tablesRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -593,62 +602,14 @@ const AdminPanel = () => {
         };
       });
 
-      // Detectar novos pedidos
-      const newOrdersDetected = [];
-      tablesData.forEach(table => {
-        if (table.currentOrder) {
-          table.currentOrder.items?.forEach(item => {
-            const itemKey = `${table.id}-${item.id}-${item.addedAt || ''}`;
-            if (!printedItems[itemKey] && !item.printed) {
-              newOrdersDetected.push({
-                tableId: table.id,
-                tableType: table.type,
-                item: item,
-                timestamp: item.addedAt || Date.now()
-              });
-              
-              // Adicionar efeito de pulso para novos itens
-              setPulseElements(prev => ({
-                ...prev,
-                [itemKey]: true
-              }));
-              
-              // Remover o efeito após 30 segundos
-              setTimeout(() => {
-                setPulseElements(prev => {
-                  const newState = {...prev};
-                  delete newState[itemKey];
-                  return newState;
-                });
-              }, 30000);
-            }
-          });
-        }
-      });
-
-      if (newOrdersDetected.length > 0) {
-        setNewOrders(prev => [...prev, ...newOrdersDetected]);
-        setShowNewOrdersNotification(true);
-      }
-
       setTables(tablesData);
       setLastUpdate(new Date());
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated, initialTables, printedItems]);
+  }, [isAuthenticated, initialTables]);
 
-  // Efeito para limpar notificação após 5 segundos
-  useEffect(() => {
-    if (showNewOrdersNotification) {
-      const timer = setTimeout(() => {
-        setShowNewOrdersNotification(false);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showNewOrdersNotification]);
-
-  // Efeito para carregar pedido selecionado
+  // Efeito para carregar pedido selecionado e verificar novos itens
   useEffect(() => {
     if (!isAuthenticated || !selectedTable) {
       setSelectedOrder(null);
@@ -691,6 +652,38 @@ const AdminPanel = () => {
           setSelectedOrder(loadedOrder);
           setDeliveryAddress(loadedOrder.deliveryAddress || '');
 
+          // Verificar se há novos itens não impressos/não enviados
+          const unprintedItems = loadedOrder.items?.filter(item => {
+            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+            return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
+          });
+
+          // Mostrar notificação apenas se houver novos itens não vistos
+          if (unprintedItems?.length > 0 && !newItemsNotification.show) {
+            const hasNewItems = unprintedItems.some(item => {
+              const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
+              return !sentItems[itemKey];
+            });
+
+            if (hasNewItems) {
+              setNewItemsNotification({
+                show: true,
+                tableId: selectedTable,
+                items: unprintedItems
+              });
+
+              // Limpar timeout anterior se existir
+              if (notificationTimeoutRef.current) {
+                clearTimeout(notificationTimeoutRef.current);
+              }
+
+              // Configurar timeout para fechar automaticamente após 30 segundos
+              notificationTimeoutRef.current = setTimeout(() => {
+                setNewItemsNotification(prev => ({ ...prev, show: false }));
+              }, 30000);
+            }
+          }
+
           // Fechar automaticamente se não houver itens
           if (loadedOrder.items?.length === 0) {
             closeOrderAutomatically(loadedOrder);
@@ -704,7 +697,29 @@ const AdminPanel = () => {
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated, selectedTable, printedItems]);
+  }, [isAuthenticated, selectedTable, printedItems, sentItems, newItemsNotification.show]);
+
+  // Função para fechar a notificação
+  const closeNotification = useCallback(() => {
+    setNewItemsNotification(prev => ({ ...prev, show: false }));
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+  }, []);
+
+  // Função para marcar itens como vistos
+  const markItemsAsSeen = useCallback(() => {
+    if (!newItemsNotification.tableId || newItemsNotification.items.length === 0) return;
+
+    const newSentItems = { ...sentItems };
+    newItemsNotification.items.forEach(item => {
+      const itemKey = `${newItemsNotification.tableId}-${item.id}-${item.addedAt || ''}`;
+      newSentItems[itemKey] = true;
+    });
+
+    setSentItems(newSentItems);
+    closeNotification();
+  }, [newItemsNotification, sentItems, closeNotification]);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -1115,6 +1130,11 @@ const AdminPanel = () => {
             return wasPrinted ? { ...item, printed: true } : item;
           })
         }));
+
+        // Fechar a notificação se estiver aberta
+        if (newItemsNotification.show && newItemsNotification.tableId === selectedTable) {
+          closeNotification();
+        }
       }
     } catch (err) {
       console.error('Erro ao imprimir:', err);
@@ -1122,7 +1142,7 @@ const AdminPanel = () => {
     } finally {
       setIsPrinting(false);
     }
-  }, [selectedTable, selectedOrder, printedItems, formatReceipt, sendToPrinter, markItemsAsPrinted]);
+  }, [selectedTable, selectedOrder, printedItems, formatReceipt, sendToPrinter, markItemsAsPrinted, newItemsNotification, closeNotification]);
 
   // Função para criar novo pedido
   const createNewOrder = useCallback(async () => {
@@ -1533,11 +1553,103 @@ const AdminPanel = () => {
     }
   }, [email, password]);
 
-  // Função para limpar notificações de novos pedidos
-  const clearNewOrders = useCallback(() => {
-    setNewOrders([]);
-    setShowNewOrdersNotification(false);
-  }, []);
+  // Renderização do modal de notificação de novos itens
+  const renderNewItemsNotification = () => (
+    <AnimatePresence>
+      {newItemsNotification.show && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="fixed bottom-4 right-4 z-50 w-full max-w-md"
+        >
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-xl overflow-hidden">
+            <div className="p-4 flex justify-between items-start">
+              <div className="flex items-start gap-3">
+                <div className="bg-white/20 p-2 rounded-full">
+                  <FiAlertCircle className="text-white h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Novos Itens Adicionados!
+                  </h3>
+                  <p className="text-white/90 text-sm mt-1">
+                    {newItemsNotification.items.length} novo(s) item(ns) na {newItemsNotification.tableId.startsWith('1') ? 'Mesa' : 'Comanda'} {newItemsNotification.tableId}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeNotification}
+                className="text-white/70 hover:text-white p-1 rounded-full transition-colors"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm p-4 max-h-64 overflow-y-auto">
+              <ul className="space-y-3">
+                {newItemsNotification.items.map((item, index) => (
+                  <motion.li
+                    key={`${item.id}-${item.addedAt || index}`}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white/10 backdrop-blur-sm rounded-lg p-3 flex items-start gap-3 border border-white/20"
+                  >
+                    <div className="w-12 h-12 bg-white/20 rounded-lg overflow-hidden flex-shrink-0">
+                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white font-medium truncate">{item.quantity}x {item.name}</h4>
+                      {item.description && (
+                        <p className="text-white/70 text-xs truncate">{item.description}</p>
+                      )}
+                      {item.notes && (
+                        <p className="text-white/80 text-xs mt-1">
+                          <span className="font-semibold">Obs:</span> {item.notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-white font-bold text-sm">
+                      € {(item.price * item.quantity).toFixed(2)}
+                    </div>
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="p-4 bg-white/10 flex justify-between gap-3">
+              <button
+                onClick={markItemsAsSeen}
+                className="flex-1 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <FiCheck className="h-5 w-5" />
+                Marcar como visto
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedTable(newItemsNotification.tableId);
+                  setShowTableDetailsModal(true);
+                  markItemsAsSeen();
+                }}
+                className="flex-1 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 font-medium"
+              >
+                <FiShoppingBag className="h-5 w-5" />
+                Ver Comanda
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   // Renderização do login
   const renderLogin = () => (
@@ -1706,7 +1818,6 @@ const AdminPanel = () => {
                 const isVIP = orderTotal > 100;
                 const badgeColor = getTableBadgeColor(table);
                 const tableIcon = getTableIcon(table);
-                const hasNewItems = newOrders.some(order => order.tableId === table.id);
                 
                 return (
                   <button
@@ -1728,15 +1839,6 @@ const AdminPanel = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         VIP
-                      </div>
-                    )}
-                    
-                    {hasNewItems && (
-                      <div className="absolute top-1 left-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center animate-pulse">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                        </svg>
-                        Novo
                       </div>
                     )}
                     
@@ -1794,61 +1896,6 @@ const AdminPanel = () => {
             Nenhuma mesa encontrada com este filtro
           </div>
         )}
-      </div>
-    </div>
-  );
-
-  // Renderização da notificação de novos pedidos
-  const renderNewOrdersNotification = () => (
-    <div className="fixed bottom-4 right-4 z-50">
-      <div 
-        className="bg-gradient-to-br from-red-500 to-pink-500 text-white rounded-xl shadow-xl overflow-hidden transition-all duration-300"
-        style={{
-          maxHeight: showNewOrdersNotification ? '500px' : '0',
-          opacity: showNewOrdersNotification ? '1' : '0'
-        }}
-      >
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-bold text-lg flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              Novos Pedidos!
-            </h3>
-            <button 
-              onClick={clearNewOrders}
-              className="text-white hover:text-gray-200"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {newOrders.map((order, index) => (
-              <div key={index} className="bg-white/20 p-3 rounded-lg">
-                <div className="font-medium">
-                  {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
-                </div>
-                <div className="text-sm">
-                  {order.item.quantity}x {order.item.name}
-                </div>
-                <div className="text-xs opacity-80">
-                  {new Date(order.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <button
-            onClick={clearNewOrders}
-            className="w-full mt-3 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            Fechar
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -2424,8 +2471,6 @@ const AdminPanel = () => {
                   {selectedOrder.items?.length > 0 ? (
                     selectedOrder.items.map((item) => {
                       const isPrinted = printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed;
-                      const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-                      const isPulsing = pulseElements[itemKey];
 
                       return (
                         <div
@@ -2434,29 +2479,17 @@ const AdminPanel = () => {
                             isPrinted
                               ? 'bg-gray-50 border-gray-200'
                               : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm'
-                          } transition-all duration-200 relative overflow-hidden`}
+                          } transition-all duration-200`}
                         >
-                          {/* Efeito de pulso para novos itens */}
-                          {isPulsing && (
-                            <div className="absolute inset-0 bg-gradient-to-r from-amber-100/30 to-yellow-100/30 animate-pulse"></div>
-                          )}
-                          
-                          {/* Efeito de borda pulsante */}
-                          {isPulsing && (
-                            <div className="absolute inset-0 border-2 border-amber-400 rounded-lg animate-ping opacity-30 pointer-events-none"></div>
-                          )}
-                          
-                          {/* Ícone de alerta para novos itens */}
-                          {!isPrinted && (
-                            <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center z-10">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                              </svg>
-                              Novo!
-                            </div>
-                          )}
-                          
                           <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto">
+                            {!isPrinted && (
+                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                Novo!
+                              </span>
+                            )}
                             <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                               {item.image && (
                                 <img
@@ -2639,9 +2672,7 @@ const AdminPanel = () => {
                           </>
                         ) : (
                           <>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
+                            <FiPrinter className="h-5 w-5" />
                             {hasUnprintedItems(selectedOrder) ? 'Enviar para Cozinha' : 'Enviado'}
                           </>
                         )}
@@ -2777,19 +2808,17 @@ const AdminPanel = () => {
           )}
         </main>
       </div>
-
-      {/* Modais e notificações */}
-      <>
-        {renderNewOrdersNotification()}
-        {showAddItemModal && renderAddItemModal()}
-        {showHistoryModal && renderHistoryModal()}
-        {showTableDetailsModal && renderTableDetailsModal()}
-      </>
+  
+      {/* Modais */}
+      {showAddItemModal && renderAddItemModal()}
+      {showHistoryModal && renderHistoryModal()}
+      {showTableDetailsModal && renderTableDetailsModal()}
+      {renderNewItemsNotification()}
     </div>
   );
 
-  // Renderização condicional baseada na autenticação
-  return isAuthenticated ? renderMainContent() : renderLogin();
+  // Renderização condicional
+  return !isAuthenticated ? renderLogin() : renderMainContent();
 };
 
 export default AdminPanel;
