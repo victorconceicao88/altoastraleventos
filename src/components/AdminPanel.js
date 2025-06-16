@@ -548,154 +548,21 @@ const AdminPanel = () => {
   };
 
   // Efeito para verificar autenticação
-  useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setIsAuthenticated(true);
-        handleReconnectPrinter();
-      } else {
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-  if (!isAuthenticated) return;
-
-  const tablesRef = ref(database, 'tables');
-  const unsubscribe = onValue(tablesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    
-    const updatedTablesWithNewItems = {...tablesWithNewItems};
-
-    Object.entries(data).forEach(([tableId, tableData]) => {
-      if (tableData.currentOrder) {
-        const order = Object.values(tableData.currentOrder)[0];
-        const hasUnprintedItems = order.items?.some(item => !item.printed);
-
-        if (hasUnprintedItems) {
-          if (!tablesWithNewItems[tableId]) {
-            updatedTablesWithNewItems[tableId] = true;
-          }
-        } else {
-          delete updatedTablesWithNewItems[tableId];
-        }
-      } else {
-        delete updatedTablesWithNewItems[tableId];
-      }
-    });
-
-    setTablesWithNewItems(updatedTablesWithNewItems);
-  });
-
-  return () => unsubscribe();
-}, [isAuthenticated, tablesWithNewItems]);
-
-  // Efeito para carregar mesas e pedidos
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    setTables(initialTables());
-    
-    const tablesRef = ref(database, 'tables');
-    const unsubscribe = onValue(tablesRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      
-      const tablesData = initialTables().map(table => {
-        const tableData = data[table.id] || {};
-        let currentOrder = null;
-        
-        if (tableData.currentOrder) {
-          const orders = Object.entries(tableData.currentOrder);
-          if (orders.length > 0) {
-            currentOrder = {
-              id: orders[0][0],
-              ...orders[0][1],
-              items: orders[0][1].items?.map(item => ({
-                ...item,
-                notes: item.notes || ''
-              })) || []
-            };
-          }
-        }
-
-        return { 
-          ...table,
-          currentOrder,
-          ordersHistory: tableData.ordersHistory || {},
-          status: tableData.status || 'available'
-        };
-      });
-
-      setTables(tablesData);
-      setLastUpdate(new Date());
-    });
-
-    return () => unsubscribe();
-  }, [isAuthenticated, initialTables]);
-
-  // Efeito para carregar pedido selecionado
-  useEffect(() => {
-    if (!isAuthenticated || !selectedTable) {
-      setSelectedOrder(null);
-      return;
+// Effect para reconexão da impressora
+useEffect(() => {
+  const auth = getAuth();
+  const unsubscribe = auth.onAuthStateChanged((user) => {
+    if (user) {
+      setIsAuthenticated(true);
+      handleReconnectPrinter();
+    } else {
+      setIsAuthenticated(false);
     }
+  });
+  return () => unsubscribe();
+}, []);
 
-    const orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-
-    const unsubscribe = onValue(orderRef, (snapshot) => {
-      const orderData = snapshot.val();
-      
-      if (orderData) {
-        const orders = Object.entries(orderData);
-        if (orders.length > 0) {
-          const [orderId, order] = orders[0];
-          const loadedOrder = { 
-            id: orderId, 
-            ...order,
-            items: order.items?.map(item => ({
-              ...item,
-              notes: item.notes || ''
-            })) || []
-          };
-          
-          const newPrintedItems = {...printedItems};
-          let hasPrintedItems = false;
-          
-          loadedOrder.items?.forEach(item => {
-            const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-            if (item.printed && !printedItems[itemKey]) {
-              newPrintedItems[itemKey] = true;
-              hasPrintedItems = true;
-            }
-          });
-          
-          if (hasPrintedItems) {
-            setPrintedItems(newPrintedItems);
-          }
-          
-          setSelectedOrder(loadedOrder);
-          setDeliveryAddress(loadedOrder.deliveryAddress || '');
-
-          // Fechar automaticamente se não houver itens
-          if (loadedOrder.items?.length === 0) {
-            closeOrderAutomatically(loadedOrder);
-          }
-        } else {
-          setSelectedOrder(null);
-        }
-      } else {
-        setSelectedOrder(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [isAuthenticated, selectedTable, printedItems]);
-
-  useEffect(() => {
+ useEffect(() => {
   if (!isAuthenticated) return;
 
   const tablesRef = ref(database, 'tables');
@@ -703,36 +570,98 @@ const AdminPanel = () => {
     const data = snapshot.val() || {};
     const now = Date.now();
     
-    const updatedNewOrders = {...newOrders};
-    const updatedFlashingTables = {...flashingTables};
-    
-    Object.entries(data).forEach(([tableId, tableData]) => {
+    // Atualiza o estado das mesas
+    const tablesData = initialTables().map(table => {
+      const tableData = data[table.id] || {};
+      let currentOrder = null;
+      
       if (tableData.currentOrder) {
-        const order = Object.values(tableData.currentOrder)[0];
+        const orders = Object.entries(tableData.currentOrder);
+        if (orders.length > 0) {
+          currentOrder = {
+            id: orders[0][0],
+            ...orders[0][1],
+            items: orders[0][1].items?.map(item => ({
+              ...item,
+              notes: item.notes || ''
+            })) || []
+          };
+        }
+      }
+
+      return { 
+        ...table,
+        currentOrder,
+        ordersHistory: tableData.ordersHistory || {},
+        status: tableData.status || 'available'
+      };
+    });
+
+    setTables(tablesData);
+    setLastUpdate(new Date());
+
+    // Atualiza os alertas visuais
+    const updatedTablesWithNewItems = {};
+    const updatedNewOrders = {};
+    const updatedFlashingTables = {...flashingTables};
+
+    tablesData.forEach(table => {
+      if (table.currentOrder) {
+        const order = table.currentOrder;
         
-        // Verifica se é um pedido novo (criado nos últimos 30 segundos)
+        // Verifica novos itens não visualizados
+        const hasNewUnprintedItems = order.items?.some(item => 
+          !item.printed && 
+          (!order.lastViewedAt || item.addedAt > order.lastViewedAt)
+        );
+
+        if (hasNewUnprintedItems) {
+          updatedTablesWithNewItems[table.id] = true;
+        }
+
+        // Verifica pedidos novos (criados nos últimos 30s)
         if (order.createdAt && (now - order.createdAt) < NEW_ORDER_BADGE_DURATION) {
-          if (!newOrders[tableId] || newOrders[tableId] < order.createdAt) {
-            updatedNewOrders[tableId] = order.createdAt;
+          if (!newOrders[table.id] || newOrders[table.id] < order.createdAt) {
+            updatedNewOrders[table.id] = order.createdAt;
             
-            // Ativa o efeito de piscar por 5 segundos
-            if (!flashingTables[tableId]) {
-              updatedFlashingTables[tableId] = true;
+            if (!flashingTables[table.id]) {
+              updatedFlashingTables[table.id] = true;
               setTimeout(() => {
-                setFlashingTables(prev => ({...prev, [tableId]: false}));
+                setFlashingTables(prev => ({...prev, [table.id]: false}));
               }, NEW_ORDER_FLASH_DURATION);
             }
           }
         }
       }
     });
-    
+
+    setTablesWithNewItems(updatedTablesWithNewItems);
     setNewOrders(updatedNewOrders);
     setFlashingTables(updatedFlashingTables);
+
+    // Atualiza o pedido selecionado se necessário
+    if (selectedTable && data[selectedTable]?.currentOrder) {
+      const order = Object.values(data[selectedTable].currentOrder)[0];
+      const loadedOrder = {
+        id: Object.keys(data[selectedTable].currentOrder)[0],
+        ...order,
+        items: order.items?.map(item => ({
+          ...item,
+          notes: item.notes || ''
+        })) || []
+      };
+
+      setSelectedOrder(loadedOrder);
+      setDeliveryAddress(loadedOrder.deliveryAddress || '');
+      
+      if (loadedOrder.items?.length === 0) {
+        closeOrderAutomatically(loadedOrder);
+      }
+    }
   });
 
   return () => unsubscribe();
-}, [isAuthenticated, newOrders, flashingTables]);
+}, [isAuthenticated, initialTables, selectedTable, newOrders, flashingTables]);
 
   // Função para fechar pedido automaticamente quando não há itens
   const closeOrderAutomatically = useCallback(async (order) => {
@@ -784,12 +713,12 @@ const AdminPanel = () => {
   }, [selectedTable, tables]);
 
   // Efeito para pesquisa
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
+useEffect(() => {
+  if (searchTerm.trim() === '') {
+    setSearchResults([]);
+    setShowSearchResults(false);
+    return;
+  }
 
     const results = [];
     const lowerCaseTerm = searchTerm.toLowerCase();
@@ -1503,17 +1432,42 @@ const filteredHistory = useCallback(() => {
   }, []);
 
   // Função para selecionar mesa
-const handleTableSelect = useCallback((tableNumber) => {
+const handleTableSelect = useCallback(async (tableNumber) => {
   const tableStr = tableNumber.toString();
   setSelectedTable(tableStr);
   setShowTableDetailsModal(true);
   
-  // Remove o alerta visual ao abrir a mesa
-  setTablesWithNewItems(prev => {
-    const newState = {...prev};
-    delete newState[tableStr];
-    return newState;
-  });
+  try {
+    // Marca todos os itens como impressos/visualizados
+    const orderRef = ref(database, `tables/${tableStr}/currentOrder`);
+    const orderSnapshot = await get(orderRef);
+    
+    if (orderSnapshot.exists()) {
+      const orderData = orderSnapshot.val();
+      const orderId = Object.keys(orderData)[0];
+      const order = orderData[orderId];
+      
+      if (order.items) {
+        await update(ref(database, `tables/${tableStr}/currentOrder/${orderId}`), {
+          items: order.items.map(item => ({
+            ...item,
+            printed: true
+          })),
+          updatedAt: Date.now()
+        });
+      }
+    }
+    
+    // Remove o alerta visual
+    setTablesWithNewItems(prev => {
+      const newState = {...prev};
+      delete newState[tableStr];
+      return newState;
+    });
+    
+  } catch (error) {
+    console.error("Erro ao marcar itens como visualizados:", error);
+  }
 }, []);
 
   // Função para verificar itens não impressos
