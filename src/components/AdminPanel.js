@@ -130,6 +130,7 @@ const AdminPanel = () => {
   });
   const [newOrders, setNewOrders] = useState({});
   const [flashingTables, setFlashingTables] = useState({});
+  const [tablesWithNewItems, setTablesWithNewItems] = useState({});
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -560,6 +561,38 @@ const AdminPanel = () => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+  if (!isAuthenticated) return;
+
+  const tablesRef = ref(database, 'tables');
+  const unsubscribe = onValue(tablesRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    
+    const updatedTablesWithNewItems = {...tablesWithNewItems};
+
+    Object.entries(data).forEach(([tableId, tableData]) => {
+      if (tableData.currentOrder) {
+        const order = Object.values(tableData.currentOrder)[0];
+        const hasUnprintedItems = order.items?.some(item => !item.printed);
+
+        if (hasUnprintedItems) {
+          if (!tablesWithNewItems[tableId]) {
+            updatedTablesWithNewItems[tableId] = true;
+          }
+        } else {
+          delete updatedTablesWithNewItems[tableId];
+        }
+      } else {
+        delete updatedTablesWithNewItems[tableId];
+      }
+    });
+
+    setTablesWithNewItems(updatedTablesWithNewItems);
+  });
+
+  return () => unsubscribe();
+}, [isAuthenticated, tablesWithNewItems]);
 
   // Efeito para carregar mesas e pedidos
   useEffect(() => {
@@ -1044,6 +1077,13 @@ const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
     setPrintedItems(newPrintedItems);
     setSentItems(newSentItems);
 
+    // Remove o alerta visual
+    setTablesWithNewItems(prev => {
+      const newState = {...prev};
+      delete newState[tableId];
+      return newState;
+    });
+
     const currentOrderSnapshot = await get(orderRef);
     const currentOrder = currentOrderSnapshot.val();
     
@@ -1467,8 +1507,14 @@ const handleTableSelect = useCallback((tableNumber) => {
   const tableStr = tableNumber.toString();
   setSelectedTable(tableStr);
   setShowTableDetailsModal(true);
-  markOrderAsViewed(tableStr);
-}, [markOrderAsViewed]);
+  
+  // Remove o alerta visual ao abrir a mesa
+  setTablesWithNewItems(prev => {
+    const newState = {...prev};
+    delete newState[tableStr];
+    return newState;
+  });
+}, []);
 
   // Função para verificar itens não impressos
 const hasUnprintedItems = useCallback((order) => {
@@ -1773,56 +1819,56 @@ const renderTableTabs = () => (
                                table.type === 'comanda' ? '📋' : '🪑';
               
               return (
-                <button
-                  key={table.id}
-                  onClick={() => handleTableSelect(table.id)}
-                  className={`relative p-3 rounded-xl transition-all duration-200 ${
-                    selectedTable === table.id 
-                      ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-inner' 
-                      : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
-                  } flex flex-col items-center justify-center h-full min-h-[100px] ${
-                    flashingTables[table.id] ? 'animate-pulse border-2 border-amber-400' : ''
-                  }`}
-                >
-                  {newOrders[table.id] && (
-                    <div className="absolute top-0 left-0 transform -translate-y-1/2 -translate-x-1/2 bg-gradient-to-r from-red-500 to-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center shadow-lg z-10">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Novo Pedido!
-                    </div>
-                  )}
-                  
-                  <div className={`absolute top-1 right-1 ${badgeColor} text-xs px-2 py-0.5 rounded-full flex items-center`}>
-                    {hasOrder ? 'Ocupada' : 'Disponível'}
+           <button
+                key={table.id}
+                onClick={() => handleTableSelect(table.id)}
+                className={`relative p-3 rounded-xl transition-all duration-200 ${
+                  selectedTable === table.id 
+                    ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-inner' 
+                    : 'bg-white border border-gray-200 hover:border-blue-100 hover:shadow-sm'
+                } flex flex-col items-center justify-center h-full min-h-[100px] ${
+                  tablesWithNewItems[table.id] ? 'animate-pulse border-2 border-amber-400' : ''
+                }`}
+              >
+                {tablesWithNewItems[table.id] && (
+                  <div className="absolute top-0 left-0 transform -translate-y-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-1 rounded-full flex items-center shadow-lg z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Novo Item!
                   </div>
-                  
-                  {isVIP && hasOrder && (
-                    <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      VIP
+                )}
+                
+                <div className={`absolute top-1 right-1 ${hasOrder ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} text-xs px-2 py-0.5 rounded-full flex items-center`}>
+                  {hasOrder ? 'Ocupada' : 'Disponível'}
+                </div>
+                
+                {isVIP && hasOrder && (
+                  <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    VIP
+                  </div>
+                )}
+                
+                <span className="font-bold text-gray-800 text-lg mb-1">
+                  {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
+                </span>
+                
+                {hasOrder ? (
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500">
+                      {table.currentOrder.items?.length || 0} itens
                     </div>
-                  )}
-                  
-                  <span className="font-bold text-gray-800 text-lg mb-1">
-                    {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
-                  </span>
-                  
-                  {hasOrder ? (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">
-                        {table.currentOrder.items?.length || 0} itens
-                      </div>
-                      <div className="text-sm font-semibold mt-1 text-blue-600">
-                        € {orderTotal.toFixed(2)}
-                      </div>
+                    <div className="text-sm font-semibold mt-1 text-blue-600">
+                      € {orderTotal.toFixed(2)}
                     </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">Disponível</span>
-                  )}
-                </button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400">Disponível</span>
+                )}
+              </button>
               );
             })}
           </div>
