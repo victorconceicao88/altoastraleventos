@@ -143,6 +143,8 @@ const ClientInterface = ({ tableNumber }) => {
   const [favorites, setFavorites] = useState([]);
   const notesInputRef = useRef(null);
   const [selectedFlavors, setSelectedFlavors] = useState({});
+  const [selectedJuiceFlavors, setSelectedJuiceFlavors] = useState({});
+  const [selectedEnergyDrinks, setSelectedEnergyDrinks] = useState({});
   
   const windowSize = useWindowSize();
   
@@ -717,12 +719,7 @@ const menu = {
       { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
       { id: 64, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
       { id: 65, name: 'Superbock Preta', price: 1.40, image: 'superbock' },
-      { 
-        id: 109, 
-        name: 'Energéticos', 
-        description: 'Bebidas energéticas', 
-        price: 0, 
-        image: 'energetico',
+      { id: 66, name: 'Energéticos', description: 'Bebidas energéticas', price: 0, image: 'energetico',
         options: [
           { name: 'Red Bull', price: 2.50 },
           { name: 'Monster', price: 2.50 },
@@ -732,7 +729,7 @@ const menu = {
     ],
     sumos: [
       {
-        id: 66,
+        id: 67,
         name: 'Sumo/Batido de Maracujá',
         description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
         price: 4.00,
@@ -745,7 +742,7 @@ const menu = {
         nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)'
       },
       {
-        id: 67,
+        id: 68,
         name: 'Sumo/Batido de Acerola',
         description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
         price: 4.00,
@@ -758,7 +755,7 @@ const menu = {
         nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)'
       },
       {
-        id: 68,
+        id: 69,
         name: 'Sumo/Batido de Manga',
         description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
         price: 4.00,
@@ -771,7 +768,7 @@ const menu = {
         nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)'
       },
       {
-        id: 69,
+        id: 70,
         name: 'Sumo/Batido de Goiaba',
         description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
         price: 4.00,
@@ -784,7 +781,7 @@ const menu = {
         nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)'
       },
       {
-        id: 70,
+        id: 71,
         name: 'Sumo/Batido de Morango',
         description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
         price: 4.00,
@@ -797,7 +794,7 @@ const menu = {
         nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)'
       },
       {
-        id: 71,
+        id: 72,
         name: 'Sumo/Batido de Caju',
         description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
         price: 4.00,
@@ -810,7 +807,7 @@ const menu = {
         nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)'
       },
       {
-        id: 72,
+        id: 73,
         name: 'Sumo/Batido de Abacaxi',
         description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
         price: 4.00,
@@ -823,7 +820,7 @@ const menu = {
         nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)'
       },
       {
-        id: 73,
+        id: 74,
         name: 'Sumo/Batido de Coco',
         description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
         price: 4.00,
@@ -836,7 +833,7 @@ const menu = {
         nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)'
       },
       {
-        id: 74,
+        id: 75,
         name: 'Sumo/Batido de Cajá',
         description: 'Exótico e refrescante, rico em vitaminas do complexo B',
         price: 4.00,
@@ -849,7 +846,7 @@ const menu = {
         nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)'
       },
       {
-        id: 75,
+        id: 76,
         name: 'Sumo/Batido de Cupuaçu',
         description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
         price: 4.00,
@@ -862,7 +859,7 @@ const menu = {
         nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)'
       },
       {
-        id: 76,
+        id: 77,
         name: 'Sumo/Batido de Graviola',
         description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
         price: 4.00,
@@ -875,7 +872,7 @@ const menu = {
         nutritionalInfo: 'Rica em vitaminas B1, B2 e C. 140kcal (com água)'
       },
       {
-        id: 110,
+        id: 78,
         name: 'Compal',
         description: 'Sumo de fruta natural',
         price: 1.60,
@@ -895,7 +892,7 @@ const menu = {
     ],
     'refrigerantes-aguas': [
       { 
-        id: 77,
+        id: 79,
         name: 'Refrigerante Lata', 
         description: 'Refrigerantes em lata 330ml', 
         price: 1.60, 
@@ -911,7 +908,7 @@ const menu = {
         ]
       },
       { 
-        id: 78,
+        id: 80,
         name: 'Água 1.5L', 
         description: 'Água mineral natural 1.5 litros', 
         price: 1.50, 
@@ -919,7 +916,7 @@ const menu = {
         rating: 4.0
       },
       { 
-        id: 79,
+        id: 81,
         name: 'Água 0.5L', 
         description: 'Água mineral natural 500ml', 
         price: 1.00, 
@@ -927,7 +924,7 @@ const menu = {
         rating: 4.0
       },
       { 
-        id: 80,
+        id: 82,
         name: 'Água 0.33L', 
         description: 'Água mineral natural 330ml', 
         price: 0.60, 
@@ -935,7 +932,7 @@ const menu = {
         rating: 4.0
       },
       { 
-        id: 81,
+        id: 83,
         name: 'Água Castelo', 
         description: 'Água mineral gaseificada 1L', 
         price: 1.40, 
@@ -943,7 +940,7 @@ const menu = {
         rating: 4.2 
       },
       { 
-        id: 82,
+        id: 84,
         name: 'Água das Pedras', 
         description: 'Água mineral gaseificada', 
         price: 1.50, 
@@ -951,7 +948,7 @@ const menu = {
         rating: 4.3 
       },
       { 
-        id: 83,
+        id: 85,
         name: 'Água das Pedras C/ Sabor', 
         description: 'Água mineral gaseificada', 
         price: 1.80, 
@@ -960,33 +957,33 @@ const menu = {
       }
     ],
     salgados: [
-      { id: 84, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
-      { id: 85, name: 'Pastel de Nata', price: 1.30, image: 'pasteldenata', rating: 4.7 },
-      { id: 86, name: 'Empada de Frango', price: 2.00, image: 'empadafrango', rating: 4.4 },
-      { id: 87, name: 'Kibe', price: 2.20, image: 'kibe', rating: 4.3 },
-      { id: 88, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: 'fiambre', rating: 4.2 },
-      { id: 89, name: 'Fiambre e Queijo', price: 2.20, image: 'fiambreequeijo', rating: 4.2 },
-      { id: 90, name: 'Bauru', price: 2.20, image: 'bauru', rating: 4.1 },
-      { id: 91, name: 'Bola de Queijo', price: 2.20, image: 'bolaqueijo', rating: 4.3 },
-      { id: 92, name: 'Coxinha de Frango', price: 2.20, image: 'Coxinha', rating: 4.6 },
-      { id: 93, name: 'Coxinha com Catupiry', price: 3.00, image: 'Coxinha', rating: 4.8 },
-      { id: 94, name: 'Hamburgão', price: 3.50, image: 'hamburgao', rating: 4.7 }
+      { id: 86, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
+      { id: 87, name: 'Pastel de Nata', price: 1.30, image: 'pasteldenata', rating: 4.7 },
+      { id: 88, name: 'Empada de Frango', price: 2.00, image: 'empadafrango', rating: 4.4 },
+      { id: 89, name: 'Kibe', price: 2.20, image: 'kibe', rating: 4.3 },
+      { id: 90, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: 'fiambre', rating: 4.2 },
+      { id: 91, name: 'Fiambre e Queijo', price: 2.20, image: 'fiambreequeijo', rating: 4.2 },
+      { id: 92, name: 'Bauru', price: 2.20, image: 'bauru', rating: 4.1 },
+      { id: 93, name: 'Bola de Queijo', price: 2.20, image: 'bolaqueijo', rating: 4.3 },
+      { id: 94, name: 'Coxinha de Frango', price: 2.20, image: 'Coxinha', rating: 4.6 },
+      { id: 95, name: 'Coxinha com Catupiry', price: 3.00, image: 'Coxinha', rating: 4.8 },
+      { id: 96, name: 'Hamburgão', price: 3.50, image: 'hamburgao', rating: 4.7 }
     ],
     sobremesas: [
-      { id: 95, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'Prestígio', rating: 4.8 },
-      { id: 96, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'doces', rating: 4.9 },
-      { id: 97, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'bolopoteananas', rating: 4.7 },
-      { id: 98, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'doces', rating: 4.8 },
-      { id: 99, name: 'Cheesecake - Goiabada', price: 3.50, image: 'Cheesecake', rating: 4.7 },
-      { id: 100, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'frutosvermelhos', rating: 4.8 },
-      { id: 101, name: 'Brigadeiro Tradicional', price: 1.50, image: 'doces', rating: 4.6 },
-      { id: 102, name: 'Brigadeiro Beijinho', price: 1.50, image: 'doces', rating: 4.5 },
-      { id: 103, name: 'Brigadeiro Ninho', price: 2.00, image: 'doces', rating: 4.8 },
-      { id: 104, name: 'Brigadeiro Paçoca', price: 2.00, image: 'doces', rating: 4.7 },
-      { id: 105, name: 'Brigadeiro Morango', price: 2.00, image: 'doces', rating: 4.8 },
-      { id: 106, name: 'Brigadeiro Churros', price: 2.00, image: 'doces', rating: 4.9 },
-      { id: 107, name: 'Tarte de Toblerone', price: 2.20, image: 'toblerone', rating: 4.7 },
-      { id: 108, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'doces', rating: 4.8 }
+      { id: 97, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'Prestígio', rating: 4.8 },
+      { id: 98, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'doces', rating: 4.9 },
+      { id: 99, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'bolopoteananas', rating: 4.7 },
+      { id: 100, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'doces', rating: 4.8 },
+      { id: 101, name: 'Cheesecake - Goiabada', price: 3.50, image: 'Cheesecake', rating: 4.7 },
+      { id: 102, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'frutosvermelhos', rating: 4.8 },
+      { id: 103, name: 'Brigadeiro Tradicional', price: 1.50, image: 'doces', rating: 4.6 },
+      { id: 104, name: 'Brigadeiro Beijinho', price: 1.50, image: 'doces', rating: 4.5 },
+      { id: 105, name: 'Brigadeiro Ninho', price: 2.00, image: 'doces', rating: 4.8 },
+      { id: 106, name: 'Brigadeiro Paçoca', price: 2.00, image: 'doces', rating: 4.7 },
+      { id: 107, name: 'Brigadeiro Morango', price: 2.00, image: 'doces', rating: 4.8 },
+      { id: 108, name: 'Brigadeiro Churros', price: 2.00, image: 'doces', rating: 4.9 },
+      { id: 109, name: 'Tarte de Toblerone', price: 2.20, image: 'toblerone', rating: 4.7 },
+      { id: 110, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'doces', rating: 4.8 }
     ]
   };
   // Obter nome do dia da semana
@@ -1103,7 +1100,7 @@ const menu = {
               </div>
             </div>
 
-                  {activeCategory === 'pasteis' ? (
+        {activeCategory === 'pasteis' ? (
         <div className="space-y-12">
           {/* Hero Section para Pastéis com informação de horário */}
           <motion.div
@@ -1324,6 +1321,7 @@ const menu = {
                 {/* Product Grid with Individual State */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                   {filteredMenu(activeCategory).map((item) => {
+                    
                     // Use item.id as part of the state key for individual control
                     const baseSelected = selectedBases[item.id] || 'agua';
 
@@ -1431,6 +1429,7 @@ const menu = {
                               </div>
                             </div>
                           </div>
+                          
 
                           {/* Notes input */}
                           <div className="mb-4">
@@ -1457,6 +1456,7 @@ const menu = {
                             }}
                             whileTap={{ scale: 0.98 }}
                           >
+                            
                             {isAdding ? (
                               <motion.span
                                 initial={{ opacity: 0, y: 20 }}
@@ -1488,8 +1488,12 @@ const menu = {
                               />
                             )}
                           </motion.button>
+                         
+
                         </div>
+                        
                       </motion.div>
+                      
                     );
                   })}
                 </div>
@@ -1600,14 +1604,14 @@ const menu = {
                           {/* Dentro do mapeamento dos itens da categoria 'refrigerantes-aguas' */}
 {item.flavorOptions && (
   <div className="mb-4">
-    <label htmlFor={`flavor-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+    <label htmlFor={`compal-flavor-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
       Escolha o sabor:
     </label>
     <select
-      id={`flavor-${item.id}`}
+      id={`compal-flavor-${item.id}`}
       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-      value={selectedFlavors[item.id] || ''}
-      onChange={(e) => setSelectedFlavors(prev => ({
+      value={selectedJuiceFlavors[item.id] || ''}
+      onChange={(e) => setSelectedJuiceFlavors(prev => ({
         ...prev,
         [item.id]: e.target.value
       }))}
@@ -1742,7 +1746,7 @@ const menu = {
                   {filteredMenu(activeCategory).map((item) => {
                     if (!item.available && !item.veg) return null;
 
-                    const addToCartWithAnimation = () => {
+                      const addToCartWithAnimation = () => {
                       setIsAdding(true);
                       const flavor = selectedFlavors[item.id] ? `Sabor: ${selectedFlavors[item.id]}` : '';
                       const notes = [

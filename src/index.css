@@ -102,3 +102,11 @@ code {
     transform: translateY(-3px);
   }
 }
+
+ @keyframes pulse-fast {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  .animate-pulse-fast {
+    animation: pulse-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }

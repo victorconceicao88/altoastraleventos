@@ -155,6 +155,7 @@ const [pendingItemsByTable, setPendingItemsByTable] = useState({});
 const [hasPendingItems, setHasPendingItems] = useState(false);
 const [isPedidosButtonFlashing, setIsPedidosButtonFlashing] = useState(false);
 const [showPendingOrdersModal, setShowPendingOrdersModal] = useState(false);
+const [allMarked, setAllMarked] = useState(false);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -572,14 +573,18 @@ const PRINTER_CONFIG = {
     ]
   };
 
-  useEffect(() => {
+useEffect(() => {
   const checkPendingItems = () => {
     const pendingItems = {};
     let hasPending = false;
 
     tables.forEach(table => {
       if (table.currentOrder) {
-        const unprintedItems = table.currentOrder.items.filter(item => !item.printed);
+        // Filtra apenas itens não impressos E que não foram adicionados manualmente
+        const unprintedItems = table.currentOrder.items.filter(item => 
+          !item.printed && item.addedBy !== 'waiter'
+        );
+        
         if (unprintedItems.length > 0) {
           pendingItems[table.id] = {
             tableId: table.id,
@@ -594,7 +599,6 @@ const PRINTER_CONFIG = {
     setPendingItemsByTable(pendingItems);
     setHasPendingItems(hasPending);
     
-    // Piscar o botão se houver novos itens
     if (hasPending) {
       setIsPedidosButtonFlashing(true);
       const timer = setTimeout(() => setIsPedidosButtonFlashing(false), 10000);
@@ -645,6 +649,14 @@ useEffect(() => {
   };
 }, [isAuthenticated]);
 
+
+  const handleMarkAll = async () => {
+    await Promise.all(
+      Object.keys(pendingItemsByTable).map(tableId => 
+        markAllItemsAsPrinted(tableId)
+    ));
+    setAllMarked(true);
+  };
 
   // Função para fechar pedido automaticamente quando não há itens
 const closeOrderAutomatically = useCallback(async (order) => {
@@ -1218,63 +1230,55 @@ const addItemToOrder = useCallback(async () => {
   if (!selectedTable || !selectedMenuItem) return;
 
   setLoading(true);
-  let newItem; // Declara a variável aqui para que seja acessível em todo o escopo
   
   try {
-    
-        newItem = {
-        ...selectedMenuItem,
-        quantity: newItemQuantity,
-        addedAt: Date.now(),
-        printed: true, // Alterado para true para itens manuais
-        viewed: true,  // Adicionado novo campo
-        notes: itemNotes[selectedMenuItem.id] || '',
-        price: selectedMenuItem.price
-      };
+    const newItem = {
+      ...selectedMenuItem,
+      quantity: newItemQuantity,
+      addedAt: Date.now(),
+      printed: true, // Alterado para true já que é adicionado manualmente
+      notes: itemNotes[selectedMenuItem.id] || '',
+      price: selectedMenuItem.price
+    };
 
-    let orderRef;
-    let orderData;
+    const orderPath = selectedOrder?.id 
+      ? `tables/${selectedTable}/currentOrder/${selectedOrder.id}`
+      : `tables/${selectedTable}/currentOrder`;
+
+    const orderRef = ref(database, orderPath);
     
     if (selectedOrder?.id) {
-      orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      const currentItems = selectedOrder.items || [];
+      const updatedItems = [...(selectedOrder.items || []), newItem];
+      await update(orderRef, {
+        items: updatedItems,
+        updatedAt: Date.now()
+      });
       
       setSelectedOrder(prev => ({
         ...prev,
-        items: [...currentItems, newItem]
+        items: updatedItems
       }));
-
-      orderData = {
-        items: [...currentItems, newItem],
-        updatedAt: Date.now(),
-        deliveryAddress: deliveryAddress
-      };
     } else {
-      orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-      
       const newOrder = {
         id: '',
         items: [newItem],
         status: 'open',
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        tableId: selectedTable,
-        deliveryAddress: deliveryAddress
+        tableId: selectedTable
       };
       
-      setSelectedOrder(newOrder);
-      orderData = newOrder;
-    }
-
-    if (selectedOrder?.id) {
-      await update(orderRef, orderData);
-    } else {
-      const newOrderRef = await push(orderRef, orderData);
-      setSelectedOrder(prev => ({ 
-        ...prev, 
-        id: newOrderRef.key 
-      }));
+      const newOrderRef = push(orderRef);
+      await set(newOrderRef, {
+        ...newOrder,
+        id: newOrderRef.key
+      });
       
+      setSelectedOrder({
+        ...newOrder,
+        id: newOrderRef.key
+      });
+
       const tableRef = ref(database, `tables/${selectedTable}`);
       await update(tableRef, {
         status: 'occupied'
@@ -1287,55 +1291,60 @@ const addItemToOrder = useCallback(async () => {
       ...prev,
       [selectedMenuItem.id]: ''
     }));
+    setShowAddItemModal(false);
     
   } catch (err) {
     console.error("Erro ao adicionar item:", err);
-    if (selectedOrder?.id && newItem) { // Agora newItem está acessível aqui
-      setSelectedOrder(prev => ({
-        ...prev,
-        items: prev.items.filter(item => item.addedAt !== newItem.addedAt)
-      }));
-    } else {
-      setSelectedOrder(null);
-    }
+    setError("Falha ao adicionar item ao pedido");
   } finally {
     setLoading(false);
   }
-}, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
+}, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes]);
 
 
-const removeItemFromOrder = useCallback(async (item) => {
+const removeItemFromOrder = useCallback(async (itemToRemove) => {
   if (!selectedTable || !selectedOrder?.id) return;
 
   try {
     setLoading(true);
     
     const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-    const updatedItems = selectedOrder.items.filter(i => 
-      !(i.id === item.id && i.addedAt === item.addedAt)
+    const updatedItems = selectedOrder.items.filter(item => 
+      !(item.id === itemToRemove.id && item.addedAt === itemToRemove.addedAt)
     );
+
+    // Atualização otimista - atualiza UI primeiro
+    setSelectedOrder(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
 
     await update(orderRef, {
       items: updatedItems,
       updatedAt: Date.now()
     });
 
-    setSelectedOrder(prev => ({
-      ...prev,
-      items: updatedItems
-    }));
-
+    // Se não houver mais itens, fecha automaticamente
     if (updatedItems.length === 0) {
-      await closeOrderAutomatically(selectedOrder);
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'available'
+      });
+      setSelectedOrder(null);
     }
 
   } catch (error) {
     console.error("Erro ao deletar item:", error);
     setError("Falha ao remover item");
+    
+    // Reverte a UI em caso de erro
+    if (selectedOrder) {
+      setSelectedOrder(prev => prev);
+    }
   } finally {
     setLoading(false);
   }
-}, [selectedTable, selectedOrder, closeOrderAutomatically]);
+}, [selectedTable, selectedOrder]);
 
   // Função para atualizar quantidade do item
 const updateItemQuantity = useCallback(async (itemId, newQuantity) => {
@@ -1793,46 +1802,65 @@ const renderNewOrdersPanel = () => {
               Atualizado: {lastUpdate.toLocaleTimeString()}
             </div>
             
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={connectToPrinter}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium ${
-                  printerConnected 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-red-100 text-red-800 border border-red-200 hover:bg-red-50'
-                } transition-colors`}
-              >
-                <div className={`w-2 h-2 rounded-full ${printerConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                {printerConnected ? 'Impressora Conectada' : 'Conectar Impressora'}
-              </button>
-                           
-                <button
-                onClick={() => setShowPendingOrdersModal(true)}
-                disabled={!hasPendingItems}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium ${
-                  isPedidosButtonFlashing 
-                    ? 'animate-pulse bg-gradient-to-r from-amber-500 to-amber-600 text-white'
-                    : hasPendingItems
-                      ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-50'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                } transition-colors`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                Pedidos ({hasPendingItems ? Object.values(pendingItemsByTable).reduce((sum, table) => sum + table.items.length, 0) : 0})
-              </button>
-              
-              <button
-                onClick={loadOrderHistory}
-                className="px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-50 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Histórico
-              </button>
-            </div>
+<div className="flex items-center gap-2 md:gap-4">
+  {/* Botão Conectar Impressora */}
+  <button 
+    onClick={connectToPrinter}
+    className={`relative px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium ${
+      printerConnected 
+        ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md' 
+        : 'bg-gradient-to-br from-gray-700 to-gray-800 text-white hover:from-gray-800 hover:to-gray-900 shadow-md'
+    } transition-all duration-200 min-w-[120px] md:min-w-[140px] justify-center`}
+  >
+    {printerConnected ? (
+      <>
+        <div className="w-2 h-2 rounded-full bg-white"></div>
+        <span>Conectada</span>
+      </>
+    ) : (
+      <>
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Conectar</span>
+      </>
+    )}
+  </button>
+  
+  {/* Botão Pedidos */}
+  <button
+    onClick={() => setShowPendingOrdersModal(true)}
+    disabled={!hasPendingItems}
+    className={`relative px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium min-w-[100px] md:min-w-[120px] justify-center ${
+      isPedidosButtonFlashing 
+        ? 'animate-pulse-fast bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-md ring-2 ring-amber-300 ring-offset-1' 
+        : hasPendingItems
+          ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-md hover:from-amber-600 hover:to-amber-700'
+          : 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-600 cursor-not-allowed'
+    } transition-all duration-200`}
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    </svg>
+    <span>Pedidos</span>
+    {hasPendingItems && (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
+        {Object.values(pendingItemsByTable).reduce((sum, table) => sum + table.items.length, 0)}
+      </span>
+    )}
+  </button>
+  
+  {/* Botão Histórico */}
+  <button
+    onClick={loadOrderHistory}
+    className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 min-w-[100px] md:min-w-[120px] justify-center"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    </svg>
+    <span>Histórico</span>
+  </button>
+</div>
           </div>
         </div>
       </div>
@@ -1988,92 +2016,200 @@ const renderTableTabs = () => (
 const renderPendingItemsModal = () => {
   if (!showPendingOrdersModal) return null;
 
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-800">
-            {hasPendingItems ? 'Itens Pendentes para Cozinha' : 'Nenhum item pendente'}
-          </h3>
-          <button 
-            onClick={() => setShowPendingOrdersModal(false)}
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
-          >
-            ✕
-          </button>
-        </div>
-        
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-60px)]">
-          {hasPendingItems ? (
-            Object.values(pendingItemsByTable).map((tableData) => (
-              <div key={tableData.tableId} className="mb-6 border-b border-gray-100 pb-4 last:border-0">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-semibold text-lg">
-                    {tableData.tableType === 'comanda' ? `Comanda ${tableData.tableId}` : `Mesa ${tableData.tableId}`}
-                  </h4>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    {tableData.items.length} itens
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-white/20">
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md p-4 border-b border-white/10">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-2 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+                <span>Pedidos Pendentes</span>
+                {!allMarked && hasPendingItems && (
+                  <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-1 ml-2 animate-pulse">
+                    {Object.values(pendingItemsByTable).reduce((sum, table) => sum + table.items.length, 0)} itens
                   </span>
-                </div>
-                
-                <div className="space-y-3">
-                  {tableData.items.map((item) => (
-                    <div key={`${item.id}-${item.addedAt}`} className="flex justify-between items-center p-3 rounded-lg bg-amber-50 border border-amber-200">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-gray-600">{item.quantity}x</p>
-                        {item.notes && <p className="text-xs text-gray-700 mt-1">Obs: {item.notes}</p>}
-                      </div>
-                      <button
-                        onClick={async () => {
-                          const orderRef = ref(database, `tables/${tableData.tableId}/currentOrder`);
-                          const snapshot = await get(orderRef);
-                          if (snapshot.exists()) {
-                            const orderKey = Object.keys(snapshot.val())[0];
-                            const order = snapshot.val()[orderKey];
-                            
-                            const updatedItems = order.items.map(i => 
-                              i.id === item.id && i.addedAt === item.addedAt 
-                                ? {...i, printed: true} 
-                                : i
-                            );
-                            
-                            await update(ref(database, `tables/${tableData.tableId}/currentOrder/${orderKey}`), {
-                              items: updatedItems
-                            });
-                            
-                            setPendingItemsByTable(prev => {
-                              const newState = {...prev};
-                              newState[tableData.tableId].items = newState[tableData.tableId].items.filter(
-                                i => !(i.id === item.id && i.addedAt === item.addedAt)
-                              );
-                              if (newState[tableData.tableId].items.length === 0) {
-                                delete newState[tableData.tableId];
-                              }
-                              return newState;
-                            });
-                          }
-                        }}
-                        className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                      >
-                        Marcar como impresso
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                )}
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">Atualizado em tempo real</p>
+            </div>
+            <button 
+              onClick={() => {
+                setShowPendingOrdersModal(false);
+                setAllMarked(false);
+              }}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Corpo do Modal */}
+        <div className="flex-1 overflow-y-auto">
+          {allMarked || !hasPendingItems ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <div className="bg-green-100 p-6 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-            ))
+              <h3 className="text-lg font-medium text-gray-800 mb-2">Tudo em dia!</h3>
+              <p className="text-gray-500 max-w-md mx-auto mb-6">
+                Nenhum item pendente no momento. Novos pedidos aparecerão aqui automaticamente.
+              </p>
+              <button
+                onClick={() => {
+                  setShowPendingOrdersModal(false);
+                  setAllMarked(false);
+                }}
+                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-colors"
+              >
+                Voltar ao painel
+              </button>
+            </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Nenhum item pendente para preparo</p>
+            <div className="divide-y divide-gray-100/50">
+              {Object.values(pendingItemsByTable).map((tableData) => (
+                <div key={tableData.tableId} className="group">
+                  <div className="sticky top-0 z-10 bg-gray-50/80 backdrop-blur-sm px-4 py-3 border-b border-gray-200/50 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        tableData.tableType === 'comanda' 
+                          ? 'bg-purple-100 text-purple-600' 
+                          : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        {tableData.tableType === 'comanda' ? '📋' : '🍽️'}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-800">
+                          {tableData.tableType === 'comanda' ? `Comanda ${tableData.tableId}` : `Mesa ${tableData.tableId}`}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {tableData.items.length} {tableData.items.length > 1 ? 'itens' : 'item'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => await markAllItemsAsPrinted(tableData.tableId)}
+                      className="text-xs bg-white border border-gray-200 px-3 py-1 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-1"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Marcar todos
+                    </button>
+                  </div>
+
+                  <div className="p-4 grid grid-cols-1 gap-3">
+                    {tableData.items.map((item) => (
+                      <div 
+                        key={`${item.id}-${item.addedAt}`}
+                        className="bg-white rounded-xl border border-gray-100 shadow-xs hover:shadow-sm transition-shadow overflow-hidden"
+                      >
+                        <div className="flex">
+                          <div className="w-16 h-16 bg-gray-100 flex-shrink-0">
+                            {item.image && (
+                              <img 
+                                src={item.image} 
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 p-3">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-medium text-gray-800">{item.name}</h4>
+                              <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">
+                                {item.quantity}x
+                              </span>
+                            </div>
+                            
+                            {item.notes && (
+                              <div className="mt-1 text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">
+                                <span className="font-medium">Obs:</span> {item.notes}
+                              </div>
+                            )}
+                            
+                            <div className="mt-2 flex justify-between items-center">
+                              <span className="text-xs text-gray-400">
+                                {new Date(item.addedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
+                              <button
+                                onClick={async () => {
+                                  const orderRef = ref(database, `tables/${tableData.tableId}/currentOrder`);
+                                  const snapshot = await get(orderRef);
+                                  if (snapshot.exists()) {
+                                    const orderKey = Object.keys(snapshot.val())[0];
+                                    const order = snapshot.val()[orderKey];
+                                    
+                                    const updatedItems = order.items.map(i => 
+                                      i.id === item.id && i.addedAt === item.addedAt 
+                                        ? {...i, printed: true} 
+                                        : i
+                                    );
+                                    
+                                    await update(ref(database, `tables/${tableData.tableId}/currentOrder/${orderKey}`), {
+                                      items: updatedItems
+                                    });
+                                    
+                                    setPendingItemsByTable(prev => {
+                                      const newState = {...prev};
+                                      newState[tableData.tableId].items = newState[tableData.tableId].items.filter(
+                                        i => !(i.id === item.id && i.addedAt === item.addedAt)
+                                      );
+                                      if (newState[tableData.tableId].items.length === 0) {
+                                        delete newState[tableData.tableId];
+                                      }
+                                      return newState;
+                                    });
+                                  }
+                                }}
+                                className="text-xs bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors flex items-center gap-1"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Pronto
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
+
+        {hasPendingItems && !allMarked && (
+          <div className="sticky bottom-0 bg-white/90 backdrop-blur-sm border-t border-gray-200/50 p-3">
+            <button
+              onClick={handleMarkAll}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 transition-colors font-medium flex items-center justify-center gap-2 shadow-md"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Marcar todos como preparados
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
-
   // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
 const renderHistoryModal = () => {
   const filteredOrders = filteredHistory();
@@ -2805,29 +2941,29 @@ const renderHistoryModal = () => {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <button
-                        onClick={() => {
-                          setShowAddItemModal(true);
-                          setShowTableDetailsModal(false);
-                        }}
-                        className="bg-white text-blue-600 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all hover:shadow-md flex items-center justify-center gap-2 border border-gray-200 font-medium"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
+                        <button
+                          onClick={() => {
+                            setShowAddItemModal(true);
+                            setShowTableDetailsModal(false);
+                          }}
+                          className="bg-white text-blue-600 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all hover:shadow-md flex items-center justify-center gap-2 border border-gray-200 font-medium"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                          />
-                        </svg>
-                        Adicionar Mais
-                      </button>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
+                          </svg>
+                          Adicionar Mais
+                        </button>
 
                         <button
                         onClick={printOrder}
