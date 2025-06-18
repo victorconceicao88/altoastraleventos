@@ -1412,7 +1412,17 @@ const removeItemFromOrder = useCallback(async (itemToRemove) => {
       await update(tableRef, {
         status: 'available'
       });
+      
+      // Remove o pedido atual
+      await remove(orderRef);
+      
+      // Atualiza o estado local
+      setTables(prevTables => prevTables.map(t => 
+        t.id === selectedTable ? {...t, currentOrder: null, status: 'available'} : t
+      ));
+      
       setSelectedOrder(null);
+      setShowTableDetailsModal(false);
     }
 
   } catch (error) {
