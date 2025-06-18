@@ -624,7 +624,7 @@ useEffect(() => {
         
         // Se a reconexão automática falhar, oferecer opção manual
         if (!success) {
-          setError('Impressora desconectada. Conecte manualmente.');
+          setError('Impressora desconectada');
         }
       }
     } else {
