@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, update, push, remove, set, get } from 'firebase/database';
 import { database } from '../firebase';
@@ -84,6 +83,9 @@ import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
+import compal from '../assets/compal.jpg';
+import energetico from '../assets/energetico.jpg';
+
 let globalPrinterDevice = null;
 let globalPrinterCharacteristic = null;
 const throttle = (func, limit) => {
@@ -148,14 +150,12 @@ const AdminPanel = () => {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
-      // Adicionar estes novos estados:
-
-
-const [pendingItemsByTable, setPendingItemsByTable] = useState({});
-const [hasPendingItems, setHasPendingItems] = useState(false);
-const [isPedidosButtonFlashing, setIsPedidosButtonFlashing] = useState(false);
-const [showPendingOrdersModal, setShowPendingOrdersModal] = useState(false);
-const [allMarked, setAllMarked] = useState(false);
+  const [pendingItemsByTable, setPendingItemsByTable] = useState({});
+  const [hasPendingItems, setHasPendingItems] = useState(false);
+  const [isPedidosButtonFlashing, setIsPedidosButtonFlashing] = useState(false);
+  const [showPendingOrdersModal, setShowPendingOrdersModal] = useState(false);
+  const [allMarked, setAllMarked] = useState(false);
+  const [selectedFlavor, setSelectedFlavor] = useState('');
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -296,6 +296,8 @@ const PRINTER_CONFIG = {
     toblerone,
     pedrassabor,
     superbock,
+    compal,
+    energetico
   };
   
   const menu = {
@@ -361,31 +363,77 @@ const PRINTER_CONFIG = {
       { id: 51, name: 'Pão com Ovo', price: 2.20, image: foodImages.paocomovo, rating: 4.1 },
       { id: 52, name: 'Ovos com Bacon', price: 4.00, image: foodImages.ovosebacon, rating: 4.7 }
     ],
-    bebidas: [
-      { id: 53, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: foodImages.caipirinha, rating: 4.8 },
-      { id: 54, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: foodImages.Caipiblack, rating: 4.9 },
-      { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: foodImages.vodka, rating: 4.7 },
-      { id: 56, name: 'Whiskey J&B', price: 3.00, image: foodImages.vodka, rating: 4.5 },
-      { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: foodImages.vodka, rating: 4.8 },
-      { id: 58, name: 'Whiskey Black Label', price: 4.00, image: foodImages.vodka, rating: 4.9 },
-      { id: 59, name: 'Vodka', price: 4.00, image: foodImages.vodka, rating: 4.6 },
-      { id: 60, name: 'Somersby', price: 2.50, image: foodImages.Somersby, rating: 4.4 },
-      { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: foodImages.Imperial, rating: 4.5 },
-      { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: foodImages.Imperial, rating: 4.7 },
-      { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: foodImages.cerveja, rating: 4.3 },
-      { id: 64, name: 'Cerveja Mini (0.20ml)', price: 1.10, image: foodImages.cerveja, rating: 4.2 },
-        { id: 65, name: 'Superbock Preta', price: 1.40, image: foodImages.superbock, rating: 4.2 },
-        { id: 66, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: foodImages.sangria, rating: 4.8 },
-        { id: 67, name: 'Refrigerante Lata', price: 1.60, image: foodImages.refrigerantes, rating: 4.1 },
-        { id: 68, name: 'Água 1.5L', price: 1.50, image: foodImages.agua, rating: 4.0 },
-        { id: 69, name: 'Água 0.5L', price: 1.00, image: foodImages.agua, rating: 4.0 },
-        { id: 70, name: 'Água 0.33L', price: 0.60, image: foodImages.agua, rating: 4.0 },
-        { id: 71, name: 'Água Castelo', price: 1.40, image: foodImages.Castelo, rating: 4.2 },
-        { id: 72, name: 'Água das Pedras', price: 1.50, image: foodImages.pedras, rating: 4.3 },
-        { id: 73, name: 'Água das Pedras C/ Sabor', price: 1.80, image: foodImages.pedrassabor, rating: 4.3 },
-        { id: 74, name: 'Balde de Heineken', price: 10.00, image: foodImages.baldedecerveja, rating: 4.9 }
-
+bebidas: [
+  { id: 53, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: foodImages.caipirinha, rating: 4.8 },
+  { id: 54, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: foodImages.Caipiblack, rating: 4.9 },
+  { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: foodImages.vodka, rating: 4.7 },
+  { id: 56, name: 'Whiskey J&B', price: 3.00, image: foodImages.vodka, rating: 4.5 },
+  { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: foodImages.vodka, rating: 4.8 },
+  { id: 58, name: 'Whiskey Black Label', price: 4.00, image: foodImages.vodka, rating: 4.9 },
+  { id: 59, name: 'Vodka', price: 4.00, image: foodImages.vodka, rating: 4.6 },
+  { id: 60, name: 'Somersby', price: 2.50, image: foodImages.Somersby, rating: 4.4 },
+  { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: foodImages.Imperial, rating: 4.5 },
+  { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: foodImages.Imperial, rating: 4.7 },
+  { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: foodImages.cerveja, rating: 4.3 },
+  { id: 64, name: 'Cerveja Mini (0.20ml)', price: 1.10, image: foodImages.cerveja, rating: 4.2 },
+  { id: 65, name: 'Superbock Preta', price: 1.40, image: foodImages.superbock, rating: 4.2 },
+  { id: 66, name: 'Taça de Sangria', description: 'Sangria branca, rosé ou tinta', price: 6.00, image: foodImages.sangria, rating: 4.8 },
+  { 
+    id: 'compal', 
+    name: 'Compal', 
+    price: 1.60, 
+    image: foodImages.compal, 
+    flavorOptions: [
+      'Frutos Vermelhos',
+      'Maracujá',
+      'Manga',
+      'Maçã',
+      'Pêra',
+      'Pêssego',
+      'Manga-Laranja',
+      'Goiaba',
+      'Ananás',
     ],
+    description: 'Sumo natural de fruta.',
+    rating: 4.2
+  },
+  { 
+    id: 'energeticos', 
+    name: 'Energético', 
+    image: foodImages.energetico,
+    price: 2.50, // Preço base
+    options: [
+      { name: 'Red Bull', price: 2.50 },
+      { name: 'Monster', price: 2.50 },
+      { name: 'Hell', price: 1.80 },
+    ],
+    description: 'Energéticos gelados.',
+    rating: 4.3
+  },
+  { 
+    id: 'refrigerantes-lata', 
+    name: 'Refrigerante Lata', 
+    description: 'Refrigerantes em lata 330ml', 
+    price: 1.60, 
+    image: foodImages.refrigerantes, 
+    rating: 4.1,
+    flavorOptions: [
+      'Coca-Cola',
+      'Coca-Cola Zero',
+      'Fanta Laranja',
+      'Pepsi',
+      'Guaraná do Brasil',
+      'Sprite'
+    ]
+  },
+  { id: 68, name: 'Água 1.5L', price: 1.50, image: foodImages.agua, rating: 4.0 },
+  { id: 69, name: 'Água 0.5L', price: 1.00, image: foodImages.agua, rating: 4.0 },
+  { id: 70, name: 'Água 0.33L', price: 0.60, image: foodImages.agua, rating: 4.0 },
+  { id: 71, name: 'Água Castelo', price: 1.40, image: foodImages.Castelo, rating: 4.2 },
+  { id: 72, name: 'Água das Pedras', price: 1.50, image: foodImages.pedras, rating: 4.3 },
+  { id: 73, name: 'Água das Pedras C/ Sabor', price: 1.80, image: foodImages.pedrassabor, rating: 4.3 },
+  { id: 74, name: 'Balde de Heineken', price: 10.00, image: foodImages.baldedecerveja, rating: 4.9 }
+],
     sumos: [
       {
         id: 'sumo-maracuja',
@@ -1230,17 +1278,49 @@ const addItemToOrder = useCallback(async () => {
   if (!selectedTable || !selectedMenuItem) return;
 
   setLoading(true);
-  
+  setError(null); // Limpa erros anteriores
+
   try {
-    const newItem = {
-      ...selectedMenuItem,
+    // Cria o objeto do item base
+    let newItem = {
+      id: selectedMenuItem.id,
+      name: selectedMenuItem.name,
+      price: selectedMenuItem.price || 0,
       quantity: newItemQuantity,
       addedAt: Date.now(),
-      printed: true, // Alterado para true já que é adicionado manualmente
+      printed: true,
       notes: itemNotes[selectedMenuItem.id] || '',
-      price: selectedMenuItem.price
+      image: selectedMenuItem.image,
+      description: selectedMenuItem.description,
+      rating: selectedMenuItem.rating
     };
 
+    // Trata itens com seleção de sabor/marca
+    if (selectedMenuItem.flavorOptions && selectedFlavor) {
+      newItem = {
+        ...newItem,
+        name: `${selectedMenuItem.name} (${selectedFlavor})`,
+        flavor: selectedFlavor
+      };
+    }
+
+    // Trata energéticos especificamente
+    if (selectedMenuItem.id === 'energeticos' && selectedMenuItem.options && selectedFlavor) {
+      const selectedOption = selectedMenuItem.options.find(o => o.name === selectedFlavor);
+      newItem = {
+        ...newItem,
+        name: `${selectedMenuItem.name} (${selectedFlavor})`,
+        price: selectedOption?.price || selectedMenuItem.price,
+        flavor: selectedFlavor
+      };
+    }
+
+    // Verifica se todos os campos obrigatórios estão presentes
+    if (!newItem.name || !newItem.price) {
+      throw new Error('Informações do item incompletas');
+    }
+
+    // Resto da lógica de adição ao pedido...
     const orderPath = selectedOrder?.id 
       ? `tables/${selectedTable}/currentOrder/${selectedOrder.id}`
       : `tables/${selectedTable}/currentOrder`;
@@ -1285,21 +1365,23 @@ const addItemToOrder = useCallback(async () => {
       });
     }
 
+    // Limpa os estados após adicionar
     setSelectedMenuItem(null);
     setNewItemQuantity(1);
     setItemNotes(prev => ({
       ...prev,
       [selectedMenuItem.id]: ''
     }));
+    setSelectedFlavor('');
     setShowAddItemModal(false);
     
   } catch (err) {
     console.error("Erro ao adicionar item:", err);
-    setError("Falha ao adicionar item ao pedido");
+    setError(err.message || "Falha ao adicionar item ao pedido");
   } finally {
     setLoading(false);
   }
-}, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes]);
+}, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, selectedFlavor]);
 
 
 const removeItemFromOrder = useCallback(async (itemToRemove) => {
@@ -2502,6 +2584,7 @@ const renderHistoryModal = () => {
               setSelectedMenuItem(null);
               setSearchTerm('');
               setShowSearchResults(false);
+              setSelectedFlavor('');
             }}
             className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
           >
@@ -2643,6 +2726,7 @@ const renderHistoryModal = () => {
                 setSelectedMenuItem(null);
                 setSearchTerm('');
                 setShowSearchResults(false);
+                setSelectedFlavor('');
               }}
               className="flex items-center text-blue-600 mb-4"
             >
@@ -2669,6 +2753,60 @@ const renderHistoryModal = () => {
                 <h4 className="font-bold text-xl text-gray-800 mb-2">{selectedMenuItem.name}</h4>
                 {selectedMenuItem.description && (
                   <p className="text-gray-600 mb-4">{selectedMenuItem.description}</p>
+                )}
+                
+                {/* Seletor de sabores para Compal */}
+                {selectedMenuItem.id === 'compal' && selectedMenuItem.flavorOptions && (
+                  <div className="mb-6">
+                    <label className="block text-gray-700 mb-2 font-medium">Sabor:</label>
+                    <select
+                      value={selectedFlavor}
+                      onChange={(e) => setSelectedFlavor(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Selecione um sabor</option>
+                      {selectedMenuItem.flavorOptions.map(flavor => (
+                        <option key={flavor} value={flavor}>{flavor}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
+                {/* Seletor de energéticos */}
+                {selectedMenuItem.id === 'energeticos' && selectedMenuItem.options && (
+                  <div className="mb-6">
+                    <label className="block text-gray-700 mb-2 font-medium">Marca:</label>
+                    <select
+                      value={selectedFlavor}
+                      onChange={(e) => setSelectedFlavor(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Selecione uma marca</option>
+                      {selectedMenuItem.options.map(option => (
+                        <option key={option.name} value={option.name}>{option.name} (€ {option.price.toFixed(2)})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
+                {/* Seletor de refrigerantes */}
+                {selectedMenuItem.id === 'refrigerantes-lata' && selectedMenuItem.flavorOptions && (
+                  <div className="mb-6">
+                    <label className="block text-gray-700 mb-2 font-medium">Sabor:</label>
+                    <select
+                      value={selectedFlavor}
+                      onChange={(e) => setSelectedFlavor(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Selecione um sabor</option>
+                      {selectedMenuItem.flavorOptions.map(flavor => (
+                        <option key={flavor} value={flavor}>{flavor}</option>
+                      ))}
+                    </select>
+                  </div>
                 )}
                 
                 <div className="bg-gray-50 rounded-xl p-4 mb-6">
@@ -2713,7 +2851,12 @@ const renderHistoryModal = () => {
                 <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4 mb-6">
                   <span className="font-medium text-gray-700">Subtotal:</span>
                   <span className="text-xl font-bold text-blue-600">
-                    € {(selectedMenuItem.price * newItemQuantity).toFixed(2)}
+                    € {(
+                      (selectedMenuItem.id === 'energeticos' && selectedMenuItem.options && selectedFlavor 
+                        ? selectedMenuItem.options.find(o => o.name === selectedFlavor)?.price || selectedMenuItem.price 
+                        : selectedMenuItem.price
+                      ) * newItemQuantity
+                    ).toFixed(2)}
                   </span>
                 </div>
                 
@@ -2723,24 +2866,34 @@ const renderHistoryModal = () => {
                       setSelectedMenuItem(null);
                       setSearchTerm('');
                       setShowSearchResults(false);
+                      setSelectedFlavor('');
                     }}
                     className="px-4 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 font-medium"
                   >
                     Cancelar
                   </button>
-                  <button
-                    onClick={addItemToOrder}
-                    className="px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-                    disabled={loading}
-                  >
-                    {loading && (
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    )}
-                    {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
-                  </button>
+                              <button
+                  onClick={addItemToOrder}
+                  className={`px-4 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium flex items-center justify-center gap-2 ${
+                    ((selectedMenuItem.id === 'compal' || 
+                      selectedMenuItem.id === 'refrigerantes-lata' || 
+                      selectedMenuItem.id === 'energeticos') && !selectedFlavor) ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  disabled={loading || (
+                    (selectedMenuItem.id === 'compal' || 
+                    selectedMenuItem.id === 'refrigerantes-lata' || 
+                    selectedMenuItem.id === 'energeticos') && 
+                    !selectedFlavor
+                  )}
+                >
+                  {loading ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : null}
+                  {selectedOrder?.id ? 'Adicionar ao Pedido' : 'Criar Novo Pedido'}
+                </button>
                 </div>
               </div>
             </div>
@@ -2749,7 +2902,6 @@ const renderHistoryModal = () => {
       </div>
     </div>
   );
-
   // Renderização dos detalhes da mesa
   const renderTableDetailsModal = () => {
     const table = tables.find(t => t.id === selectedTable);
