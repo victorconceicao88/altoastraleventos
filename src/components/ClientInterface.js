@@ -142,6 +142,7 @@ const ClientInterface = ({ tableNumber }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const notesInputRef = useRef(null);
+  const [selectedFlavors, setSelectedFlavors] = useState({});
   
   const windowSize = useWindowSize();
   
@@ -585,7 +586,7 @@ const ClientInterface = ({ tableNumber }) => {
     background: logoBackground,
   };
 
- const menu = {
+const menu = {
     semana: [
       { 
         id: 1, 
@@ -714,12 +715,24 @@ const ClientInterface = ({ tableNumber }) => {
       { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: 'Imperial' },
       { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: 'Imperial' },
       { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
-      {id:  64, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
-      { id: 65, name: 'Superbock Preta', price: 1.40, image: 'superbock' }
+      { id: 64, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
+      { id: 65, name: 'Superbock Preta', price: 1.40, image: 'superbock' },
+      { 
+        id: 109, 
+        name: 'Energéticos', 
+        description: 'Bebidas energéticas', 
+        price: 0, 
+        image: 'energetico',
+        options: [
+          { name: 'Red Bull', price: 2.50 },
+          { name: 'Monster', price: 2.50 },
+          { name: 'Hell', price: 1.80 }
+        ]
+      }
     ],
     sumos: [
       {
-        id: 66, // ID ajustado
+        id: 66,
         name: 'Sumo/Batido de Maracujá',
         description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
         price: 4.00,
@@ -732,7 +745,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)'
       },
       {
-        id: 67, // ID ajustado
+        id: 67,
         name: 'Sumo/Batido de Acerola',
         description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
         price: 4.00,
@@ -745,7 +758,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)'
       },
       {
-        id: 68, // ID ajustado
+        id: 68,
         name: 'Sumo/Batido de Manga',
         description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
         price: 4.00,
@@ -758,7 +771,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)'
       },
       {
-        id: 69, // ID ajustado
+        id: 69,
         name: 'Sumo/Batido de Goiaba',
         description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
         price: 4.00,
@@ -771,7 +784,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)'
       },
       {
-        id: 70, // ID ajustado
+        id: 70,
         name: 'Sumo/Batido de Morango',
         description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
         price: 4.00,
@@ -784,7 +797,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)'
       },
       {
-        id: 71, // ID ajustado
+        id: 71,
         name: 'Sumo/Batido de Caju',
         description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
         price: 4.00,
@@ -797,7 +810,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)'
       },
       {
-        id: 72, // ID ajustado
+        id: 72,
         name: 'Sumo/Batido de Abacaxi',
         description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
         price: 4.00,
@@ -810,7 +823,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)'
       },
       {
-        id: 73, // ID ajustado
+        id: 73,
         name: 'Sumo/Batido de Coco',
         description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
         price: 4.00,
@@ -823,7 +836,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)'
       },
       {
-        id: 74, // ID ajustado
+        id: 74,
         name: 'Sumo/Batido de Cajá',
         description: 'Exótico e refrescante, rico em vitaminas do complexo B',
         price: 4.00,
@@ -836,7 +849,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)'
       },
       {
-        id: 75, // ID ajustado
+        id: 75,
         name: 'Sumo/Batido de Cupuaçu',
         description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
         price: 4.00,
@@ -849,7 +862,7 @@ const ClientInterface = ({ tableNumber }) => {
         nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)'
       },
       {
-        id: 76, // ID ajustado
+        id: 76,
         name: 'Sumo/Batido de Graviola',
         description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
         price: 4.00,
@@ -860,19 +873,45 @@ const ClientInterface = ({ tableNumber }) => {
         image: 'graviola',
         veg: true,
         nutritionalInfo: 'Rica em vitaminas B1, B2 e C. 140kcal (com água)'
+      },
+      {
+        id: 110,
+        name: 'Compal',
+        description: 'Sumo de fruta natural',
+        price: 1.60,
+        image: 'compal',
+        flavorOptions: [
+          'Frutos Vermelhos',
+          'Maracujá',
+          'Manga',
+          'Maçã',
+          'Pêra',
+          'Pêssego',
+          'Manga Laranja',
+          'Goiaba',
+          'Ananás'
+        ]
       }
     ],
     'refrigerantes-aguas': [
       { 
-        id: 77, // ID ajustado
+        id: 77,
         name: 'Refrigerante Lata', 
-        description: 'Coca-Cola, Fanta, Sprite, Ice Tea, 7UP, Pepsi', 
+        description: 'Refrigerantes em lata 330ml', 
         price: 1.60, 
         image: 'refrigerantes', 
-        rating: 4.1
+        rating: 4.1,
+        flavorOptions: [
+          'Coca-Cola',
+          'Coca-Cola Zero',
+          'Fanta Laranja',
+          'Pepsi',
+          'Guaraná do Brasil',
+          'Sprite'
+        ]
       },
       { 
-        id: 78, // ID ajustado
+        id: 78,
         name: 'Água 1.5L', 
         description: 'Água mineral natural 1.5 litros', 
         price: 1.50, 
@@ -880,7 +919,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.0
       },
       { 
-        id: 79, // ID ajustado
+        id: 79,
         name: 'Água 0.5L', 
         description: 'Água mineral natural 500ml', 
         price: 1.00, 
@@ -888,7 +927,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.0
       },
       { 
-        id: 80, // ID ajustado
+        id: 80,
         name: 'Água 0.33L', 
         description: 'Água mineral natural 330ml', 
         price: 0.60, 
@@ -896,7 +935,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.0
       },
       { 
-        id: 81, // ID ajustado
+        id: 81,
         name: 'Água Castelo', 
         description: 'Água mineral gaseificada 1L', 
         price: 1.40, 
@@ -904,7 +943,7 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.2 
       },
       { 
-        id: 82, // ID ajustado
+        id: 82,
         name: 'Água das Pedras', 
         description: 'Água mineral gaseificada', 
         price: 1.50, 
@@ -912,13 +951,13 @@ const ClientInterface = ({ tableNumber }) => {
         rating: 4.3 
       },
       { 
-        id: 83, // ID ajustado
+        id: 83,
         name: 'Água das Pedras C/ Sabor', 
         description: 'Água mineral gaseificada', 
         price: 1.80, 
         image: 'pedrassabor', 
         rating: 4.3 
-      },
+      }
     ],
     salgados: [
       { id: 84, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
@@ -1484,11 +1523,21 @@ const ClientInterface = ({ tableNumber }) => {
                 {/* Premium Drink Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                   {filteredMenu(activeCategory).map((item) => {
-                    const addToCartWithAnimation = () => {
-                      setIsAdding(true);
-                      addToCart(item);
-                      setTimeout(() => setIsAdding(false), 1000);
-                    };
+                        const addToCartWithAnimation = () => {
+                        setIsAdding(true);
+                        const selectedFlavor = selectedFlavors[item.id];
+                        const notes = [
+                          itemNotes[item.id] || ''
+                        ].filter(Boolean).join(' | ');
+
+                        addToCart({
+                          ...item,
+                          name: selectedFlavor ? `${item.name} - ${selectedFlavor}` : item.name,
+                          notes: notes || undefined
+                        });
+
+                        setTimeout(() => setIsAdding(false), 1000);
+                      };
 
                     return (
                       <motion.div
@@ -1548,6 +1597,28 @@ const ClientInterface = ({ tableNumber }) => {
                               {formatPrice(item.price)}
                             </motion.div>
                           </div>
+                          {/* Dentro do mapeamento dos itens da categoria 'refrigerantes-aguas' */}
+{item.flavorOptions && (
+  <div className="mb-4">
+    <label htmlFor={`flavor-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+      Escolha o sabor:
+    </label>
+    <select
+      id={`flavor-${item.id}`}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+      value={selectedFlavors[item.id] || ''}
+      onChange={(e) => setSelectedFlavors(prev => ({
+        ...prev,
+        [item.id]: e.target.value
+      }))}
+    >
+      <option value="">Selecione...</option>
+      {item.flavorOptions.map(flavor => (
+        <option key={flavor} value={flavor}>{flavor}</option>
+      ))}
+    </select>
+  </div>
+)}
                           
                           <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
                           
@@ -1673,7 +1744,17 @@ const ClientInterface = ({ tableNumber }) => {
 
                     const addToCartWithAnimation = () => {
                       setIsAdding(true);
-                      addToCart(item);
+                      const flavor = selectedFlavors[item.id] ? `Sabor: ${selectedFlavors[item.id]}` : '';
+                      const notes = [
+                        flavor,
+                        itemNotes[item.id] || ''
+                      ].filter(Boolean).join(' | ');
+                      
+                      addToCart({
+                        ...item,
+                        notes: notes || undefined
+                      });
+                      
                       setTimeout(() => setIsAdding(false), 1000);
                     };
 
@@ -2115,132 +2196,132 @@ const ClientInterface = ({ tableNumber }) => {
         )}
       </div>
 
-      <AnimatePresence>
-        {isMobile && showCart && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+<AnimatePresence>
+  {isMobile && showCart && (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+      onClick={() => setShowCart(false)}
+    >
+      <motion.div 
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 30 }}
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[#e6be44] text-white p-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold flex items-center">
+            <FaShoppingCart className="h-5 w-5 mr-2" />
+            Seu Pedido - Mesa {tableNumber}
+          </h2>
+          <button 
             onClick={() => setShowCart(false)}
+            className="text-white hover:text-gray-200 transition-colors"
           >
-            <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30 }}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-[#e6be44] text-white p-4 flex justify-between items-center">
-                <h2 className="text-xl font-bold flex items-center">
-                  <FaShoppingCart className="h-5 w-5 mr-2" />
-                  Seu Pedido - Mesa {tableNumber}
-                </h2>
-                <button 
-                  onClick={() => setShowCart(false)}
-                  className="text-white hover:text-gray-200 transition-colors"
-                >
-                  <IoMdClose className="h-6 w-6" />
-                </button>
-              </div>
+            <IoMdClose className="h-6 w-6" />
+          </button>
+        </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
-                {cart.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <FaShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>Seu carrinho está vazio</p>
-                    <button
-                      onClick={() => setShowCart(false)}
-                      className="mt-4 px-4 py-2 bg-[#e6be44] text-white rounded-lg hover:bg-[#d5c8b6] shadow-md transition-colors"
-                    >
-                      Voltar ao cardápio
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-3 mb-6">
-                      {cart.map(item => (
-                        <motion.div 
-                          key={item.cartId}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex justify-between items-start p-3 bg-[#f5f5f5] rounded-lg shadow-sm border border-[#e6be44]"
+        <div className="flex-1 overflow-y-auto p-4">
+          {cart.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FaShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>Seu carrinho está vazio</p>
+              <button
+                onClick={() => setShowCart(false)}
+                className="mt-4 px-4 py-2 bg-[#e6be44] text-white rounded-lg hover:bg-[#d5c8b6] shadow-md transition-colors"
+              >
+                Voltar ao cardápio
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 mb-6">
+                {cart.map(item => (
+                  <motion.div 
+                    key={item.cartId}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex justify-between items-start p-3 bg-[#f5f5f5] rounded-lg shadow-sm border border-[#e6be44]"
+                  >
+                    <div className="flex-grow">
+                      <div className="font-bold text-black flex justify-between">
+                        <span>{item.name}</span>
+                        <span className="font-bold text-[#e6be44]">
+                          {formatPrice(item.price * (item.quantity || 1))}
+                        </span>
+                      </div>
+                      {item.notes && (
+                        <div className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded">
+                          <span className="font-semibold">Obs:</span> {item.notes}
+                        </div>
+                      )}
+                      <div className="flex items-center mt-3">
+                        <button 
+                          onClick={() => removeFromCart(item.cartId, item.id)}
+                          className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
                         >
-                          <div className="flex-grow">
-                            <div className="font-bold text-black flex justify-between">
-                              <span>{item.name}</span>
-                              <span className="font-bold text-[#e6be44]">
-                                {formatPrice(item.price * (item.quantity || 1))}
-                              </span>
-                            </div>
-                            {item.notes && (
-                              <div className="text-xs text-gray-600 mt-1 bg-white px-2 py-1 rounded">
-                                <span className="font-semibold">Obs:</span> {item.notes}
-                              </div>
-                            )}
-                            <div className="flex items-center mt-3">
-                              <button 
-                                onClick={() => removeFromCart(item.cartId, item.id)}
-                                className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
-                              >
-                                <FaMinus className="h-3 w-3" />
-                              </button>
-                              <span className="mx-2 font-bold w-6 text-center">
-                                {item.quantity || 1}
-                              </span>
-                              <button 
-                                onClick={() => addToCart(item)}
-                                className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
-                              >
-                                <FaPlus className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => removeItemCompletely(item.cartId)}
-                                className="ml-3 text-gray-500 hover:text-red-500 transition-colors"
-                              >
-                                <FaTrash className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-gray-700 font-bold">Subtotal:</span>
-                        <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>
-                      </div>
-                      <div className="border-t border-gray-200 my-2"></div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold text-black">Total:</span>
-                        <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
+                          <FaMinus className="h-3 w-3" />
+                        </button>
+                        <span className="mx-2 font-bold w-6 text-center">
+                          {item.quantity || 1}
+                        </span>
+                        <button 
+                          onClick={() => addToCart(item)}
+                          className="bg-[#d5c8b6] hover:bg-[#b0aca6] p-1 rounded-full transition-colors"
+                        >
+                          <FaPlus className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => removeItemCompletely(item.cartId)}
+                          className="ml-3 text-gray-500 hover:text-red-500 transition-colors"
+                        >
+                          <FaTrash className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => setShowConfirmation(true)}
-                      disabled={isSendingOrder || cart.length === 0}
-                      className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg mb-4 ${
-                        isSendingOrder || cart.length === 0
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] text-white'
-                      }`}
-                    >
-                      <span className="flex items-center justify-center">
-                        <FaReceipt className="h-5 w-5 mr-2" />
-                        Finalizar Pedido
-                      </span>
-                    </button>
-                  </>
-                )}
+                  </motion.div>
+                ))}
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              <div className="bg-white p-4 rounded-lg border border-[#e6be44] mb-6 shadow-sm">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-700 font-bold">Subtotal:</span>
+                  <span className="font-bold text-black">{formatPrice(calculateTotal())}</span>
+                </div>
+                <div className="border-t border-gray-200 my-2"></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-black">Total:</span>
+                  <span className="text-xl font-bold text-[#e6be44]">{formatPrice(calculateTotal())}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowConfirmation(true)}
+                disabled={isSendingOrder || cart.length === 0}
+                className={`w-full py-3 rounded-lg font-bold transition-all shadow-lg mb-4 ${
+                  isSendingOrder || cart.length === 0
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#918e89] to-[#b0aca6] text-white'
+                }`}
+              >
+                <span className="flex items-center justify-center">
+                  <FaReceipt className="h-5 w-5 mr-2" />
+                  Finalizar Pedido
+                </span>
+              </button>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
 
       <AnimatePresence>
         {showConfirmation && (

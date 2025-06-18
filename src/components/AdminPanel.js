@@ -86,6 +86,26 @@ import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
 let globalPrinterDevice = null;
 let globalPrinterCharacteristic = null;
+const throttle = (func, limit) => {
+  let lastFunc;
+  let lastRan;
+  return function() {
+    const context = this;
+    const args = arguments;
+    if (!lastRan) {
+      func.apply(context, args);
+      lastRan = Date.now();
+    } else {
+      clearTimeout(lastFunc);
+      lastFunc = setTimeout(function() {
+        if ((Date.now() - lastRan) >= limit) {
+          func.apply(context, args);
+          lastRan = Date.now();
+        }
+      }, limit - (Date.now() - lastRan));
+    }
+  };
+};
 const AdminPanel = () => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -107,7 +127,6 @@ const AdminPanel = () => {
   const [printerConnected, setPrinterConnected] = useState(false);
   const printerDeviceRef = useRef(null);
   const printerCharacteristicRef = useRef(null);
-  const [printedItems, setPrintedItems] = useState({});
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,15 +144,17 @@ const AdminPanel = () => {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historySearchTerm, setHistorySearchTerm] = useState('');
-  const [sentItems, setSentItems] = useState({});
   const [historyDateRange, setHistoryDateRange] = useState({
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     end: new Date()
   });
-  const [newOrders, setNewOrders] = useState({});
-  const [flashingTables, setFlashingTables] = useState({});
-  const [tablesWithNewItems, setTablesWithNewItems] = useState({});
-  const [showPendingOrdersModal, setShowPendingOrdersModal] = useState(false);
+      // Adicionar estes novos estados:
+
+
+const [pendingItemsByTable, setPendingItemsByTable] = useState({});
+const [hasPendingItems, setHasPendingItems] = useState(false);
+const [isPedidosButtonFlashing, setIsPedidosButtonFlashing] = useState(false);
+const [showPendingOrdersModal, setShowPendingOrdersModal] = useState(false);
 
   // Refs para scroll
   const menuCategoriesRef = useRef(null);
@@ -180,14 +201,15 @@ const AdminPanel = () => {
   }, []);
 
   // Configurações da impressora Bluetooth
-  const PRINTER_CONFIG = {
-    deviceName: "BlueTooth Printer",
-    serviceUUID: "0000ff00-0000-1000-8000-00805f9b34fb",
-    characteristicUUID: "0000ff02-0000-1000-8000-00805f9b34fb",
-    maxRetries: 3,
-    chunkSize: 100,
-    delayBetweenChunks: 100
-  };
+const PRINTER_CONFIG = {
+  deviceName: "BlueTooth Printer",
+  serviceUUID: "0000ff00-0000-1000-8000-00805f9b34fb",
+  characteristicUUID: "0000ff02-0000-1000-8000-00805f9b34fb",
+  maxRetries: 3,
+  chunkSize: 100,
+  delayBetweenChunks: 100,
+  connectionMode: 'shared' 
+};
 
   const NEW_ORDER_FLASH_DURATION = 5000; // 5 segundos de animação
   const NEW_ORDER_BADGE_DURATION = 30000; // 30 segundos do badge visível
@@ -550,6 +572,40 @@ const AdminPanel = () => {
     ]
   };
 
+  useEffect(() => {
+  const checkPendingItems = () => {
+    const pendingItems = {};
+    let hasPending = false;
+
+    tables.forEach(table => {
+      if (table.currentOrder) {
+        const unprintedItems = table.currentOrder.items.filter(item => !item.printed);
+        if (unprintedItems.length > 0) {
+          pendingItems[table.id] = {
+            tableId: table.id,
+            tableType: table.type,
+            items: unprintedItems
+          };
+          hasPending = true;
+        }
+      }
+    });
+
+    setPendingItemsByTable(pendingItems);
+    setHasPendingItems(hasPending);
+    
+    // Piscar o botão se houver novos itens
+    if (hasPending) {
+      setIsPedidosButtonFlashing(true);
+      const timer = setTimeout(() => setIsPedidosButtonFlashing(false), 10000);
+      return () => clearTimeout(timer);
+    }
+  };
+
+  const interval = setInterval(checkPendingItems, 5000);
+  return () => clearInterval(interval);
+}, [tables]);
+
   // Efeito para verificar autenticação
 useEffect(() => {
   const auth = getAuth();
@@ -589,155 +645,34 @@ useEffect(() => {
   };
 }, [isAuthenticated]);
 
- useEffect(() => {
-  if (!isAuthenticated) return;
-
-  const tablesRef = ref(database, 'tables');
-  const unsubscribe = onValue(tablesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    const now = Date.now();
-    
-    // Atualiza o estado das mesas
-    const tablesData = initialTables().map(table => {
-      const tableData = data[table.id] || {};
-      let currentOrder = null;
-      
-      if (tableData.currentOrder) {
-        const orders = Object.entries(tableData.currentOrder);
-        if (orders.length > 0) {
-          currentOrder = {
-            id: orders[0][0],
-            ...orders[0][1],
-            items: orders[0][1].items?.map(item => ({
-              ...item,
-              notes: item.notes || ''
-            })) || []
-          };
-        }
-      }
-
-      return { 
-        ...table,
-        currentOrder,
-        ordersHistory: tableData.ordersHistory || {},
-        status: tableData.status || 'available'
-      };
-    });
-
-    setTables(tablesData);
-    setLastUpdate(new Date());
-
-    // Atualiza os alertas visuais
-    const updatedTablesWithNewItems = {};
-    const updatedNewOrders = {};
-    const updatedFlashingTables = {...flashingTables};
-
-    tablesData.forEach(table => {
-      if (table.currentOrder) {
-        const order = table.currentOrder;
-        
-        // Verifica novos itens não visualizados
-        const hasNewUnprintedItems = order.items?.some(item => 
-          !item.printed && 
-          (!order.lastViewedAt || item.addedAt > order.lastViewedAt)
-        );
-
-        if (hasNewUnprintedItems) {
-          updatedTablesWithNewItems[table.id] = true;
-        }
-
-        // Verifica pedidos novos (criados nos últimos 30s)
-        if (order.createdAt && (now - order.createdAt) < NEW_ORDER_BADGE_DURATION) {
-          if (!newOrders[table.id] || newOrders[table.id] < order.createdAt) {
-            updatedNewOrders[table.id] = order.createdAt;
-            
-            if (!flashingTables[table.id]) {
-              updatedFlashingTables[table.id] = true;
-              setTimeout(() => {
-                setFlashingTables(prev => ({...prev, [table.id]: false}));
-              }, NEW_ORDER_FLASH_DURATION);
-            }
-          }
-        }
-      }
-    });
-
-    setTablesWithNewItems(updatedTablesWithNewItems);
-    setNewOrders(updatedNewOrders);
-    setFlashingTables(updatedFlashingTables);
-
-    // Atualiza o pedido selecionado se necessário
-    if (selectedTable && data[selectedTable]?.currentOrder) {
-      const order = Object.values(data[selectedTable].currentOrder)[0];
-      const loadedOrder = {
-        id: Object.keys(data[selectedTable].currentOrder)[0],
-        ...order,
-        items: order.items?.map(item => ({
-          ...item,
-          notes: item.notes || ''
-        })) || []
-      };
-
-      setSelectedOrder(loadedOrder);
-      setDeliveryAddress(loadedOrder.deliveryAddress || '');
-      
-      if (loadedOrder.items?.length === 0) {
-        closeOrderAutomatically(loadedOrder);
-      }
-    }
-  });
-
-  return () => unsubscribe();
-}, [isAuthenticated, initialTables, selectedTable, newOrders, flashingTables]);
 
   // Função para fechar pedido automaticamente quando não há itens
-  const closeOrderAutomatically = useCallback(async (order) => {
-    if (!selectedTable || !order?.id) return;
-    
-    try {
-      const table = tables.find(t => t.id === selectedTable);
-      
-      const orderToClose = {
-        ...order,
-        total: 0,
-        deliveryFee: 0,
-        paymentMethod: 'dinheiro',
-        closedAt: Date.now(),
-        closedBy: getAuth().currentUser?.email || 'admin',
-        autoClosed: true
-      };
+const closeOrderAutomatically = useCallback(async (order) => {
+  if (!selectedTable || !order?.id) return;
+  
+  try {
+    const tableRef = ref(database, `tables/${selectedTable}`);
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${order.id}`);
 
-      // Adicionar ao histórico
-      const historyRef = ref(database, `tables/${selectedTable}/ordersHistory`);
-      await push(historyRef, orderToClose);
-      
-      // Remover pedido atual
-      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${order.id}`);
-      await remove(orderRef);
-      
-      // Atualizar status da mesa/comanda
-      const tableRef = ref(database, `tables/${selectedTable}`);
-      await update(tableRef, {
-        status: 'available'
-      });
-      
-      // Atualizar estado local
-      setTables(prevTables => prevTables.map(table => {
-        if (table.id === selectedTable) {
-          return {
-            ...table,
-            currentOrder: null,
-            status: 'available'
-          };
-        }
-        return table;
-      }));
-      
-      setSelectedOrder(null);
-    } catch (error) {
-      console.error("Erro ao fechar comanda automaticamente:", error);
-    }
-  }, [selectedTable, tables]);
+    // Remove o pedido atual primeiro
+    await remove(orderRef);
+    
+    // Depois atualiza o status da mesa
+    await update(tableRef, {
+      status: 'available'
+    });
+
+    // Atualização local otimizada
+    setTables(prevTables => prevTables.map(t => 
+      t.id === selectedTable ? {...t, currentOrder: null, status: 'available'} : t
+    ));
+    
+    setSelectedOrder(null);
+
+  } catch (error) {
+    console.error("Erro ao fechar comanda:", error);
+  }
+}, [selectedTable]);
 
   // Efeito para pesquisa
 useEffect(() => {
@@ -762,6 +697,48 @@ useEffect(() => {
     setSearchResults(results);
     setShowSearchResults(results.length > 0);
   }, [searchTerm, menu]);
+
+useEffect(() => {
+  if (!isAuthenticated) return;
+
+  const processTablesData = (data) => {
+    return initialTables().map(table => {
+      const tableData = data[table.id] || {};
+      let currentOrder = null;
+      
+      if (tableData.currentOrder) {
+        const orders = Object.entries(tableData.currentOrder);
+        if (orders.length > 0) {
+          currentOrder = {
+            id: orders[0][0],
+            ...orders[0][1],
+            items: orders[0][1].items?.map(item => ({
+              ...item,
+              notes: item.notes || '',
+              printed: item.printed || false
+            })) || []
+          };
+        }
+      }
+
+      return { 
+        ...table,
+        currentOrder,
+        ordersHistory: tableData.ordersHistory || {},
+        status: tableData.status || 'available'
+      };
+    });
+  };
+
+  const tablesRef = ref(database, 'tables');
+  const unsubscribe = onValue(tablesRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    setTables(processTablesData(data));
+    setLastUpdate(new Date());
+  });
+
+  return () => unsubscribe();
+}, [isAuthenticated, initialTables]);
 
   // Funções de persistência da impressora
 const savePrinterState = useCallback((device, characteristic) => {
@@ -852,8 +829,7 @@ const connectToPrinter = useCallback(async () => {
     }
 
     // Se já estiver conectado, retornar
-    if (globalPrinterDevice?.gatt?.connected || 
-        printerDeviceRef.current?.gatt?.connected) {
+      if (globalPrinterDevice?.gatt?.connected && PRINTER_CONFIG.connectionMode === 'shared') {
       setPrinterConnected(true);
       return true;
     }
@@ -887,8 +863,9 @@ const connectToPrinter = useCallback(async () => {
     
     setPrinterConnected(true);
     savePrinterState(device, characteristic);
-
+    device.gatt.keepBond = true;
     return true;
+
   } catch (err) {
     console.error('Erro na conexão Bluetooth:', err);
     setError(`Falha na conexão: ${err.message}`);
@@ -1018,57 +995,127 @@ const formatReceipt = useCallback((order) => {
   return receipt;
 }, [selectedTable, tables]);
 
-  // Função para marcar itens como impressos
-const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
+const markOrderAsViewed = (tableId) => {
+  setNewOrders(prev => {
+    const newState = {...prev};
+    delete newState[tableId];
+    return newState;
+  });
+  setFlashingTables(prev => {
+    const newState = {...prev};
+    delete newState[tableId];
+    return newState;
+  });
+};
+
+// Add this function with your other utility functions
+const markItemsAsPrinted = async (tableId, orderId, itemsToMark) => {
   try {
     const orderRef = ref(database, `tables/${tableId}/currentOrder/${orderId}`);
+    const snapshot = await get(orderRef);
     
-    const newPrintedItems = {...printedItems};
-    const newSentItems = {...sentItems};
-    
-    items.forEach(item => {
-      const itemKey = `${tableId}-${item.id}-${item.addedAt}`;
-      newPrintedItems[itemKey] = true;
-      newSentItems[itemKey] = true;
-    });
-    
-    setPrintedItems(newPrintedItems);
-    setSentItems(newSentItems);
-
-    // Remove o alerta visual
-    setTablesWithNewItems(prev => {
-      const newState = {...prev};
-      delete newState[tableId];
-      return newState;
-    });
-
-    const currentOrderSnapshot = await get(orderRef);
-    const currentOrder = currentOrderSnapshot.val();
-    
-    const updatedItems = currentOrder.items.map(orderItem => {
-      const wasPrinted = items.some(
-        printedItem => printedItem.id === orderItem.id && printedItem.addedAt === orderItem.addedAt
-      );
-      return wasPrinted ? { ...orderItem, printed: true } : orderItem;
-    });
-
-    await update(orderRef, {
-      items: updatedItems,
-      updatedAt: Date.now()
-    });
-
-  } catch (err) {
-    console.error("Erro ao marcar itens como impressos:", err);
-    const revertedPrintedItems = {...printedItems};
-    items.forEach(item => {
-      delete revertedPrintedItems[`${tableId}-${item.id}-${item.addedAt}`];
-    });
-    setPrintedItems(revertedPrintedItems);
-    throw err;
+    if (snapshot.exists()) {
+      const currentOrder = snapshot.val();
+      const updatedItems = currentOrder.items.map(item => {
+        const shouldMark = itemsToMark.some(
+          i => i.id === item.id && i.addedAt === item.addedAt
+        );
+        return shouldMark ? {...item, printed: true} : item;
+      });
+      
+      return updatedItems;
+    }
+    return [];
+  } catch (error) {
+    console.error("Error marking items as printed:", error);
+    return [];
   }
-}, [printedItems, sentItems]);
+};
+
+  // Função para marcar itens como impressos
+const markItemAsPrinted = async (tableId, item) => {
+  try {
+    const orderRef = ref(database, `tables/${tableId}/currentOrder`);
+    const snapshot = await get(orderRef);
+    
+    if (snapshot.exists()) {
+      const orderData = snapshot.val();
+      const orderKey = Object.keys(orderData)[0];
+      const currentOrder = orderData[orderKey];
+      
+      const updatedItems = currentOrder.items.map(orderItem => 
+        orderItem.id === item.id && orderItem.addedAt === item.addedAt
+          ? { ...orderItem, printed: true }
+          : orderItem
+      );
+      
+      await update(ref(database, `tables/${tableId}/currentOrder/${orderKey}`), {
+        items: updatedItems,
+        updatedAt: Date.now()
+      });
+      
+      // Atualizar estado local
+      setPendingItemsByTable(prev => {
+        const newState = { ...prev };
+        if (newState[tableId]) {
+          newState[tableId].items = newState[tableId].items.filter(
+            i => !(i.id === item.id && i.addedAt === item.addedAt)
+          );
+          
+          if (newState[tableId].items.length === 0) {
+            delete newState[tableId];
+          }
+        }
+        return newState;
+      });
+    }
+  } catch (error) {
+    console.error("Erro ao marcar item como impresso:", error);
+    setError("Falha ao enviar item para cozinha");
+  }
+};
+
+const markAllItemsAsPrinted = async (tableId) => {
+  try {
+    const orderRef = ref(database, `tables/${tableId}/currentOrder`);
+    const snapshot = await get(orderRef);
+    
+    if (snapshot.exists()) {
+      const orderData = snapshot.val();
+      const orderKey = Object.keys(orderData)[0];
+      const currentOrder = orderData[orderKey];
+      
+      const updatedItems = currentOrder.items.map(item => ({
+        ...item,
+        printed: true
+      }));
+      
+      await update(ref(database, `tables/${tableId}/currentOrder/${orderKey}`), {
+        items: updatedItems,
+        updatedAt: Date.now()
+      });
+      
+      // Atualizar estado local
+      setPendingItemsByTable(prev => {
+        const newState = { ...prev };
+        delete newState[tableId];
+        return newState;
+      });
+    }
+  } catch (error) {
+    console.error("Erro ao marcar todos os itens como impressos:", error);
+    setError("Falha ao enviar itens para cozinha");
+  }
+};
 
   // Função para imprimir pedido
+// Add these state declarations at the top with your other useState declarations
+const [newOrders, setNewOrders] = useState({});
+const [flashingTables, setFlashingTables] = useState({});
+const [tablesWithNewItems, setTablesWithNewItems] = useState({});
+
+
+// Here's the corrected printOrder function
 const printOrder = useCallback(async () => {
   if (!selectedTable || !selectedOrder?.id || !selectedOrder.items?.length) {
     setError('Nenhum pedido válido para imprimir');
@@ -1079,7 +1126,7 @@ const printOrder = useCallback(async () => {
     setIsPrinting(true);
     setError(null);
     
-    // Filtra apenas itens não impressos (considera apenas o estado printed do Firebase)
+    // Filtra itens não impressos
     const itemsToPrint = selectedOrder.items.filter(item => !item.printed);
 
     if (itemsToPrint.length === 0) {
@@ -1095,19 +1142,19 @@ const printOrder = useCallback(async () => {
     const success = await sendToPrinter(receipt);
     
     if (success) {
-      // Marca os itens como impressos no Firebase
+      // Atualiza o Firebase
       const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       
-      const updatedItems = selectedOrder.items.map(item => {
-        const shouldMarkPrinted = itemsToPrint.some(
-          printedItem => printedItem.id === item.id && printedItem.addedAt === item.addedAt
-        );
-        return shouldMarkPrinted ? { ...item, printed: true } : item;
-      });
+      const updatedItems = await markItemsAsPrinted(selectedTable, selectedOrder.id, itemsToPrint);
+      setSelectedOrder(prev => ({
+        ...prev,
+        items: updatedItems
+      }));
 
       await update(orderRef, {
         items: updatedItems,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        lastViewedAt: Date.now() // Adiciona esta linha para marcar como visualizado
       });
 
       // Atualiza o estado local
@@ -1115,6 +1162,13 @@ const printOrder = useCallback(async () => {
         ...prev,
         items: updatedItems
       }));
+
+      // Remove o alerta visual
+      setTablesWithNewItems(prev => {
+        const newState = {...prev};
+        delete newState[selectedTable];
+        return newState;
+      });
     }
   } catch (err) {
     console.error('Erro ao imprimir:', err);
@@ -1159,68 +1213,67 @@ const printOrder = useCallback(async () => {
     }
   }, [selectedTable, deliveryAddress]);
 
-  const markOrderAsViewed = useCallback((tableId) => {
-  setNewOrders(prev => {
-    const newState = {...prev};
-    delete newState[tableId];
-    return newState;
-  });
-  
-  setFlashingTables(prev => {
-    const newState = {...prev};
-    delete newState[tableId];
-    return newState;
-  });
-}, []);
 
-  // Função para adicionar item ao pedido (MODIFICADA)
 const addItemToOrder = useCallback(async () => {
   if (!selectedTable || !selectedMenuItem) return;
 
   setLoading(true);
+  let newItem; // Declara a variável aqui para que seja acessível em todo o escopo
+  
   try {
+    
+        newItem = {
+        ...selectedMenuItem,
+        quantity: newItemQuantity,
+        addedAt: Date.now(),
+        printed: true, // Alterado para true para itens manuais
+        viewed: true,  // Adicionado novo campo
+        notes: itemNotes[selectedMenuItem.id] || '',
+        price: selectedMenuItem.price
+      };
+
     let orderRef;
     let orderData;
     
     if (selectedOrder?.id) {
-      // REMOVI A LINHA QUE LIMPAVA OS ITENS ENVIADOS AQUI
       orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       const currentItems = selectedOrder.items || [];
       
+      setSelectedOrder(prev => ({
+        ...prev,
+        items: [...currentItems, newItem]
+      }));
+
       orderData = {
-        items: [...currentItems, {
-          ...selectedMenuItem,
-          quantity: newItemQuantity,
-          addedAt: Date.now(),
-          printed: false, // Garante que o item não está marcado como impresso
-          notes: itemNotes[selectedMenuItem.id] || ''
-        }],
+        items: [...currentItems, newItem],
         updatedAt: Date.now(),
         deliveryAddress: deliveryAddress
       };
     } else {
       orderRef = ref(database, `tables/${selectedTable}/currentOrder`);
-      orderData = {
-        items: [{
-          ...selectedMenuItem,
-          quantity: newItemQuantity,
-          addedAt: Date.now(),
-          printed: false, // Garante que o item não está marcado como impresso
-          notes: itemNotes[selectedMenuItem.id] || ''
-        }],
+      
+      const newOrder = {
+        id: '',
+        items: [newItem],
         status: 'open',
         createdAt: Date.now(),
         updatedAt: Date.now(),
         tableId: selectedTable,
         deliveryAddress: deliveryAddress
       };
+      
+      setSelectedOrder(newOrder);
+      orderData = newOrder;
     }
 
     if (selectedOrder?.id) {
       await update(orderRef, orderData);
     } else {
       const newOrderRef = await push(orderRef, orderData);
-      setSelectedOrder({ id: newOrderRef.key, ...orderData });
+      setSelectedOrder(prev => ({ 
+        ...prev, 
+        id: newOrderRef.key 
+      }));
       
       const tableRef = ref(database, `tables/${selectedTable}`);
       await update(tableRef, {
@@ -1228,7 +1281,6 @@ const addItemToOrder = useCallback(async () => {
       });
     }
 
-    // Resetar estado sem fechar o modal
     setSelectedMenuItem(null);
     setNewItemQuantity(1);
     setItemNotes(prev => ({
@@ -1236,84 +1288,84 @@ const addItemToOrder = useCallback(async () => {
       [selectedMenuItem.id]: ''
     }));
     
-    if (menuCategoriesRef.current) {
-      menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    if (menuItemsRef.current) {
-      menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    
   } catch (err) {
-    setError('Erro ao adicionar item');
-    console.error(err);
+    console.error("Erro ao adicionar item:", err);
+    if (selectedOrder?.id && newItem) { // Agora newItem está acessível aqui
+      setSelectedOrder(prev => ({
+        ...prev,
+        items: prev.items.filter(item => item.addedAt !== newItem.addedAt)
+      }));
+    } else {
+      setSelectedOrder(null);
+    }
   } finally {
     setLoading(false);
   }
 }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
 
-  // Função para remover item do pedido
-const removeItemFromOrder = useCallback(async (itemId) => {
-  if (!selectedTable || !selectedOrder?.items) return;
-  
-  setLoading(true);
+
+const removeItemFromOrder = useCallback(async (item) => {
+  if (!selectedTable || !selectedOrder?.id) return;
+
   try {
-    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-    const updatedItems = selectedOrder.items.filter(item => item.id !== itemId);
+    setLoading(true);
     
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+    const updatedItems = selectedOrder.items.filter(i => 
+      !(i.id === item.id && i.addedAt === item.addedAt)
+    );
+
+    await update(orderRef, {
+      items: updatedItems,
+      updatedAt: Date.now()
+    });
+
+    setSelectedOrder(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
+
     if (updatedItems.length === 0) {
-      // Fecha a comanda automaticamente se não houver itens
-      await remove(orderRef);
-      
-      // Atualiza status da mesa
-      const tableRef = ref(database, `tables/${selectedTable}`);
-      await update(tableRef, {
-        status: 'available'
-      });
-      
-      // Atualiza estado local
-      setTables(prevTables => prevTables.map(table => 
-        table.id === selectedTable 
-          ? { ...table, currentOrder: null, status: 'available' } 
-          : table
-      ));
-      setSelectedOrder(null);
-    } else {
-      // Atualiza apenas os itens se ainda houver pedidos
-      await update(orderRef, {
-        items: updatedItems,
-        updatedAt: Date.now()
-      });
+      await closeOrderAutomatically(selectedOrder);
     }
-  } catch (err) {
-    setError(`Falha ao remover item: ${err.message}`);
-    console.error("Erro detalhado:", err);
+
+  } catch (error) {
+    console.error("Erro ao deletar item:", error);
+    setError("Falha ao remover item");
   } finally {
     setLoading(false);
   }
-}, [selectedTable, selectedOrder]);
+}, [selectedTable, selectedOrder, closeOrderAutomatically]);
 
   // Função para atualizar quantidade do item
-  const updateItemQuantity = useCallback(async (itemId, newQuantity) => {
-    if (!selectedTable || !selectedOrder?.items || newQuantity < 1) return;
-    
-    setLoading(true);
-    try {
-      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
-      const updatedItems = selectedOrder.items.map(item => 
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      );
-      
-      await update(orderRef, {
-        items: updatedItems,
-        updatedAt: Date.now()
-      });
-    } catch (err) {
-      setError(`Falha ao atualizar quantidade: ${err.message}`);
-      console.error("Erro detalhado:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedTable, selectedOrder]);
+const updateItemQuantity = useCallback(async (itemId, newQuantity) => {
+  if (!selectedTable || !selectedOrder?.items || newQuantity < 1) return;
+  
+  // Atualização otimista da UI
+  const updatedItems = selectedOrder.items.map(item => 
+    item.id === itemId ? { ...item, quantity: newQuantity } : item
+  );
+  
+  setSelectedOrder(prev => ({
+    ...prev,
+    items: updatedItems
+  }));
+
+  try {
+    const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
+    await update(orderRef, {
+      items: updatedItems,
+      updatedAt: Date.now()
+    });
+  } catch (err) {
+    // Reverter em caso de erro
+    setSelectedOrder(prev => ({
+      ...prev,
+      items: selectedOrder.items
+    }));
+    setError(`Falha ao atualizar quantidade: ${err.message}`);
+  }
+}, [selectedTable, selectedOrder]);
 
   // Função simplificada para fechar pedido
 const closeOrder = useCallback(async () => {
@@ -1476,48 +1528,60 @@ const filteredHistory = useCallback(() => {
   }, []);
 
   // Função para selecionar mesa
-const handleTableSelect = useCallback(async (tableNumber) => {
-  const tableStr = tableNumber.toString();
-  setSelectedTable(tableStr);
+const handleTableSelect = useCallback(async (tableId) => {
+  // 1. Atualização imediata do estado local
+  setSelectedTable(tableId);
   setShowTableDetailsModal(true);
-  
+
+  // 2. Busca os dados em segundo plano
   try {
-    // Marca todos os itens como impressos/visualizados
-    const orderRef = ref(database, `tables/${tableStr}/currentOrder`);
-    const orderSnapshot = await get(orderRef);
-    
-    if (orderSnapshot.exists()) {
-      const orderData = orderSnapshot.val();
-      const orderId = Object.keys(orderData)[0];
-      const order = orderData[orderId];
+    const tableRef = ref(database, `tables/${tableId}/currentOrder`);
+    const snapshot = await get(tableRef);
+
+    if (snapshot.exists()) {
+      const orderData = snapshot.val();
+      const orderKey = Object.keys(orderData)[0];
+      await update(ref(database, `tables/${tableId}/currentOrder/${orderKey}`), {
+        lastViewedAt: Date.now()
+      });
+      const loadedOrder = {
+        id: orderKey,
+        ...orderData[orderKey],
+        items: orderData[orderKey].items?.map(item => ({
+          ...item,
+          notes: item.notes || ''
+        })) || []
+      };
       
-      if (order.items) {
-        await update(ref(database, `tables/${tableStr}/currentOrder/${orderId}`), {
-          items: order.items.map(item => ({
-            ...item,
-            printed: true
-          })),
-          updatedAt: Date.now()
-        });
-      }
+      // Atualiza o estado com os dados frescos
+      setSelectedOrder(loadedOrder);
+    } else {
+      setSelectedOrder(null);
     }
-    
-    // Remove o alerta visual
-    setTablesWithNewItems(prev => {
-      const newState = {...prev};
-      delete newState[tableStr];
-      return newState;
-    });
-    
   } catch (error) {
-    console.error("Erro ao marcar itens como visualizados:", error);
+    console.error("Erro ao carregar mesa:", error);
   }
+
+  // 3. Limpa notificações
+  setTablesWithNewItems(prev => {
+    const newState = {...prev};
+    delete newState[tableId];
+    return newState;
+  });
 }, []);
+
+const optimizedUpdate = async (path, data) => {
+  const ref = database.ref(path);
+  await ref.update({
+    ...data,
+    _updatedAt: Date.now() // Campo extra para sincronização
+  });
+};
 
   // Função para verificar itens não impressos
 const hasUnprintedItems = useCallback((order) => {
   if (!order?.items) return false;
-  return order.items.some(item => !item.printed); // Verifica apenas o estado printed do item
+  return order.items.some(item => !item.printed); // Verifica apenas o campo printed do item
 }, []);
 
   // Função para filtrar mesas
@@ -1741,14 +1805,22 @@ const renderNewOrdersPanel = () => {
                 <div className={`w-2 h-2 rounded-full ${printerConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 {printerConnected ? 'Impressora Conectada' : 'Conectar Impressora'}
               </button>
-              <button
+                           
+                <button
                 onClick={() => setShowPendingOrdersModal(true)}
-                className="px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-50 transition-colors"
+                disabled={!hasPendingItems}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium ${
+                  isPedidosButtonFlashing 
+                    ? 'animate-pulse bg-gradient-to-r from-amber-500 to-amber-600 text-white'
+                    : hasPendingItems
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-50'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                } transition-colors`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                Pedidos ({tables.filter(t => t.currentOrder?.items?.some(i => !i.printed)).length})
+                Pedidos ({hasPendingItems ? Object.values(pendingItemsByTable).reduce((sum, table) => sum + table.items.length, 0) : 0})
               </button>
               
               <button
@@ -1913,24 +1985,16 @@ const renderTableTabs = () => (
     </div>
   </div>
 );
-
-const renderPendingOrdersModal = () => {
-  const pendingTables = tables
-    .filter(table => 
-      table.currentOrder && 
-      table.currentOrder.items?.some(item => !item.printed)
-    )
-    .sort((a, b) => 
-      new Date(b.currentOrder.updatedAt) - new Date(a.currentOrder.updatedAt)
-    );
-
-  if (!showPendingOrdersModal || pendingTables.length === 0) return null;
+const renderPendingItemsModal = () => {
+  if (!showPendingOrdersModal) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         <div className="sticky top-0 bg-white z-10 p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-800">Pedidos Pendentes</h3>
+          <h3 className="text-xl font-bold text-gray-800">
+            {hasPendingItems ? 'Itens Pendentes para Cozinha' : 'Nenhum item pendente'}
+          </h3>
           <button 
             onClick={() => setShowPendingOrdersModal(false)}
             className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
@@ -1940,34 +2004,75 @@ const renderPendingOrdersModal = () => {
         </div>
         
         <div className="p-4 overflow-y-auto max-h-[calc(90vh-60px)]">
-          {pendingTables.map(table => (
-            <div 
-              key={table.id}
-              onClick={() => {
-                handleTableSelect(table.id);
-                setShowPendingOrdersModal(false);
-              }}
-              className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-            >
-              <div className="flex justify-between items-center">
-                <div className="font-medium">
-                  {table.type === 'comanda' ? `Comanda ${table.id}` : `Mesa ${table.id}`}
+          {hasPendingItems ? (
+            Object.values(pendingItemsByTable).map((tableData) => (
+              <div key={tableData.tableId} className="mb-6 border-b border-gray-100 pb-4 last:border-0">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-lg">
+                    {tableData.tableType === 'comanda' ? `Comanda ${tableData.tableId}` : `Mesa ${tableData.tableId}`}
+                  </h4>
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    {tableData.items.length} itens
+                  </span>
                 </div>
-                <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                  {table.currentOrder.items.filter(i => !i.printed).length} itens
+                
+                <div className="space-y-3">
+                  {tableData.items.map((item) => (
+                    <div key={`${item.id}-${item.addedAt}`} className="flex justify-between items-center p-3 rounded-lg bg-amber-50 border border-amber-200">
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-xs text-gray-600">{item.quantity}x</p>
+                        {item.notes && <p className="text-xs text-gray-700 mt-1">Obs: {item.notes}</p>}
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const orderRef = ref(database, `tables/${tableData.tableId}/currentOrder`);
+                          const snapshot = await get(orderRef);
+                          if (snapshot.exists()) {
+                            const orderKey = Object.keys(snapshot.val())[0];
+                            const order = snapshot.val()[orderKey];
+                            
+                            const updatedItems = order.items.map(i => 
+                              i.id === item.id && i.addedAt === item.addedAt 
+                                ? {...i, printed: true} 
+                                : i
+                            );
+                            
+                            await update(ref(database, `tables/${tableData.tableId}/currentOrder/${orderKey}`), {
+                              items: updatedItems
+                            });
+                            
+                            setPendingItemsByTable(prev => {
+                              const newState = {...prev};
+                              newState[tableData.tableId].items = newState[tableData.tableId].items.filter(
+                                i => !(i.id === item.id && i.addedAt === item.addedAt)
+                              );
+                              if (newState[tableData.tableId].items.length === 0) {
+                                delete newState[tableData.tableId];
+                              }
+                              return newState;
+                            });
+                          }
+                        }}
+                        className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                      >
+                        Marcar como impresso
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {new Date(table.currentOrder.updatedAt).toLocaleTimeString()}
-              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhum item pendente para preparo</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
   );
 };
-
 
   // Renderização do modal de histórico (VERSÃO PREMIUM MELHORADA)
 const renderHistoryModal = () => {
@@ -2177,14 +2282,16 @@ const renderHistoryModal = () => {
                               {order.tableType === 'comanda' ? `Comanda ${order.tableId}` : `Mesa ${order.tableId}`}
                             </span>
                             <span className="text-xs text-gray-500">
-                              {new Date(order.closedAt).toLocaleString('pt-PT', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
+                            {order.closedAt 
+                              ? new Date(order.closedAt).toLocaleString('pt-PT', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : '--/--/---- --:--'}
+                          </span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
                             Fechado por: <span className="font-medium">{order.closedBy || 'Sistema'}</span>
@@ -2539,7 +2646,7 @@ const renderHistoryModal = () => {
                 <div className="space-y-3 mb-6">
                   {selectedOrder.items?.length > 0 ? (
                     selectedOrder.items.map((item) => {
-                      const isPrinted = printedItems[`${selectedTable}-${item.id}-${item.addedAt || ''}`] || item.printed;
+                      const isPrinted = item.printed;
 
                       return (
                         <div
@@ -2616,25 +2723,25 @@ const renderHistoryModal = () => {
                               € {(item.price * (item.quantity || 1)).toFixed(2)}
                             </span>
 
-                            <button
-                              onClick={() => removeItemFromOrder(item.id)}
-                              className="text-red-500 hover:text-red-700 p-1 sm:p-2 rounded-full hover:bg-red-50 transition-colors ml-2"
+                          <button
+                            onClick={() => removeItemFromOrder(item)}
+                            className="text-red-500 hover:text-red-700 p-1 sm:p-2 rounded-full hover:bg-red-50 transition-colors ml-2"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
                           </div>
                         </div>
                       );
@@ -2885,7 +2992,7 @@ const renderHistoryModal = () => {
       {showHistoryModal && renderHistoryModal()}
       {showTableDetailsModal && renderTableDetailsModal()}
       {renderNewOrdersPanel()}
-      {renderPendingOrdersModal()}
+      {renderPendingItemsModal()}
     </div>
   );
 
