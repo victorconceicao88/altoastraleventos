@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, update, push, remove, set, get } from 'firebase/database';
 import { database } from '../firebase';
@@ -83,7 +84,8 @@ import Prestígio from '../assets/presigio.jpg';
 import toblerone from '../assets/toblerone.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
-
+let globalPrinterDevice = null;
+let globalPrinterCharacteristic = null;
 const AdminPanel = () => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -549,19 +551,43 @@ const AdminPanel = () => {
   };
 
   // Efeito para verificar autenticação
-// Effect para reconexão da impressora
 useEffect(() => {
   const auth = getAuth();
-  const unsubscribe = auth.onAuthStateChanged((user) => {
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
     if (user) {
       setIsAuthenticated(true);
-      handleReconnectPrinter();
+      
+      // Tentar reconectar apenas se não estiver já conectado
+      if (!printerDeviceRef.current?.gatt?.connected && 
+          !globalPrinterDevice?.gatt?.connected) {
+        const success = await handleReconnectPrinter();
+        
+        // Se a reconexão automática falhar, oferecer opção manual
+        if (!success) {
+          setError('Impressora desconectada. Conecte manualmente.');
+        }
+      }
     } else {
       setIsAuthenticated(false);
     }
   });
-  return () => unsubscribe();
-}, []);
+
+  // Adicione este listener para tentar reconectar quando a página ganhar foco
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible' && 
+        !printerDeviceRef.current?.gatt?.connected &&
+        isAuthenticated) {
+      handleReconnectPrinter();
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  return () => {
+    unsubscribe();
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
+}, [isAuthenticated]);
 
  useEffect(() => {
   if (!isAuthenticated) return;
@@ -738,31 +764,33 @@ useEffect(() => {
   }, [searchTerm, menu]);
 
   // Funções de persistência da impressora
-  const savePrinterState = useCallback((device, characteristic) => {
-    try {
-      const printerState = {
-        deviceId: device.id,
-        deviceName: device.name,
-        connected: device.gatt.connected,
-        lastConnected: Date.now()
-      };
-      localStorage.setItem('bluetoothPrinter', JSON.stringify(printerState));
-    } catch (err) {
-      console.error('Erro ao salvar estado da impressora:', err);
-    }
-  }, []);
+const savePrinterState = useCallback((device, characteristic) => {
+  try {
+    localStorage.setItem('bluetoothPrinter', JSON.stringify({
+      deviceId: device.id,
+      deviceName: device.name,
+      connected: true,
+      lastConnected: Date.now()
+    }));
+  } catch (err) {
+    console.error('Erro ao salvar estado da impressora:', err);
+  }
+}, []);
 
   const clearPrinterState = useCallback(() => {
     localStorage.removeItem('bluetoothPrinter');
     setPrinterConnected(false);
   }, []);
 
-  const handleDisconnection = useCallback(() => {
-    console.log('Impressora desconectada');
-    clearPrinterState();
-    printerDeviceRef.current = null;
-    printerCharacteristicRef.current = null;
-  }, [clearPrinterState]);
+const handleDisconnection = useCallback(() => {
+  console.log('Limpando estado da impressora');
+  clearPrinterState();
+  printerDeviceRef.current = null;
+  printerCharacteristicRef.current = null;
+  globalPrinterDevice = null;
+  globalPrinterCharacteristic = null;
+  setPrinterConnected(false);
+}, [clearPrinterState]);
 
   // Função para reconectar impressora
   const handleReconnectPrinter = useCallback(async () => {
@@ -817,58 +845,58 @@ useEffect(() => {
   }, [PRINTER_CONFIG.serviceUUID, PRINTER_CONFIG.characteristicUUID, handleDisconnection, savePrinterState, clearPrinterState]);
 
   // Função para conectar à impressora
-  const connectToPrinter = useCallback(async () => {
-    try {
-      if (!navigator.bluetooth) {
-        throw new Error('Bluetooth não suportado neste navegador');
-      }
-  
-      setLoading(true);
-      setError(null);
-  
-      if (printerDeviceRef.current?.gatt?.connected) {
-        return true;
-      }
-  
-      console.log('Procurando dispositivo Bluetooth...');
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: PRINTER_CONFIG.deviceName }],
-        optionalServices: [PRINTER_CONFIG.serviceUUID]
-      });
-  
-      if (!device) {
-        throw new Error('Nenhum dispositivo selecionado');
-      }
-  
-      device.addEventListener('gattserverdisconnected', handleDisconnection);
-  
-      console.log('Conectando ao servidor GATT...');
-      const server = await device.gatt.connect();
-      
-      console.log('Obtendo serviço...');
-      const service = await server.getPrimaryService(PRINTER_CONFIG.serviceUUID);
-      
-      console.log('Obtendo característica...');
-      const characteristic = await service.getCharacteristic(PRINTER_CONFIG.characteristicUUID);
-  
-      printerDeviceRef.current = device;
-      printerCharacteristicRef.current = characteristic;
-      setPrinterConnected(true);
-      savePrinterState(device, characteristic);
-  
-      console.log('Conectado com sucesso à impressora');
-      return true;
-    } catch (err) {
-      console.error('Erro na conexão Bluetooth:', err);
-      printerDeviceRef.current = null;
-      printerCharacteristicRef.current = null;
-      setPrinterConnected(false);
-      setError(`Falha na conexão: ${err.message}`);
-      return false;
-    } finally {
-      setLoading(false);
+const connectToPrinter = useCallback(async () => {
+  try {
+    if (!navigator.bluetooth) {
+      throw new Error('Bluetooth não suportado neste navegador');
     }
-  }, [PRINTER_CONFIG, handleDisconnection, savePrinterState]);
+
+    // Se já estiver conectado, retornar
+    if (globalPrinterDevice?.gatt?.connected || 
+        printerDeviceRef.current?.gatt?.connected) {
+      setPrinterConnected(true);
+      return true;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: PRINTER_CONFIG.deviceName }],
+      optionalServices: [PRINTER_CONFIG.serviceUUID]
+    });
+
+    if (!device) {
+      throw new Error('Nenhum dispositivo selecionado');
+    }
+
+    device.addEventListener('gattserverdisconnected', () => {
+      console.log('Dispositivo desconectado');
+      handleDisconnection();
+    });
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(PRINTER_CONFIG.serviceUUID);
+    const characteristic = await service.getCharacteristic(PRINTER_CONFIG.characteristicUUID);
+
+    // Atualizar tanto as refs quanto as variáveis globais
+    printerDeviceRef.current = device;
+    printerCharacteristicRef.current = characteristic;
+    globalPrinterDevice = device;
+    globalPrinterCharacteristic = characteristic;
+    
+    setPrinterConnected(true);
+    savePrinterState(device, characteristic);
+
+    return true;
+  } catch (err) {
+    console.error('Erro na conexão Bluetooth:', err);
+    setError(`Falha na conexão: ${err.message}`);
+    return false;
+  } finally {
+    setLoading(false);
+  }
+}, [PRINTER_CONFIG.serviceUUID, PRINTER_CONFIG.characteristicUUID, handleDisconnection, savePrinterState]);
 
   // Função para enviar dados para impressora
   const sendToPrinter = useCallback(async (data) => {
@@ -1041,53 +1069,60 @@ const markItemsAsPrinted = useCallback(async (tableId, orderId, items) => {
 }, [printedItems, sentItems]);
 
   // Função para imprimir pedido
-  const printOrder = useCallback(async () => {
-    if (!selectedTable || !selectedOrder?.id || !selectedOrder.items?.length) {
-      setError('Nenhum pedido válido para imprimir');
+const printOrder = useCallback(async () => {
+  if (!selectedTable || !selectedOrder?.id || !selectedOrder.items?.length) {
+    setError('Nenhum pedido válido para imprimir');
+    return;
+  }
+
+  try {
+    setIsPrinting(true);
+    setError(null);
+    
+    // Filtra apenas itens não impressos (considera apenas o estado printed do Firebase)
+    const itemsToPrint = selectedOrder.items.filter(item => !item.printed);
+
+    if (itemsToPrint.length === 0) {
+      setError('Nenhum novo item para imprimir');
       return;
     }
-  
-    try {
-      setIsPrinting(true);
-      setError(null);
+
+    const receipt = formatReceipt({
+      ...selectedOrder,
+      items: itemsToPrint
+    });
+
+    const success = await sendToPrinter(receipt);
+    
+    if (success) {
+      // Marca os itens como impressos no Firebase
+      const orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       
-      const itemsToPrint = selectedOrder.items.filter(item => {
-        const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-        return !printedItems[itemKey] && !item.printed;
+      const updatedItems = selectedOrder.items.map(item => {
+        const shouldMarkPrinted = itemsToPrint.some(
+          printedItem => printedItem.id === item.id && printedItem.addedAt === item.addedAt
+        );
+        return shouldMarkPrinted ? { ...item, printed: true } : item;
       });
-  
-      if (itemsToPrint.length === 0) {
-        setError('Nenhum novo item para imprimir');
-        return;
-      }
-  
-      const receipt = formatReceipt({
-        ...selectedOrder,
-        items: itemsToPrint
+
+      await update(orderRef, {
+        items: updatedItems,
+        updatedAt: Date.now()
       });
-  
-      const success = await sendToPrinter(receipt);
-      
-      if (success) {
-        await markItemsAsPrinted(selectedTable, selectedOrder.id, itemsToPrint);
-        
-        setSelectedOrder(prev => ({
-          ...prev,
-          items: prev.items.map(item => {
-            const wasPrinted = itemsToPrint.some(
-              printedItem => printedItem.id === item.id && printedItem.addedAt === item.addedAt
-            );
-            return wasPrinted ? { ...item, printed: true } : item;
-          })
-        }));
-      }
-    } catch (err) {
-      console.error('Erro ao imprimir:', err);
-      setError(`Falha na impressão: ${err.message}`);
-    } finally {
-      setIsPrinting(false);
+
+      // Atualiza o estado local
+      setSelectedOrder(prev => ({
+        ...prev,
+        items: updatedItems
+      }));
     }
-  }, [selectedTable, selectedOrder, printedItems, formatReceipt, sendToPrinter, markItemsAsPrinted]);
+  } catch (err) {
+    console.error('Erro ao imprimir:', err);
+    setError(`Falha na impressão: ${err.message}`);
+  } finally {
+    setIsPrinting(false);
+  }
+}, [selectedTable, selectedOrder, formatReceipt, sendToPrinter]);
 
   // Função para criar novo pedido
   const createNewOrder = useCallback(async () => {
@@ -1148,9 +1183,7 @@ const addItemToOrder = useCallback(async () => {
     let orderData;
     
     if (selectedOrder?.id) {
-      // Limpa os itens enviados quando um novo item é adicionado
-      setSentItems({});
-      
+      // REMOVI A LINHA QUE LIMPAVA OS ITENS ENVIADOS AQUI
       orderRef = ref(database, `tables/${selectedTable}/currentOrder/${selectedOrder.id}`);
       const currentItems = selectedOrder.items || [];
       
@@ -1159,7 +1192,7 @@ const addItemToOrder = useCallback(async () => {
           ...selectedMenuItem,
           quantity: newItemQuantity,
           addedAt: Date.now(),
-          printed: false,
+          printed: false, // Garante que o item não está marcado como impresso
           notes: itemNotes[selectedMenuItem.id] || ''
         }],
         updatedAt: Date.now(),
@@ -1172,7 +1205,7 @@ const addItemToOrder = useCallback(async () => {
           ...selectedMenuItem,
           quantity: newItemQuantity,
           addedAt: Date.now(),
-          printed: false,
+          printed: false, // Garante que o item não está marcado como impresso
           notes: itemNotes[selectedMenuItem.id] || ''
         }],
         status: 'open',
@@ -1180,45 +1213,43 @@ const addItemToOrder = useCallback(async () => {
         updatedAt: Date.now(),
         tableId: selectedTable,
         deliveryAddress: deliveryAddress
-        };
-      }
-
-      if (selectedOrder?.id) {
-        await update(orderRef, orderData);
-      } else {
-        const newOrderRef = await push(orderRef, orderData);
-        setSelectedOrder({ id: newOrderRef.key, ...orderData });
-        
-        // Atualizar status da mesa/comanda
-        const tableRef = ref(database, `tables/${selectedTable}`);
-        await update(tableRef, {
-          status: 'occupied'
-        });
-      }
-
-      // Resetar estado sem fechar o modal
-      setSelectedMenuItem(null);
-      setNewItemQuantity(1);
-      setItemNotes(prev => ({
-        ...prev,
-        [selectedMenuItem.id]: ''
-      }));
-      
-      // Scroll para o topo do menu de categorias
-      if (menuCategoriesRef.current) {
-        menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      if (menuItemsRef.current) {
-        menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      
-    } catch (err) {
-      setError('Erro ao adicionar item');
-      console.error(err);
-    } finally {
-      setLoading(false);
+      };
     }
-  }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
+
+    if (selectedOrder?.id) {
+      await update(orderRef, orderData);
+    } else {
+      const newOrderRef = await push(orderRef, orderData);
+      setSelectedOrder({ id: newOrderRef.key, ...orderData });
+      
+      const tableRef = ref(database, `tables/${selectedTable}`);
+      await update(tableRef, {
+        status: 'occupied'
+      });
+    }
+
+    // Resetar estado sem fechar o modal
+    setSelectedMenuItem(null);
+    setNewItemQuantity(1);
+    setItemNotes(prev => ({
+      ...prev,
+      [selectedMenuItem.id]: ''
+    }));
+    
+    if (menuCategoriesRef.current) {
+      menuCategoriesRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (menuItemsRef.current) {
+      menuItemsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+  } catch (err) {
+    setError('Erro ao adicionar item');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, deliveryAddress]);
 
   // Função para remover item do pedido
 const removeItemFromOrder = useCallback(async (itemId) => {
@@ -1486,11 +1517,8 @@ const handleTableSelect = useCallback(async (tableNumber) => {
   // Função para verificar itens não impressos
 const hasUnprintedItems = useCallback((order) => {
   if (!order?.items) return false;
-  return order.items.some(item => {
-    const itemKey = `${selectedTable}-${item.id}-${item.addedAt || ''}`;
-    return !printedItems[itemKey] && !item.printed && !sentItems[itemKey];
-  });
-}, [selectedTable, printedItems, sentItems]);
+  return order.items.some(item => !item.printed); // Verifica apenas o estado printed do item
+}, []);
 
   // Função para filtrar mesas
   const filteredTables = useCallback(() => {
