@@ -142,11 +142,14 @@ const ClientInterface = ({ tableNumber }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const notesInputRef = useRef(null);
+
+  const windowSize = useWindowSize();
   const [selectedFlavors, setSelectedFlavors] = useState({});
   const [selectedJuiceFlavors, setSelectedJuiceFlavors] = useState({});
   const [selectedEnergyDrinks, setSelectedEnergyDrinks] = useState({});
-  
-  const windowSize = useWindowSize();
+  const [currentFlavor, setCurrentFlavor] = useState('');
+  const [localSelectedFlavor, setLocalSelectedFlavor] = useState('');
+  const [localSelectedBase, setLocalSelectedBase] = useState('agua');
   
   const events = [
     {
@@ -1290,412 +1293,438 @@ const menu = {
             })}
           </div>
         </div>
-      ) :  activeCategory === 'sumos' ? (
-
-          
-              <div className="space-y-12">
-                {/* Minimalist Hero Section */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="text-center"
-                >
-                  <motion.div
-                    animate={{ rotate: [0, 15, -15, 0] }}
-                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
-                    className="inline-block mb-6"
-                  >
-                    <GiFruitBowl className="text-5xl text-[#e6be44]" />
-                  </motion.div>
-                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
-                      Sumos & Batidos
-                    </span>
-                  </h1>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Preparados na hora com polpas naturais, 100% fruta e sem adição de açúcar
-                  </p>
-                </motion.div>
-
-                {/* Product Grid with Individual State */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredMenu(activeCategory).map((item) => {
-                    
-                    // Use item.id as part of the state key for individual control
-                    const baseSelected = selectedBases[item.id] || 'agua';
-
-                    const basePrice = baseSelected === 'leite' 
-                      ? (item.baseOptions?.leite || item.price)
-                      : (item.baseOptions?.agua || item.price);
-
-                    const addToCartWithAnimation = () => {
-                      setIsAdding(true);
-                      addToCart({
-                        ...item,
-                        price: basePrice,
-                        notes: `Base: ${baseSelected === 'agua' ? 'Água' : 'Leite'}`
-                      }, baseSelected); // Passando a base selecionada como segundo parâmetro
-                      setTimeout(() => setIsAdding(false), 1000);
-                    };
-
-                    return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        whileHover={{ y: -5 }}
-                        onHoverStart={() => setIsHovered(true)}
-                        onHoverEnd={() => setIsHovered(false)}
-                        className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
-                      >
-                        {/* Image with elegant overlay */}
-                        <div className="relative h-64 w-full overflow-hidden">
-                          <LazyLoadImage
-                            src={foodImages[item.image]}
-                            alt={item.name}
-                            className="absolute top-0 left-0 w-full h-full object-cover"
-                            effect="blur"
-                            width="100%"
-                            height="100%"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                          
-                          {/* Favorite button with animation */}
-                          <motion.button
-                            onClick={() => toggleFavorite(item.id)}
-                            className="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-sm"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <FaHeart 
-                              className={`w-5 h-5 transition-colors ${
-                                favorites.includes(item.id) 
-                                  ? 'text-red-500 fill-red-500' 
-                                  : 'text-gray-400'
-                              }`}
-                            />
-                          </motion.button>
-                        </div>
-
-                        {/* Product Info */}
-                        <div className="p-5 flex-grow flex flex-col">
-                          <div className="flex justify-between items-start mb-3">
-                            <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
-                            <motion.div
-                              animate={{ 
-                                scale: isHovered ? 1.1 : 1,
-                                color: isHovered ? '#e6be44' : '#000'
-                              }}
-                              className="text-xl font-bold"
-                            >
-                              {formatPrice(basePrice)}
-                            </motion.div>
-                          </div>
-                          
-                          <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
-                          
-                          {/* Base Selection - Individual to each product */}
-                          <div className="mb-4">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-medium text-gray-500">Base:</span>
-                              <div className="flex items-center space-x-2">
-                                <motion.button
-                                  onClick={() => setSelectedBases(prev => ({ ...prev, [item.id]: 'agua' }))}
-                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                    selectedBases[item.id] === 'agua' 
-                                      ? 'bg-[#e6be44] text-white' 
-                                      : 'bg-[#f3f3f3] text-gray-700'
-                                  }`}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  Água
-                                </motion.button>
-
-                                <motion.button
-                                  onClick={() => setSelectedBases(prev => ({ ...prev, [item.id]: 'leite' }))}
-                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                    selectedBases[item.id] === 'leite' 
-                                      ? 'bg-[#e6be44] text-white' 
-                                      : 'bg-[#f3f3f3] text-gray-700'
-                                  }`}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  Leite
-                                </motion.button>
-                              </div>
-                            </div>
-                          </div>
-                          
-
-                          {/* Notes input */}
-                          <div className="mb-4">
-                            <label htmlFor={`notes-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
-                              Observações (opcional)
-                            </label>
-                            <input
-                              id={`notes-${item.id}`}
-                              type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="Ex: sem açúcar, mais gelo, etc."
-                              value={itemNotes[item.id] || ''}
-                              onChange={(e) => updateItemNotes(item.id, e.target.value)}
-                            />
-                          </div>
-
-                          {/* Add to Cart Button */}
-                          <motion.button
-                            onClick={addToCartWithAnimation}
-                            className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
-                            whileHover={{ 
-                              y: -2,
-                              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            
-                            {isAdding ? (
-                              <motion.span
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="flex items-center"
-                              >
-                                <FiCheck className="mr-2" />
-                                Adicionado!
-                              </motion.span>
-                            ) : (
-                              <motion.span
-                                initial={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 20 }}
-                                className="flex items-center"
-                              >
-                                <FiPlus className="mr-2" />
-                                Adicionar
-                              </motion.span>
-                            )}
-                            
-                            {/* Animated background effect */}
-                            {isAdding && (
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: '100%' }}
-                                transition={{ duration: 1 }}
-                                className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
-                              />
-                            )}
-                          </motion.button>
-                         
-
-                        </div>
-                        
-                      </motion.div>
-                      
-                    );
-                  })}
-                </div>
-              </div>
-            ) : activeCategory === 'refrigerantes-aguas' ? (
-              <div className="space-y-12">
-                {/* Premium Hero Section for Drinks */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="text-center"
-                >
-                  <motion.div
-                    animate={{ rotate: [0, 15, -15, 0] }}
-                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
-                    className="inline-block mb-6"
-                  >
-                    <GiWaterBottle className="text-5xl text-[#e6be44]" />
-                  </motion.div>
-                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
-                      Refrigerantes & Águas
-                    </span>
-                  </h1>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Bebidas geladas disponíveis no freezer - Verifique as opções disponíveis e especifique sua preferência nas observações
-                  </p>
-                </motion.div>
-
-                {/* Premium Drink Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredMenu(activeCategory).map((item) => {
-                        const addToCartWithAnimation = () => {
-                        setIsAdding(true);
-                        const selectedFlavor = selectedFlavors[item.id];
-                        const notes = [
-                          itemNotes[item.id] || ''
-                        ].filter(Boolean).join(' | ');
-
-                        addToCart({
-                          ...item,
-                          name: selectedFlavor ? `${item.name} - ${selectedFlavor}` : item.name,
-                          notes: notes || undefined
-                        });
-
-                        setTimeout(() => setIsAdding(false), 1000);
-                      };
-
-                    return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        whileHover={{ y: -5 }}
-                        className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
-                      >
-                        {/* Image with frost effect */}
-                        <div className="relative h-64 w-full overflow-hidden">
-                          <LazyLoadImage
-                            src={foodImages[item.image]}
-                            alt={item.name}
-                            className="absolute top-0 left-0 w-full h-full object-cover"
-                            effect="blur"
-                            width="100%"
-                            height="100%"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                          <div className="absolute inset-0 bg-blue-50/10 backdrop-blur-[1px]" />
-                          
-                          {/* Frost icon */}
-                          <div className="absolute top-4 right-4 p-2 bg-white/80 rounded-full shadow-md">
-                            <FaSnowflake className="text-blue-400 w-5 h-5" />
-                          </div>
-                          
-                          {/* Favorite button */}
-                          <motion.button
-                            onClick={() => toggleFavorite(item.id)}
-                            className="absolute top-4 left-4 p-2 bg-white/90 rounded-full shadow-sm"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <FaHeart 
-                              className={`w-5 h-5 transition-colors ${
-                                favorites.includes(item.id) 
-                                  ? 'text-red-500 fill-red-500' 
-                                  : 'text-gray-400'
-                              }`}
-                            />
-                          </motion.button>
-                        </div>
-
-                        {/* Product Info */}
-                        <div className="p-5 flex-grow flex flex-col">
-                          <div className="flex justify-between items-start mb-3">
-                            <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
-                            <motion.div
-                              animate={{ 
-                                scale: isHovered ? 1.1 : 1,
-                                color: isHovered ? '#e6be44' : '#000'
-                              }}
-                              className="text-xl font-bold"
-                            >
-                              {formatPrice(item.price)}
-                            </motion.div>
-                          </div>
-                          {/* Dentro do mapeamento dos itens da categoria 'refrigerantes-aguas' */}
-{item.flavorOptions && (
-  <div className="mb-4">
-    <label htmlFor={`compal-flavor-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
-      Escolha o sabor:
-    </label>
-    <select
-      id={`compal-flavor-${item.id}`}
-      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-      value={selectedJuiceFlavors[item.id] || ''}
-      onChange={(e) => setSelectedJuiceFlavors(prev => ({
-        ...prev,
-        [item.id]: e.target.value
-      }))}
+      ) : activeCategory === 'sumos' ? (
+  <div className="space-y-12">
+    {/* Hero Section */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="text-center"
     >
-      <option value="">Selecione...</option>
-      {item.flavorOptions.map(flavor => (
-        <option key={flavor} value={flavor}>{flavor}</option>
-      ))}
-    </select>
-  </div>
-)}
-                          
-                          <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
-                          
-                          {/* Notes input */}
-                          <div className="mb-4">
-                            <label htmlFor={`notes-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
-                              Observações (opcional)
-                            </label>
-                            <input
-                              id={`notes-${item.id}`}
-                              type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="Ex: Coca-Cola Zero, etc."
-                              value={itemNotes[item.id] || ''}
-                              onChange={(e) => updateItemNotes(item.id, e.target.value)}
-                            />
-                          </div>
+      <motion.div
+        animate={{ rotate: [0, 15, -15, 0] }}
+        transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
+        className="inline-block mb-6"
+      >
+        <GiFruitBowl className="text-5xl text-[#e6be44]" />
+      </motion.div>
+      <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+        <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
+          Sumos & Batidos
+        </span>
+      </h1>
+      <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        Preparados na hora com polpas naturais, 100% fruta e sem adição de açúcar
+      </p>
+    </motion.div>
 
-                          {/* Important Notice */}
-                          <div className="mb-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                            <p className="text-xs text-blue-600 flex items-center">
-                              <FaSnowflake className="mr-2" />
-                              Verifique as bebidas disponíveis no freezer e especifique sua preferência nas observações
-                            </p>
-                          </div>
+    {/* Product Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {filteredMenu(activeCategory).map((item) => {
+        const addToCartWithAnimation = () => {
+          if (item.id === 78 && !localSelectedFlavor) return;
+          
+          const newItem = item.id === 78
+            ? {
+                ...item,
+                name: `${item.name} (${localSelectedFlavor})`,
+                price: item.price,
+                notes: itemNotes[item.id] || undefined,
+                flavor: localSelectedFlavor,
+                quantity: 1,
+                cartId: `${item.id}-${Date.now()}`
+              }
+            : {
+                ...item,
+                price: localSelectedBase === 'leite' 
+                  ? (item.baseOptions?.leite || item.price)
+                  : (item.baseOptions?.agua || item.price),
+                notes: `Base: ${localSelectedBase === 'agua' ? 'Água' : 'Leite'}${itemNotes[item.id] ? ` | ${itemNotes[item.id]}` : ''}`,
+                quantity: 1,
+                cartId: `${item.id}-${Date.now()}`
+              };
+          
+          setCart(prevCart => [...prevCart, newItem]);
+          setShowItemAdded(true);
+        };
 
-                          {/* Add to Cart Button */}
-                          <motion.button
-                            onClick={addToCartWithAnimation}
-                            className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
-                            whileHover={{ 
-                              y: -2,
-                              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            {isAdding ? (
-                              <motion.span
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="flex items-center"
-                              >
-                                <FiCheck className="mr-2" />
-                                Adicionado!
-                              </motion.span>
-                            ) : (
-                              <motion.span
-                                initial={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 20 }}
-                                className="flex items-center"
-                              >
-                                <FiPlus className="mr-2" />
-                                Adicionar
-                              </motion.span>
-                            )}
-                            
-                            {/* Animated background effect */}
-                            {isAdding && (
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: '100%' }}
-                                transition={{ duration: 1 }}
-                                className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
-                              />
-                            )}
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+        return (
+          <motion.div
+            key={`${item.id}`}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
+          >
+            {/* Image */}
+            <div className="relative h-64 w-full overflow-hidden">
+              <LazyLoadImage
+                src={foodImages[item.image]}
+                alt={item.name}
+                className="absolute top-0 left-0 w-full h-full object-cover"
+                effect="blur"
+                width="100%"
+                height="100%"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            </div>
+
+            {/* Product Info */}
+            <div className="p-5 flex-grow flex flex-col">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
+                <div className="text-xl font-bold text-black">
+                  {formatPrice(
+                    item.id === 78 
+                      ? item.price 
+                      : localSelectedBase === 'leite' 
+                        ? (item.baseOptions?.leite || item.price)
+                        : (item.baseOptions?.agua || item.price)
+                  )}
                 </div>
               </div>
+              
+              <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
+              
+              {item.id === 78 && item.flavorOptions && (
+                <div className="mb-4">
+                  <label htmlFor={`flavor-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+                    Escolha o sabor:
+                  </label>
+                  <select
+                    id={`flavor-${item.id}`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    value={localSelectedFlavor}
+                    onChange={(e) => setLocalSelectedFlavor(e.target.value)}
+                  >
+                    <option value="">Selecione...</option>
+                    {item.flavorOptions.map(flavor => (
+                      <option key={flavor} value={flavor}>{flavor}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {item.id !== 78 && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-500">Base:</span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setLocalSelectedBase('agua')}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          localSelectedBase === 'agua' 
+                            ? 'bg-[#e6be44] text-white' 
+                            : 'bg-[#f3f3f3] text-gray-700'
+                        }`}
+                      >
+                        Água
+                      </button>
+                      <button
+                        onClick={() => setLocalSelectedBase('leite')}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          localSelectedBase === 'leite' 
+                            ? 'bg-[#e6be44] text-white' 
+                            : 'bg-[#f3f3f3] text-gray-700'
+                        }`}
+                      >
+                        Leite
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <label htmlFor={`notes-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+                  Observações (opcional)
+                </label>
+                <input
+                  id={`notes-${item.id}`}
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder={item.id === 78 ? "Ex: sem gelo, etc." : "Ex: sem açúcar, mais gelo, etc."}
+                  value={itemNotes[item.id] || ''}
+                  onChange={(e) => updateItemNotes(item.id, e.target.value)}
+                />
+              </div>
+
+              <button
+                onClick={addToCartWithAnimation}
+                className="mt-auto w-full py-3 rounded-lg font-bold bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6]"
+              >
+                Adicionar
+              </button>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  </div>
+) : activeCategory === 'refrigerantes-aguas' ? (
+  <div className="space-y-12">
+    {/* Premium Hero Section for Drinks */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="text-center"
+    >
+      <motion.div
+        animate={{ rotate: [0, 15, -15, 0] }}
+        transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
+        className="inline-block mb-6"
+      >
+        <GiWaterBottle className="text-5xl text-[#e6be44]" />
+      </motion.div>
+      <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+        <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
+          Refrigerantes & Águas
+        </span>
+      </h1>
+      <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        Bebidas geladas disponíveis no freezer - Verifique as opções disponíveis e especifique sua preferência nas observações
+      </p>
+    </motion.div>
+
+    {/* Premium Drink Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {filteredMenu(activeCategory).map((item) => {
+        const addToCartWithAnimation = () => {
+          setIsAdding(true);
+          
+          // Lógica para refrigerantes com sabores
+          if (item.flavorOptions) {
+            const selectedFlavor = selectedFlavors[item.id];
+            const notes = [
+              itemNotes[item.id] || ''
+            ].filter(Boolean).join(' | ');
+
+            if (!selectedFlavor) {
+              alert('Por favor, selecione um sabor');
+              setIsAdding(false);
+              return;
+            }
+
+            addToCart({
+              ...item,
+              name: `${item.name} (${selectedFlavor})`,
+              price: item.price,
+              notes: notes || undefined
+            });
+          } 
+          // Lógica para energéticos
+          else if (item.options) {
+            const selectedOption = item.options.find(opt => 
+              opt.name === selectedEnergyDrinks[item.id]
+            );
+            
+            if (!selectedOption) {
+              alert('Por favor, selecione uma opção');
+              setIsAdding(false);
+              return;
+            }
+
+            addToCart({
+              ...item,
+              name: `${item.name} - ${selectedOption.name}`,
+              price: selectedOption.price,
+              notes: itemNotes[item.id] || undefined
+            });
+          } 
+          // Lógica para itens sem seleção (águas, etc)
+          else {
+            addToCart({
+              ...item,
+              notes: itemNotes[item.id] || undefined
+            });
+          }
+
+          setTimeout(() => setIsAdding(false), 1000);
+        };
+
+        return (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-2xl shadow-xl overflow-hidden border border-[#d5c8b6]/30 flex flex-col"
+          >
+            {/* Image with frost effect */}
+            <div className="relative h-64 w-full overflow-hidden">
+              <LazyLoadImage
+                src={foodImages[item.image]}
+                alt={item.name}
+                className="absolute top-0 left-0 w-full h-full object-cover"
+                effect="blur"
+                width="100%"
+                height="100%"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-blue-50/10 backdrop-blur-[1px]" />
+              
+              {/* Frost icon */}
+              <div className="absolute top-4 right-4 p-2 bg-white/80 rounded-full shadow-md">
+                <FaSnowflake className="text-blue-400 w-5 h-5" />
+              </div>
+              
+              {/* Favorite button */}
+              <motion.button
+                onClick={() => toggleFavorite(item.id)}
+                className="absolute top-4 left-4 p-2 bg-white/90 rounded-full shadow-sm"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <FaHeart 
+                  className={`w-5 h-5 transition-colors ${
+                    favorites.includes(item.id) 
+                      ? 'text-red-500 fill-red-500' 
+                      : 'text-gray-400'
+                  }`}
+                />
+              </motion.button>
+            </div>
+
+            {/* Product Info */}
+            <div className="p-5 flex-grow flex flex-col">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
+                <div className="text-xl font-bold text-black">
+                  {item.options ? (
+                    selectedEnergyDrinks[item.id] ? 
+                      formatPrice(item.options.find(opt => opt.name === selectedEnergyDrinks[item.id])?.price || 0)
+                    : 'Selecione'
+                  ) : formatPrice(item.price)}
+                </div>
+              </div>
+              
+              {/* Select para sabores de refrigerante */}
+              {item.flavorOptions && (
+                <div className="mb-4">
+                  <label htmlFor={`flavor-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+                    Escolha o sabor:
+                  </label>
+                  <select
+                    id={`flavor-${item.id}`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    value={selectedFlavors[item.id] || ''}
+                    onChange={(e) => setSelectedFlavors(prev => ({
+                      ...prev,
+                      [item.id]: e.target.value
+                    }))}
+                  >
+                    <option value="">Selecione...</option>
+                    {item.flavorOptions.map(flavor => (
+                      <option key={flavor} value={flavor}>{flavor}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {/* Select para marcas de energético */}
+              {item.options && (
+                <div className="mb-4">
+                  <label htmlFor={`energy-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+                    Escolha a marca:
+                  </label>
+                  <select
+                    id={`energy-${item.id}`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    value={selectedEnergyDrinks[item.id] || ''}
+                    onChange={(e) => {
+                      const selectedOption = item.options.find(opt => opt.name === e.target.value);
+                      setSelectedEnergyDrinks(prev => ({
+                        ...prev,
+                        [item.id]: e.target.value
+                      }));
+                    }}
+                  >
+                    <option value="">Selecione...</option>
+                    {item.options.map(option => (
+                      <option key={option.name} value={option.name}>
+                        {option.name} ({formatPrice(option.price)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
+              
+              {/* Notes input */}
+              <div className="mb-4">
+                <label htmlFor={`notes-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+                  Observações (opcional)
+                </label>
+                <input
+                  id={`notes-${item.id}`}
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Ex: Coca-Cola Zero, etc."
+                  value={itemNotes[item.id] || ''}
+                  onChange={(e) => updateItemNotes(item.id, e.target.value)}
+                />
+              </div>
+
+              {/* Important Notice */}
+              <div className="mb-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                <p className="text-xs text-blue-600 flex items-center">
+                  <FaSnowflake className="mr-2" />
+                  Verifique as bebidas disponíveis no freezer e especifique sua preferência nas observações
+                </p>
+              </div>
+
+              {/* Add to Cart Button */}
+              <motion.button
+                onClick={addToCartWithAnimation}
+                className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
+                whileHover={{ 
+                  y: -2,
+                  boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isAdding ? (
+                  <motion.span
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="flex items-center"
+                  >
+                    <FiCheck className="mr-2" />
+                    Adicionado!
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    initial={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="flex items-center"
+                  >
+                    <FiPlus className="mr-2" />
+                    Adicionar
+                  </motion.span>
+                )}
+                
+                {/* Animated background effect */}
+                {isAdding && (
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 1 }}
+                    className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
+                  />
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  </div>
             ) : activeCategory === 'semana' ? (
               <div className="space-y-12">
                 {/* Hero Section for Menu */}
