@@ -622,37 +622,37 @@ bebidas: [
   };
 
 useEffect(() => {
-  const checkPendingItems = () => {
-    const pendingItems = {};
-    let hasPending = false;
+const checkPendingItems = () => {
+  const pendingItems = {};
+  let hasPending = false;
 
-    tables.forEach(table => {
-      if (table.currentOrder) {
-        // Filtra apenas itens não impressos E que não foram adicionados manualmente
-        const unprintedItems = table.currentOrder.items.filter(item => 
-          !item.printed && item.addedBy !== 'waiter'
-        );
-        
-        if (unprintedItems.length > 0) {
-          pendingItems[table.id] = {
-            tableId: table.id,
-            tableType: table.type,
-            items: unprintedItems
-          };
-          hasPending = true;
-        }
+  tables.forEach(table => {
+    if (table.currentOrder) {
+      // Adicione esta condição para filtrar itens manuais
+      const unprintedItems = table.currentOrder.items.filter(item => 
+        !item.printed && !item.addedBy
+      );
+      
+      if (unprintedItems.length > 0) {
+        pendingItems[table.id] = {
+          tableId: table.id,
+          tableType: table.type,
+          items: unprintedItems
+        };
+        hasPending = true;
       }
-    });
-
-    setPendingItemsByTable(pendingItems);
-    setHasPendingItems(hasPending);
-    
-    if (hasPending) {
-      setIsPedidosButtonFlashing(true);
-      const timer = setTimeout(() => setIsPedidosButtonFlashing(false), 10000);
-      return () => clearTimeout(timer);
     }
-  };
+  });
+
+  setPendingItemsByTable(pendingItems);
+  setHasPendingItems(hasPending);
+  
+  if (hasPending) {
+    setIsPedidosButtonFlashing(true);
+    const timer = setTimeout(() => setIsPedidosButtonFlashing(false), 10000);
+    return () => clearTimeout(timer);
+  }
+};
 
   const interval = setInterval(checkPendingItems, 5000);
   return () => clearInterval(interval);
@@ -1288,11 +1288,12 @@ const addItemToOrder = useCallback(async () => {
       price: selectedMenuItem.price || 0,
       quantity: newItemQuantity,
       addedAt: Date.now(),
-      printed: true,
+      printed: false, 
       notes: itemNotes[selectedMenuItem.id] || '',
       image: selectedMenuItem.image,
       description: selectedMenuItem.description,
-      rating: selectedMenuItem.rating
+      rating: selectedMenuItem.rating,
+      addedBy: 'waiter' 
     };
 
     // Trata itens com seleção de sabor/marca
@@ -1373,8 +1374,15 @@ const addItemToOrder = useCallback(async () => {
       [selectedMenuItem.id]: ''
     }));
     setSelectedFlavor('');
-    setShowAddItemModal(false);
     
+    // Rola para o topo do menu após adicionar item
+    setTimeout(() => {
+      const menuContainer = document.getElementById('menu-top');
+      if (menuContainer) {
+        menuContainer.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 300);
+
   } catch (err) {
     console.error("Erro ao adicionar item:", err);
     setError(err.message || "Falha ao adicionar item ao pedido");
@@ -1382,6 +1390,7 @@ const addItemToOrder = useCallback(async () => {
     setLoading(false);
   }
 }, [selectedTable, selectedMenuItem, selectedOrder, newItemQuantity, itemNotes, selectedFlavor]);
+
 
 
 const removeItemFromOrder = useCallback(async (itemToRemove) => {
@@ -3299,4 +3308,4 @@ const renderHistoryModal = () => {
 
 };
 
-export default AdminPanel;
+export default AdminPanel; 
