@@ -121,6 +121,9 @@ import altoastralFoto from '../assets/ondas.jpeg';
 import salgadosDocesFoto from '../assets/salgados-doces.jpg';
 import pedrassabor from '../assets/pedrassabor.jpg';
 import superbock from '../assets/superbock.jpg';
+import compal from '../assets/compal.jpg';
+import energetico from '../assets/energetico.jpg';
+
 
 const ClientInterface = ({ tableNumber }) => {
   const [cart, setCart] = useState([]);
@@ -150,6 +153,7 @@ const ClientInterface = ({ tableNumber }) => {
   const [currentFlavor, setCurrentFlavor] = useState('');
   const [localSelectedFlavor, setLocalSelectedFlavor] = useState('');
   const [localSelectedBase, setLocalSelectedBase] = useState('agua');
+  const [addingItemId, setAddingItemId] = useState(null);
   
   const events = [
     {
@@ -220,45 +224,64 @@ const ClientInterface = ({ tableNumber }) => {
   }, [isHovering, events.length]);
 
   // Adicionar ao carrinho
-  const addToCart = (item, base = null) => {
-    const notes = itemNotes[item.id] || '';
-    let finalItem = { ...item };
-    let finalPrice = item.price;
-    
-    if (base && item.baseOptions) {
-      finalPrice = item.baseOptions[base];
-      finalItem = {
-        ...item,
-        price: finalPrice,
-        notes: `Base: ${base === 'agua' ? 'Água' : 'Leite'}${notes ? ` | ${notes}` : ''}`
-      };
-    }
-    
-    setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => 
-        cartItem.id === finalItem.id && 
-        cartItem.notes === (finalItem.notes || notes)
-      );
-      
-      if (existingItem) {
-        return prevCart.map(cartItem =>
-          cartItem.id === finalItem.id && cartItem.notes === (finalItem.notes || notes)
-            ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
-            : cartItem
-        );
-      } else {
-        return [...prevCart, { 
-          ...finalItem, 
-          quantity: 1, 
-          cartId: Date.now(),
-          notes: finalItem.notes || notes
-        }];
-      }
-    });
-    
-    setItemNotes(prev => ({ ...prev, [item.id]: '' }));
-    setShowItemAdded(true);
+const addToCart = (item, base = null) => {
+  const notes = itemNotes[item.id] || '';
+  let finalItem = { ...item };
+  let finalPrice = item.price;
+  
+  if (base && item.baseOptions) {
+    finalPrice = item.baseOptions[base];
+    finalItem = {
+      ...item,
+      price: finalPrice,
+      notes: `Base: ${base === 'agua' ? 'Água' : 'Leite'}${notes ? ` | ${notes}` : ''}`
+    };
+  }
+  
+  // Correção para energéticos - criar item único por marca selecionada
+if (item.options) {
+  const selectedOption = item.options.find(opt => 
+    opt.name === selectedEnergyDrinks[item.id]
+  );
+  
+  if (!selectedOption) return;
+  
+  finalItem = {
+    ...item,
+    name: selectedOption.name, // Armazena apenas o nome da marca
+    originalName: item.name, // Guarda o nome original separadamente
+    price: selectedOption.price,
+    notes: notes || undefined,
+    cartId: `${item.id}-${selectedOption.name}`
   };
+}
+  
+  setCart(prevCart => {
+    const existingItem = prevCart.find(cartItem => 
+      item.options 
+        ? cartItem.cartId === finalItem.cartId // Para energéticos, compara pelo ID único com marca
+        : cartItem.id === finalItem.id && cartItem.notes === (finalItem.notes || notes)
+    );
+    
+    if (existingItem) {
+      return prevCart.map(cartItem =>
+        (item.options ? cartItem.cartId === finalItem.cartId : cartItem.id === finalItem.id && cartItem.notes === (finalItem.notes || notes))
+          ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
+          : cartItem
+      );
+    } else {
+      return [...prevCart, { 
+        ...finalItem, 
+        quantity: 1, 
+        cartId: item.options ? finalItem.cartId : Date.now(), // Mantém ID único para energéticos
+        notes: finalItem.notes || notes
+      }];
+    }
+  });
+  
+  setItemNotes(prev => ({ ...prev, [item.id]: '' }));
+  setShowItemAdded(true);
+};
 
   // Remover do carrinho
   const removeFromCart = (cartId, itemId) => {
@@ -320,84 +343,110 @@ const ClientInterface = ({ tableNumber }) => {
   };
 
   // Enviar pedido
-  const sendOrder = async () => {
-    if (cart.length === 0) return;
-    setIsSendingOrder(true);
-    setOrderStatus('Enviando...');
-    
-    try {
-      const orderItems = cart.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        description: item.description || '',
-        quantity: item.quantity || 1,
-        notes: item.notes || '',
-        addedAt: Date.now()
-      }));
+const sendOrder = async () => {
+  if (cart.length === 0) return;
+  setIsSendingOrder(true);
+  setOrderStatus('Enviando...');
+  
+  try {
+    // Sanitiza todos os itens do carrinho antes de enviar
+    const orderItems = cart.map(item => ({
+      id: item.id?.toString() || '', // Garante que seja string
+      name: item.name?.toString() || 'Item sem nome',
+      price: Number(item.price) || 0, // Garante que seja número
+      description: item.description?.toString() || '',
+      quantity: Number(item.quantity) || 1,
+      notes: item.notes?.toString() || '',
+      addedAt: Date.now(),
+      // Campos opcionais com fallback
+      image: item.image?.toString() || '',
+      veg: Boolean(item.veg),
+      rating: Number(item.rating) || 0,
+      // Mantém o flavor se existir (para energéticos/sumos)
+      ...(item.flavor && { flavor: item.flavor.toString() }),
+      // Mantém o originalName se existir
+      ...(item.originalName && { originalName: item.originalName.toString() })
+    }));
 
-      const orderTotal = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+    // Calcula o total garantindo valores numéricos
+    const orderTotal = orderItems.reduce(
+      (sum, item) => sum + (Number(item.price) * Number(item.quantity)),
+      0
+    );
 
-      const orderData = {
-        items: orderItems,
+    // Prepara os dados principais do pedido
+    const orderData = {
+      items: orderItems,
+      status: 'Recebido',
+      createdAt: Date.now(),
+      tableNumber: Number(tableNumber) || 0,
+      source: 'client',
+      total: Number(orderTotal.toFixed(2)), // Garante 2 casas decimais
+      notes: orderNotes?.toString() || '',
+      clientNotes: orderNotes?.toString() || '',
+      updatedAt: Date.now(),
+      itemNotes: orderItems.reduce((acc, item) => {
+        if (item.notes) {
+          acc[item.id] = item.notes.toString();
+        }
+        return acc;
+      }, {})
+    };
+
+    // Referência do pedido no Firebase
+    const orderRef = currentOrderId 
+      ? ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`)
+      : ref(database, `tables/${tableNumber}/currentOrder`);
+
+    if (currentOrderId) {
+      // Atualiza pedido existente
+      const updates = {
+        items: [...(activeOrder?.items || []), ...orderItems].map(item => ({
+          ...item,
+          // Garante que todos os campos obrigatórios existam
+          id: item.id?.toString() || '',
+          name: item.name?.toString() || '',
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 1
+        })),
+        updatedAt: Date.now(),
         status: 'Recebido',
-        createdAt: Date.now(),
-        tableNumber: parseInt(tableNumber),
-        source: 'client',
-        total: orderTotal,
-        notes: orderNotes,
-        clientNotes: orderNotes,
-        itemNotes: orderItems.reduce((acc, item) => {
-          if (item.notes) {
-            acc[item.id] = item.notes;
-          }
-          return acc;
-        }, {})
+        total: (Number(activeOrder?.total) || 0) + Number(orderTotal),
+        notes: orderNotes?.toString() || '',
+        clientNotes: orderNotes?.toString() || '',
+        itemNotes: {
+          ...(activeOrder?.itemNotes || {}),
+          ...orderData.itemNotes
+        }
       };
-
-      const orderRef = currentOrderId 
-        ? ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`)
-        : ref(database, `tables/${tableNumber}/currentOrder`);
-
-      if (currentOrderId) {
-        const updates = {
-          items: [...(activeOrder?.items || []), ...orderItems],
-          updatedAt: Date.now(),
-          status: 'Recebido',
-          total: (activeOrder?.total || 0) + orderTotal,
-          notes: orderNotes,
-          clientNotes: orderNotes,
-          itemNotes: {
-            ...(activeOrder?.itemNotes || {}),
-            ...orderData.itemNotes
-          }
-        };
-        
-        await update(orderRef, updates);
-      } else {
-        const newOrderRef = await push(orderRef);
-        await set(newOrderRef, orderData);
-        setCurrentOrderId(newOrderRef.key);
-      }
-
-      setCart([]);
-      setOrderStatus('Pedido enviado');
-      setShowConfirmation(false);
-      setOrderNotes('');
-      setIsSendingOrder(false);
       
-      setTimeout(() => {
-        if (isMobile) setShowCart(false);
-        setOrderStatus('');
-      }, 3000);
-
-    } catch (error) {
-      console.error("Erro ao enviar pedido:", error);
-      setOrderStatus('Erro ao enviar');
-      setIsSendingOrder(false);
-      setTimeout(() => setOrderStatus(''), 2000);
+      await update(orderRef, updates);
+    } else {
+      // Cria novo pedido
+      const newOrderRef = await push(orderRef);
+      await set(newOrderRef, orderData);
+      setCurrentOrderId(newOrderRef.key);
     }
-  };
+
+    // Limpa o carrinho após sucesso
+    setCart([]);
+    setOrderStatus('Pedido enviado');
+    setShowConfirmation(false);
+    setOrderNotes('');
+    setIsSendingOrder(false);
+    
+    setTimeout(() => {
+      if (isMobile) setShowCart(false);
+      setOrderStatus('');
+    }, 3000);
+
+  } catch (error) {
+    console.error("Erro ao enviar pedido:", error);
+    setOrderStatus('Erro ao enviar');
+    setIsSendingOrder(false);
+    setTimeout(() => setOrderStatus(''), 2000);
+  }
+};
 
   // Calcular total
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
@@ -585,6 +634,8 @@ const ClientInterface = ({ tableNumber }) => {
     toblerone:toblerone,
     pedrassabor:pedrassabor,
     superbock:superbock,
+    compal:compal,
+    energetico:energetico,
     batataFrita: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     bebida: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     salgado: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
@@ -592,403 +643,1069 @@ const ClientInterface = ({ tableNumber }) => {
   };
 
 const menu = {
-    semana: [
-      { 
-        id: 1, 
-        name: 'Frango Cremoso', 
-        description: 'Strogonoff de frango, arroz branco, salada e batata palha', 
-        price: 12.90, 
-        veg: false, 
-        image: 'frangoCremoso', 
-        rating: 4.5,
-        available: dailySpecialId === 1
-      },
-      { 
-        id: 2, 
-        name: 'Maminha Top', 
-        description: 'Maminha grelhada, arroz branco, feijão tropeiro e vinagrete', 
-        price: 15.90, 
-        veg: false, 
-        image: 'picanhaPremium', 
-        rating: 4.8,
-        available: dailySpecialId === 2
-      },
-      { 
-        id: 3, 
-        name: 'Costela Raiz', 
-        description: 'Costela de vaca com mandioca, arroz branco, farofa e salada', 
-        price: 14.90, 
-        veg: false, 
-        image: 'costelaRaiz', 
-        rating: 4.7,
-        available: dailySpecialId === 3
-      },
-      { 
-        id: 4, 
-        name: 'Frango Supremo', 
-        description: 'Filé de frango à parmegiana, arroz branco, batata frita e salada', 
-        price: 13.90, 
-        veg: false, 
-        image: 'frangosupremo', 
-        rating: 4.3,
-        available: dailySpecialId === 4
-      },
-      { 
-        id: 5, 
-        name: 'Feijoada Astral', 
-        description: 'Feijoada brasileira, arroz branco, couve, farofa, torresmo e laranja', 
-        price: 12.90, 
-        veg: false, 
-        image: 'feijoadaAstral', 
-        rating: 4.9,
-        available: dailySpecialId === 5
-      },
-      { 
-        id: 6, 
-        name: 'Opção Vegetariana', 
-        description: 'Prato vegetariano sob consulta - acompanha bebida e café', 
-        price: 12.90, 
-        veg: true, 
-        image: 'vegano', 
-        rating: 4.2,
-        available: true // Sempre disponível
-      }
-    ],
-    lanches: [
-      { id: 7, name: 'Hambúrguer com Fritas', description: 'Carne, alface, tomate, cebola, cheddar, molho da casa', price: 7.00, image: 'hamburguer', rating: 4.4 },
-      { id: 8, name: 'Hambúrguer Alto Astral', description: 'Carne 120g, bacon, queijo, anéis de cebola, alface, tomate, cheddar, molho coquetel e especial', price: 9.90, image: 'hamburgueraltoastral', rating: 4.7 },
-      { id: 9, name: 'Hambúrguer Neg\'s', description: 'Carne 120g, frango panado, bacon, queijo, anéis de cebola, cebola crispy, alface, tomate, cheddar, molho coquetel e especial', price: 12.90, image: 'negs', rating: 4.9 },
-      { id: 10, name: 'Sandes de Panado', description: 'Frango panado, alface, tomate, cebola, molho da casa', price: 5.50, image: 'sandespanado', rating: 4.1 },
-      { id: 11, name: 'Tostas Premium (Frango)', description: 'acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: 'tostaspremium', rating: 4.0 },
-      { id: 12, name: 'Tostas Premium (Atum)', description: 'acompanha queijo, alface, tomate e cebola roxa', price: 6.50, image: 'tostaspremium', rating: 4.0 },
-      { id: 13, name: 'Sanduíche Natural', description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', price: 6.50, image: 'sanduichenatural', rating: 3.9 }
-    ],
-    porcoes: [
-      { id: 14, name: 'Batata Frita', description: 'Porção com 400g de batata frita', price: 4.00, image: 'batataFrita', rating: 4.2 },
-      { id: 15, name: 'Fritas com Bacon e Queijo', description: 'Porção com 400g de batatas com bacon e queijo cheddar', price: 6.50, image: 'fritascomqueijo', rating: 4.6 },
-      { id: 16, name: 'Chouriça com Cebola', description: 'Porção com 600g de chouriça acebolada e pão fatiado', price: 9.00, image: 'chorica', rating: 4.5 },
-      { id: 17, name: 'Asinha de Frango', description: 'Porção com 700g de asinhas de frango e molho barbecue', price: 12.00, image: 'Asinha', rating: 4.4 },
-      { id: 18, name: 'Costelinha', description: 'Porção com 800g de costelinha e molho barbecue', price: 12.00, image: 'costelaporco', rating: 4.7 },
-      { id: 19, name: 'Picanha com Fritas', description: 'Porção com 600g de tiras de picanha temperada com sal de parrilha e acompanhado de batata frita ou doce', price: 22.90, image: 'Picanhacomfritas', rating: 4.8 },
-      { id: 20, name: 'Filé de Tilápia', description: 'Porção com 800g de filé de tilápia e molho tartaro', price: 15.00, image: 'Filetilapia', rating: 4.3 }
-    ],
-    pasteis: [
-      { id: 21, name: 'Pastel Simples', description: 'Frango desfiado, carne picada ou queijo', price: 5.00, image: 'pastelfeira', rating: 4.3 },
-      { id: 22, name: 'Pastel de Frango com Queijo', description: 'Frango desfiado com queijo', price: 5.50, image: 'pastelfeira', rating: 4.5 },
-      { id: 23, name: 'Pastel de Frango com Queijo e Bacon', description: 'Frango desfiado com queijo e bacon em cubos', price: 6.50, image: 'pastelfeira', rating: 4.7 },
-      { id: 24, name: 'Pastel de Carne com Queijo', description: 'Carne picada com queijo e azeitona', price: 5.50, image: 'pastelfeira', rating: 4.4 },
-      { id: 25, name: 'Pastel de Carne com Queijo e Bacon', description: 'Carne picada com queijo, azeitona e bacon em cubos', price: 6.50, image: 'pastelfeira', rating: 4.6 },
-      { id: 26, name: 'Pastel de Chouriça', description: 'Queijo, chouriça e milho', price: 5.50, image: 'pastelfeira', rating: 4.2 },
-      { id: 27, name: 'Pastel Misto', description: 'Fiambre, queijo, azeitona e milho', price: 5.50, image: 'pastelfeira', rating: 4.1 },
-      { id: 28, name: 'Pastel de Pizza', description: 'Queijo, fiambre, tomate e orégano', price: 5.50, image: 'pastelfeira', rating: 4.0 },
-      { id: 29, name: 'Pastel Alto Astral', description: 'Queijo, bacon, tomate, azeitona, cheddar e orégano', price: 6.50, image: 'pastelfeira', rating: 4.8 },
-      { id: 30, name: 'Pastel Romeu e Julieta', description: 'Queijo com goiabada', price: 5.50, image: 'pastelfeira', rating: 4.7 },
-      { id: 31, name: 'Pastel de Banana com Nutella', description: 'Queijo, banana e nutella', price: 6.00, image: 'pastelfeira', rating: 4.9 }
-    ],
-    cafe: [
-      { id: 32, name: 'Café Expresso', price: 1.00, image: 'cafe', rating: 4.5 },
-      { id: 33, name: 'Café Descafeinado', price: 1.00, image: 'cafe', rating: 4.3 },
-      { id: 34, name: 'Café Duplo', price: 2.00, image: 'pastel', rating: 4.6 },
-      { id: 35, name: 'Garoto', price: 1.00, image: 'Garoto', rating: 4.2 },
-      { id: 36, name: 'Abatanado', price: 1.10, image: 'abatanado', rating: 4.1 },
-      { id: 37, name: 'Meia de Leite', price: 1.50, image: 'meialeite', rating: 4.4 },
-      { id: 38, name: 'Galão', price: 1.60, image: 'galao', rating: 4.5 },
-      { id: 39, name: 'Chá', price: 1.60, image: 'cha', rating: 4.0 },
-      { id: 40, name: 'Cappuccino', price: 3.00, image: 'capuccino', rating: 4.7 },
-      { id: 41, name: 'Carioca de Limão', price: 1.00, image: 'cariocalimao', rating: 3.9 },
-      { id: 42, name: 'Chocolate Quente', price: 3.00, image: 'chocolatequente', rating: 4.8 },
-      { id: 43, name: 'Torrada com Pão Caseiro', price: 2.00, image: 'torradapaocaseiro', rating: 4.3 },
-      { id: 44, name: 'Torrada com Pão de Forma', price: 1.50, image: 'torradapaodeforma', rating: 4.1 },
-      { id: 45, name: 'Meia Torrada', price: 1.00, image: 'torradapaocaseiro', rating: 4.0 },
-      { id: 46, name: 'Croissant Misto', price: 3.00, image: 'croissanmisto', rating: 4.6 },
-      { id: 47, name: 'Croissant Misto Tostado', price: 3.20, image: 'croissant', rating: 4.7 },
-      { id: 48, name: 'Tosta Mista', price: 3.20, image: 'tosta', rating: 4.5 },
-      { id: 49, name: 'Tosta Mista (Pão de Forma)', price: 2.80, image: 'tostamistapaoforma', rating: 4.4 },
-      { id: 50, name: 'Sandes Mista', price: 2.20, image: 'sandesmista', rating: 4.2 },
-      { id: 51, name: 'Pão com Ovo', price: 2.20, image: 'paocomovo', rating: 4.1 },
-      { id: 52, name: 'Ovos com Bacon', price: 4.00, image: 'ovosebacaon', rating: 4.7 }
-    ],
-    bebidas: [
-      { id: 53, name: 'Caipirinha', description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', price: 6.00, image: 'caipirinha', rating: 4.8 },
-      { id: 54, name: 'Caipiblack', description: 'Cachaça preta, lima, açúcar e gelo', price: 6.00, image: 'Caipiblack', rating: 4.9 },
-      { id: 55, name: 'Whiskey Jamenson', price: 3.50, image: 'bebida', rating: 4.7 },
-      { id: 56, name: 'Whiskey J&B', price: 3.00, image: 'bebida', rating: 4.5 },
-      { id: 57, name: 'Whiskey Jack Daniels', price: 3.50, image: 'bebida', rating: 4.8 },
-      { id: 58, name: 'Whiskey Black Label', price: 4.00, image: 'bebida', rating: 4.9 },
-      { id: 59, name: 'Vodka', price: 4.00, image: 'vodka', rating: 4.6 },
-      { id: 60, name: 'Somersby', price: 2.50, image: 'Somersby' },
-      { id: 61, name: 'Imperial Heineken (0.20)', price: 1.50, image: 'Imperial' },
-      { id: 62, name: 'Caneca Heineken (0.50)', price: 3.00, image: 'Imperial' },
-      { id: 63, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
-      { id: 64, name: 'Cerveja Garrafa (0.33ml)', price: 1.40, image: 'cerveja' },
-      { id: 65, name: 'Superbock Preta', price: 1.40, image: 'superbock' },
-      { id: 66, name: 'Energéticos', description: 'Bebidas energéticas', price: 0, image: 'energetico',
-        options: [
-          { name: 'Red Bull', price: 2.50 },
-          { name: 'Monster', price: 2.50 },
-          { name: 'Hell', price: 1.80 }
-        ]
-      }
-    ],
-    sumos: [
-      {
-        id: 67,
-        name: 'Sumo/Batido de Maracujá',
-        description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'maracuja',
-        veg: true,
-        nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)'
-      },
-      {
-        id: 68,
-        name: 'Sumo/Batido de Acerola',
-        description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'acerola',
-        veg: true,
-        nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)'
-      },
-      {
-        id: 69,
-        name: 'Sumo/Batido de Manga',
-        description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'manga',
-        veg: true,
-        nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)'
-      },
-      {
-        id: 70,
-        name: 'Sumo/Batido de Goiaba',
-        description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'goiaba',
-        veg: true,
-        nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)'
-      },
-      {
-        id: 71,
-        name: 'Sumo/Batido de Morango',
-        description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'morango',
-        veg: true,
-        nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)'
-      },
-      {
-        id: 72,
-        name: 'Sumo/Batido de Caju',
-        description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'Caju',
-        veg: true,
-        nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)'
-      },
-      {
-        id: 73,
-        name: 'Sumo/Batido de Abacaxi',
-        description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'abacaxi',
-        veg: true,
-        nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)'
-      },
-      {
-        id: 74,
-        name: 'Sumo/Batido de Coco',
-        description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'coco',
-        veg: true,
-        nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)'
-      },
-      {
-        id: 75,
-        name: 'Sumo/Batido de Cajá',
-        description: 'Exótico e refrescante, rico em vitaminas do complexo B',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'caja',
-        veg: true,
-        nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)'
-      },
-      {
-        id: 76,
-        name: 'Sumo/Batido de Cupuaçu',
-        description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'cupuacu',
-        veg: true,
-        nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)'
-      },
-      {
-        id: 77,
-        name: 'Sumo/Batido de Graviola',
-        description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
-        price: 4.00,
-        baseOptions: {
-          agua: 4.00,
-          leite: 4.50
-        },
-        image: 'graviola',
-        veg: true,
-        nutritionalInfo: 'Rica em vitaminas B1, B2 e C. 140kcal (com água)'
-      },
-      {
-        id: 78,
-        name: 'Compal',
-        description: 'Sumo de fruta natural',
-        price: 1.60,
-        image: 'compal',
-        flavorOptions: [
-          'Frutos Vermelhos',
-          'Maracujá',
-          'Manga',
-          'Maçã',
-          'Pêra',
-          'Pêssego',
-          'Manga Laranja',
-          'Goiaba',
-          'Ananás'
-        ]
-      }
-    ],
-    'refrigerantes-aguas': [
-      { 
-        id: 79,
-        name: 'Refrigerante Lata', 
-        description: 'Refrigerantes em lata 330ml', 
-        price: 1.60, 
-        image: 'refrigerantes', 
-        rating: 4.1,
-        flavorOptions: [
-          'Coca-Cola',
-          'Coca-Cola Zero',
-          'Fanta Laranja',
-          'Pepsi',
-          'Guaraná do Brasil',
-          'Sprite'
-        ]
-      },
-      { 
-        id: 80,
-        name: 'Água 1.5L', 
-        description: 'Água mineral natural 1.5 litros', 
-        price: 1.50, 
-        image: 'agua', 
-        rating: 4.0
-      },
-      { 
-        id: 81,
-        name: 'Água 0.5L', 
-        description: 'Água mineral natural 500ml', 
-        price: 1.00, 
-        image: 'agua', 
-        rating: 4.0
-      },
-      { 
-        id: 82,
-        name: 'Água 0.33L', 
-        description: 'Água mineral natural 330ml', 
-        price: 0.60, 
-        image: 'agua', 
-        rating: 4.0
-      },
-      { 
-        id: 83,
-        name: 'Água Castelo', 
-        description: 'Água mineral gaseificada 1L', 
-        price: 1.40, 
-        image: 'Castelo', 
-        rating: 4.2 
-      },
-      { 
-        id: 84,
-        name: 'Água das Pedras', 
-        description: 'Água mineral gaseificada', 
-        price: 1.50, 
-        image: 'pedras', 
-        rating: 4.3 
-      },
-      { 
-        id: 85,
-        name: 'Água das Pedras C/ Sabor', 
-        description: 'Água mineral gaseificada', 
-        price: 1.80, 
-        image: 'pedrassabor', 
-        rating: 4.3 
-      }
-    ],
-    salgados: [
-      { id: 86, name: 'Pão de Queijo', price: 1.60, image: 'paodequeijo', rating: 4.5 },
-      { id: 87, name: 'Pastel de Nata', price: 1.30, image: 'pasteldenata', rating: 4.7 },
-      { id: 88, name: 'Empada de Frango', price: 2.00, image: 'empadafrango', rating: 4.4 },
-      { id: 89, name: 'Kibe', price: 2.20, image: 'kibe', rating: 4.3 },
-      { id: 90, name: 'Enroladinho de Salsicha e Queijo', price: 2.20, image: 'fiambre', rating: 4.2 },
-      { id: 91, name: 'Fiambre e Queijo', price: 2.20, image: 'fiambreequeijo', rating: 4.2 },
-      { id: 92, name: 'Bauru', price: 2.20, image: 'bauru', rating: 4.1 },
-      { id: 93, name: 'Bola de Queijo', price: 2.20, image: 'bolaqueijo', rating: 4.3 },
-      { id: 94, name: 'Coxinha de Frango', price: 2.20, image: 'Coxinha', rating: 4.6 },
-      { id: 95, name: 'Coxinha com Catupiry', price: 3.00, image: 'Coxinha', rating: 4.8 },
-      { id: 96, name: 'Hamburgão', price: 3.50, image: 'hamburgao', rating: 4.7 }
-    ],
-    sobremesas: [
-      { id: 97, name: 'Bolo no Pote - Prestígio', description: 'Chocolate com coco', price: 4.00, image: 'Prestígio', rating: 4.8 },
-      { id: 98, name: 'Bolo no Pote - Chocolate', description: 'Massa de chocolate com recheio de chocolate', price: 4.00, image: 'doces', rating: 4.9 },
-      { id: 99, name: 'Bolo no Pote - Ananás', description: 'Creme de ninho com pedaços de ananás', price: 4.00, image: 'bolopoteananas', rating: 4.7 },
-      { id: 100, name: 'Bolo no Pote - Choco Misto', description: 'Chocolate preto com ninho', price: 4.00, image: 'doces', rating: 4.8 },
-      { id: 101, name: 'Cheesecake - Goiabada', price: 3.50, image: 'Cheesecake', rating: 4.7 },
-      { id: 102, name: 'Cheesecake - Frutos Vermelhos', price: 3.50, image: 'frutosvermelhos', rating: 4.8 },
-      { id: 103, name: 'Brigadeiro Tradicional', price: 1.50, image: 'doces', rating: 4.6 },
-      { id: 104, name: 'Brigadeiro Beijinho', price: 1.50, image: 'doces', rating: 4.5 },
-      { id: 105, name: 'Brigadeiro Ninho', price: 2.00, image: 'doces', rating: 4.8 },
-      { id: 106, name: 'Brigadeiro Paçoca', price: 2.00, image: 'doces', rating: 4.7 },
-      { id: 107, name: 'Brigadeiro Morango', price: 2.00, image: 'doces', rating: 4.8 },
-      { id: 108, name: 'Brigadeiro Churros', price: 2.00, image: 'doces', rating: 4.9 },
-      { id: 109, name: 'Tarte de Toblerone', price: 2.20, image: 'toblerone', rating: 4.7 },
-      { id: 110, name: 'Bolo de Brigadeiro (fatia)', price: 2.20, image: 'doces', rating: 4.8 }
-    ]
-  };
+  semana: [
+    { 
+      id: 1, 
+      name: 'Frango Cremoso', 
+      description: 'Strogonoff de frango, arroz branco, salada e batata palha', 
+      price: 12.90, 
+      veg: false, 
+      image: 'frangoCremoso', 
+      rating: 4.5,
+      available: true 
+    },
+    { 
+      id: 2, 
+      name: 'Maminha Top', 
+      description: 'Maminha grelhada, arroz branco, feijão tropeiro e vinagrete', 
+      price: 15.90, 
+      veg: false, 
+      image: 'picanhaPremium', 
+      rating: 4.8,
+      available: true 
+    },
+    { 
+      id: 3, 
+      name: 'Costela Raiz', 
+      description: 'Costela de vaca com mandioca, arroz branco, farofa e salada', 
+      price: 14.90, 
+      veg: false, 
+      image: 'costelaRaiz', 
+      rating: 4.7,
+      available: true 
+    },
+    { 
+      id: 4, 
+      name: 'Frango Supremo', 
+      description: 'Filé de frango à parmegiana, arroz branco, batata frita e salada', 
+      price: 13.90, 
+      veg: false, 
+      image: 'frangosupremo', 
+      rating: 4.3,
+      available: true 
+    },
+    { 
+      id: 5, 
+      name: 'Feijoada Astral', 
+      description: 'Feijoada brasileira, arroz branco, couve, farofa, torresmo e laranja', 
+      price: 12.90, 
+      veg: false, 
+      image: 'feijoadaAstral', 
+      rating: 4.9,
+      available: true 
+    },
+    { 
+      id: 6, 
+      name: 'Opção Vegetariana', 
+      description: 'Prato vegetariano do dia - acompanha bebida e café', 
+      price: 12.90, 
+      veg: true, 
+      image: 'vegano', 
+      rating: 4.2,
+      available: true 
+    }
+  ],
+  lanches: [
+    { 
+      id: 7, 
+      name: 'Hambúrguer com Fritas', 
+      description: 'Carne, alface, tomate, cebola, cheddar, molho da casa', 
+      price: 7.00, 
+      image: 'hamburguer', 
+      rating: 4.4,
+      veg: false 
+    },
+    { 
+      id: 8, 
+      name: 'Hambúrguer Alto Astral', 
+      description: 'Carne 120g, bacon, queijo, anéis de cebola, alface, tomate, cheddar, molho coquetel e especial', 
+      price: 9.90, 
+      image: 'hamburgueraltoastral', 
+      rating: 4.7,
+      veg: false 
+    },
+    { 
+      id: 9, 
+      name: 'Hambúrguer Neg\'s', 
+      description: 'Carne 120g, frango panado, bacon, queijo, anéis de cebola, cebola crispy, alface, tomate, cheddar, molho coquetel e especial', 
+      price: 12.90, 
+      image: 'negs', 
+      rating: 4.9,
+      veg: false 
+    },
+    { 
+      id: 10, 
+      name: 'Sandes de Panado', 
+      description: 'Frango panado, alface, tomate, cebola, molho da casa', 
+      price: 5.50, 
+      image: 'sandespanado', 
+      rating: 4.1,
+      veg: false 
+    },
+    { 
+      id: 11, 
+      name: 'Tostas Premium (Frango)', 
+      description: 'Tosta com frango, queijo, alface, tomate e cebola roxa', 
+      price: 6.50, 
+      image: 'tostaspremium', 
+      rating: 4.0,
+      veg: false 
+    },
+    { 
+      id: 12, 
+      name: 'Tostas Premium (Atum)', 
+      description: 'Tosta com atum, queijo, alface, tomate e cebola roxa', 
+      price: 6.50, 
+      image: 'tostaspremium', 
+      rating: 4.0,
+      veg: false 
+    },
+    { 
+      id: 13, 
+      name: 'Sanduíche Natural', 
+      description: 'Patê de frango, queijo, rúcula, tomate, cebola roxa e cenoura ralada', 
+      price: 6.50, 
+      image: 'sanduichenatural', 
+      rating: 3.9,
+      veg: false 
+    }
+  ],
+  porcoes: [
+    { 
+      id: 14, 
+      name: 'Batata Frita', 
+      description: 'Porção com 400g de batata frita', 
+      price: 4.00, 
+      image: 'batataFrita', 
+      rating: 4.2,
+      veg: true 
+    },
+    { 
+      id: 15, 
+      name: 'Fritas com Bacon e Queijo', 
+      description: 'Porção com 400g de batatas com bacon e queijo cheddar', 
+      price: 6.50, 
+      image: 'fritascomqueijo', 
+      rating: 4.6,
+      veg: false 
+    },
+    { 
+      id: 16, 
+      name: 'Chouriça com Cebola', 
+      description: 'Porção com 600g de chouriça acebolada e pão fatiado', 
+      price: 9.00, 
+      image: 'chorica', 
+      rating: 4.5,
+      veg: false 
+    },
+    { 
+      id: 17, 
+      name: 'Asinha de Frango', 
+      description: 'Porção com 700g de asinhas de frango e molho barbecue', 
+      price: 12.00, 
+      image: 'Asinha', 
+      rating: 4.4,
+      veg: false 
+    },
+    { 
+      id: 18, 
+      name: 'Costelinha', 
+      description: 'Porção com 800g de costelinha e molho barbecue', 
+      price: 12.00, 
+      image: 'costelaporco', 
+      rating: 4.7,
+      veg: false 
+    },
+    { 
+      id: 19, 
+      name: 'Picanha com Fritas', 
+      description: 'Porção com 600g de tiras de picanha temperada com sal de parrilha e acompanhado de batata frita ou doce', 
+      price: 22.90, 
+      image: 'Picanhacomfritas', 
+      rating: 4.8,
+      veg: false 
+    },
+    { 
+      id: 20, 
+      name: 'Filé de Tilápia', 
+      description: 'Porção com 800g de filé de tilápia e molho tartaro', 
+      price: 15.00, 
+      image: 'Filetilapia', 
+      rating: 4.3,
+      veg: false 
+    }
+  ],
+  pasteis: [
+    { 
+      id: 21, 
+      name: 'Pastel Simples', 
+      description: 'Frango desfiado, carne picada ou queijo', 
+      price: 5.00, 
+      image: 'pastelfeira', 
+      rating: 4.3,
+      veg: false 
+    },
+    { 
+      id: 22, 
+      name: 'Pastel de Frango com Queijo', 
+      description: 'Frango desfiado com queijo', 
+      price: 5.50, 
+      image: 'pastelfeira', 
+      rating: 4.5,
+      veg: false 
+    },
+    { 
+      id: 23, 
+      name: 'Pastel de Frango com Queijo e Bacon', 
+      description: 'Frango desfiado com queijo e bacon em cubos', 
+      price: 6.50, 
+      image: 'pastelfeira', 
+      rating: 4.7,
+      veg: false 
+    },
+    { 
+      id: 24, 
+      name: 'Pastel de Carne com Queijo', 
+      description: 'Carne picada com queijo e azeitona', 
+      price: 5.50, 
+      image: 'pastelfeira', 
+      rating: 4.4,
+      veg: false 
+    },
+    { 
+      id: 25, 
+      name: 'Pastel de Carne com Queijo e Bacon', 
+      description: 'Carne picada com queijo, azeitona e bacon em cubos', 
+      price: 6.50, 
+      image: 'pastelfeira', 
+      rating: 4.6,
+      veg: false 
+    },
+    { 
+      id: 26, 
+      name: 'Pastel de Chouriça', 
+      description: 'Queijo, chouriça e milho', 
+      price: 5.50, 
+      image: 'pastelfeira', 
+      rating: 4.2,
+      veg: false 
+    },
+    { 
+      id: 27, 
+      name: 'Pastel Misto', 
+      description: 'Fiambre, queijo, azeitona e milho', 
+      price: 5.50, 
+      image: 'pastelfeira', 
+      rating: 4.1,
+      veg: false 
+    },
+    { 
+      id: 28, 
+      name: 'Pastel de Pizza', 
+      description: 'Queijo, fiambre, tomate e orégano', 
+      price: 5.50, 
+      image: 'pastelfeira', 
+      rating: 4.0,
+      veg: false 
+    },
+    { 
+      id: 29, 
+      name: 'Pastel Alto Astral', 
+      description: 'Queijo, bacon, tomate, azeitona, cheddar e orégano', 
+      price: 6.50, 
+      image: 'pastelfeira', 
+      rating: 4.8,
+      veg: false 
+    },
+    { 
+      id: 30, 
+      name: 'Pastel Romeu e Julieta', 
+      description: 'Queijo com goiabada', 
+      price: 5.50, 
+      image: 'pastelfeira', 
+      rating: 4.7,
+      veg: true 
+    },
+    { 
+      id: 31, 
+      name: 'Pastel de Banana com Nutella', 
+      description: 'Queijo, banana e nutella', 
+      price: 6.00, 
+      image: 'pastelfeira', 
+      rating: 4.9,
+      veg: true 
+    }
+  ],
+  cafe: [
+    { 
+      id: 32, 
+      name: 'Café Expresso', 
+      description: 'Café espresso tradicional', 
+      price: 1.00, 
+      image: 'cafe', 
+      rating: 4.5,
+      veg: true 
+    },
+    { 
+      id: 33, 
+      name: 'Café Descafeinado', 
+      description: 'Café espresso sem cafeína', 
+      price: 1.00, 
+      image: 'cafe', 
+      rating: 4.3,
+      veg: true 
+    },
+    { 
+      id: 34, 
+      name: 'Café Duplo', 
+      description: 'Dose dupla de café espresso', 
+      price: 2.00, 
+      image: 'pastel', 
+      rating: 4.6,
+      veg: true 
+    },
+    { 
+      id: 35, 
+      name: 'Garoto', 
+      description: 'Café com leite em proporção igual', 
+      price: 1.00, 
+      image: 'Garoto', 
+      rating: 4.2,
+      veg: true 
+    },
+    { 
+      id: 36, 
+      name: 'Abatanado', 
+      description: 'Café longo estilo português', 
+      price: 1.10, 
+      image: 'abatanado', 
+      rating: 4.1,
+      veg: true 
+    },
+    { 
+      id: 37, 
+      name: 'Meia de Leite', 
+      description: 'Café com leite em copo de vidro', 
+      price: 1.50, 
+      image: 'meialeite', 
+      rating: 4.4,
+      veg: true 
+    },
+    { 
+      id: 38, 
+      name: 'Galão', 
+      description: 'Café com leite em copo alto', 
+      price: 1.60, 
+      image: 'galao', 
+      rating: 4.5,
+      veg: true 
+    },
+    { 
+      id: 39, 
+      name: 'Chá', 
+      description: 'Infusão de ervas à escolha', 
+      price: 1.60, 
+      image: 'cha', 
+      rating: 4.0,
+      veg: true 
+    },
+    { 
+      id: 40, 
+      name: 'Cappuccino', 
+      description: 'Café com leite vaporizado e espuma de leite', 
+      price: 3.00, 
+      image: 'capuccino', 
+      rating: 4.7,
+      veg: true 
+    },
+    { 
+      id: 41, 
+      name: 'Carioca de Limão', 
+      description: 'Infusão de casca de limão', 
+      price: 1.00, 
+      image: 'cariocalimao', 
+      rating: 3.9,
+      veg: true 
+    },
+    { 
+      id: 42, 
+      name: 'Chocolate Quente', 
+      description: 'Chocolate quente cremoso', 
+      price: 3.00, 
+      image: 'chocolatequente', 
+      rating: 4.8,
+      veg: true 
+    },
+    { 
+      id: 43, 
+      name: 'Torrada com Pão Caseiro', 
+      description: 'Torrada feita com pão artesanal', 
+      price: 2.00, 
+      image: 'torradapaocaseiro', 
+      rating: 4.3,
+      veg: true 
+    },
+    { 
+      id: 44, 
+      name: 'Torrada com Pão de Forma', 
+      description: 'Torrada feita com pão de forma', 
+      price: 1.50, 
+      image: 'torradapaodeforma', 
+      rating: 4.1,
+      veg: true 
+    },
+    { 
+      id: 45, 
+      name: 'Meia Torrada', 
+      description: 'Meia porção de torrada', 
+      price: 1.00, 
+      image: 'torradapaocaseiro', 
+      rating: 4.0,
+      veg: true 
+    },
+    { 
+      id: 46, 
+      name: 'Croissant Misto', 
+      description: 'Croissant com fiambre e queijo', 
+      price: 3.00, 
+      image: 'croissanmisto', 
+      rating: 4.6,
+      veg: false 
+    },
+    { 
+      id: 47, 
+      name: 'Croissant Misto Tostado', 
+      description: 'Croissant com fiambre e queijo gratinado', 
+      price: 3.20, 
+      image: 'croissant', 
+      rating: 4.7,
+      veg: false 
+    },
+    { 
+      id: 48, 
+      name: 'Tosta Mista', 
+      description: 'Tosta com fiambre e queijo', 
+      price: 3.20, 
+      image: 'tosta', 
+      rating: 4.5,
+      veg: false 
+    },
+    { 
+      id: 49, 
+      name: 'Tosta Mista (Pão de Forma)', 
+      description: 'Tosta com fiambre e queijo em pão de forma', 
+      price: 2.80, 
+      image: 'tostamistapaoforma', 
+      rating: 4.4,
+      veg: false 
+    },
+    { 
+      id: 50, 
+      name: 'Sandes Mista', 
+      description: 'Sandes com fiambre e queijo', 
+      price: 2.20, 
+      image: 'sandesmista', 
+      rating: 4.2,
+      veg: false 
+    },
+    { 
+      id: 51, 
+      name: 'Pão com Ovo', 
+      description: 'Pão com ovo estrelado', 
+      price: 2.20, 
+      image: 'paocomovo', 
+      rating: 4.1,
+      veg: false 
+    },
+    { 
+      id: 52, 
+      name: 'Ovos com Bacon', 
+      description: 'Ovos estrelados com bacon', 
+      price: 4.00, 
+      image: 'ovosebacaon', 
+      rating: 4.7,
+      veg: false 
+    }
+  ],
+  bebidas: [
+    { 
+      id: 53, 
+      name: 'Caipirinha', 
+      description: 'Cachaça 51 ou Velho Barreiro, lima, açúcar e gelo', 
+      price: 6.00, 
+      image: 'caipirinha', 
+      rating: 4.8,
+      veg: true 
+    },
+    { 
+      id: 54, 
+      name: 'Caipiblack', 
+      description: 'Cachaça preta, lima, açúcar e gelo', 
+      price: 6.00, 
+      image: 'Caipiblack', 
+      rating: 4.9,
+      veg: true 
+    },
+    { 
+      id: 55, 
+      name: 'Whiskey Jamenson', 
+      description: 'Whiskey irlandês dose simples', 
+      price: 3.50, 
+      image: 'bebida', 
+      rating: 4.7,
+      veg: true 
+    },
+    { 
+      id: 56, 
+      name: 'Whiskey J&B', 
+      description: 'Whiskey escocês dose simples', 
+      price: 3.00, 
+      image: 'bebida', 
+      rating: 4.5,
+      veg: true 
+    },
+    { 
+      id: 57, 
+      name: 'Whiskey Jack Daniels', 
+      description: 'Whiskey americano dose simples', 
+      price: 3.50, 
+      image: 'bebida', 
+      rating: 4.8,
+      veg: true 
+    },
+    { 
+      id: 58, 
+      name: 'Whiskey Black Label', 
+      description: 'Whiskey escocês premium dose simples', 
+      price: 4.00, 
+      image: 'bebida', 
+      rating: 4.9,
+      veg: true 
+    },
+    { 
+      id: 59, 
+      name: 'Vodka', 
+      description: 'Vodka dose simples', 
+      price: 4.00, 
+      image: 'vodka', 
+      rating: 4.6,
+      veg: true 
+    },
+    { 
+      id: 60, 
+      name: 'Somersby', 
+      description: 'Cidra de maçã', 
+      price: 2.50, 
+      image: 'Somersby',
+      rating: 4.0,
+      veg: true 
+    },
+    { 
+      id: 61, 
+      name: 'Imperial Heineken (0.20)', 
+      description: 'Cerveja Heineken em copo de 20cl', 
+      price: 1.50, 
+      image: 'Imperial',
+      rating: 4.2,
+      veg: true 
+    },
+    { 
+      id: 62, 
+      name: 'Caneca Heineken (0.50)', 
+      description: 'Cerveja Heineken em caneca de 50cl', 
+      price: 3.00, 
+      image: 'Imperial',
+      rating: 4.5,
+      veg: true 
+    },
+    { 
+      id: 63, 
+      name: 'Cerveja Garrafa (0.33ml)', 
+      description: 'Cerveja em garrafa de 33ml', 
+      price: 1.40, 
+      image: 'cerveja',
+      rating: 4.0,
+      veg: true 
+    },
+    { 
+      id: 64, 
+      name: 'Cerveja Garrafa (0.33ml)', 
+      description: 'Cerveja em garrafa de 33ml', 
+      price: 1.40, 
+      image: 'cerveja',
+      rating: 4.0,
+      veg: true 
+    },
+    { 
+      id: 65, 
+      name: 'Superbock Preta', 
+      description: 'Cerveja escura Super Bock', 
+      price: 1.40, 
+      image: 'superbock',
+      rating: 4.3,
+      veg: true 
+    },
+    { 
+      id: 66, 
+      name: 'Energéticos', 
+      description: 'Bebidas energéticas', 
+      price: 2.50, 
+      image: 'energetico',
+      options: [
+        { name: 'Red Bull', price: 2.50 },
+        { name: 'Monster', price: 2.50 },
+        { name: 'Hell', price: 1.80 }
+      ],
+      rating: 4.0,
+      veg: true 
+    }
+  ],
+  sumos: [
+    {
+      id: 67,
+      name: 'Sumo/Batido de Maracujá',
+      description: 'Rico em vitamina C e antioxidantes, ajuda a reduzir a ansiedade e melhorar a qualidade do sono',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'maracuja',
+      veg: true,
+      nutritionalInfo: 'Alto teor de vitamina A, C, ferro e fibras. 120kcal (com água)',
+      rating: 4.5
+    },
+    {
+      id: 68,
+      name: 'Sumo/Batido de Acerola',
+      description: 'Uma das maiores fontes naturais de vitamina C, fortalece o sistema imunológico',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'acerola',
+      veg: true,
+      nutritionalInfo: 'Contém 30x mais vitamina C que a laranja. 110kcal (com água)',
+      rating: 4.6
+    },
+    {
+      id: 69,
+      name: 'Sumo/Batido de Manga',
+      description: 'Doce e nutritivo, rico em vitamina A que beneficia a saúde ocular e da pele',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'manga',
+      veg: true,
+      nutritionalInfo: 'Fonte de vitamina A, C e fibras. 150kcal (com água)',
+      rating: 4.4
+    },
+    {
+      id: 70,
+      name: 'Sumo/Batido de Goiaba',
+      description: 'Excelente fonte de licopeno e vitamina C, auxilia na saúde cardiovascular',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'goiaba',
+      veg: true,
+      nutritionalInfo: 'Rica em antioxidantes e fibras. 130kcal (com água)',
+      rating: 4.3
+    },
+    {
+      id: 71,
+      name: 'Sumo/Batido de Morango',
+      description: 'Delicioso e rico em antioxidantes que combatem os radicais livres',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'morango',
+      veg: true,
+      nutritionalInfo: 'Contém manganês, potássio e vitamina C. 100kcal (com água)',
+      rating: 4.7
+    },
+    {
+      id: 72,
+      name: 'Sumo/Batido de Caju',
+      description: 'Refrescante e rico em zinco, importante para a imunidade e saúde da pele',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'Caju',
+      veg: true,
+      nutritionalInfo: 'Fonte de vitamina C e minerais. 140kcal (com água)',
+      rating: 4.2
+    },
+    {
+      id: 73,
+      name: 'Sumo/Batido de Abacaxi',
+      description: 'Contém bromelina, enzima que auxilia na digestão e reduz inflamações',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'abacaxi',
+      veg: true,
+      nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)',
+      rating: 4.5
+    },
+    {
+      id: 74,
+      name: 'Sumo/Batido de Coco',
+      description: 'Hidratante natural, rico em eletrólitos e gorduras saudáveis',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'coco',
+      veg: true,
+      nutritionalInfo: 'Fonte de minerais e ácidos graxos. 180kcal (com água)',
+      rating: 4.4
+    },
+    {
+      id: 75,
+      name: 'Sumo/Batido de Cajá',
+      description: 'Exótico e refrescante, rico em vitaminas do complexo B',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'caja',
+      veg: true,
+      nutritionalInfo: 'Contém cálcio, fósforo e ferro. 130kcal (com água)',
+      rating: 4.1
+    },
+    {
+      id: 76,
+      name: 'Sumo/Batido de Cupuaçu',
+      description: 'Sabor único e cremoso, rico em antioxidantes e vitamina A',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'cupuacu',
+      veg: true,
+      nutritionalInfo: 'Fonte de teobromina e ácidos graxos. 160kcal (com água)',
+      rating: 4.3
+    },
+    {
+      id: 77,
+      name: 'Sumo/Batido de Graviola',
+      description: 'Sabor tropical marcante, com propriedades que auxiliam no relaxamento',
+      price: 4.00,
+      baseOptions: { agua: 4.00, leite: 4.50 },
+      image: 'graviola',
+      veg: true,
+      nutritionalInfo: 'Rica em vitaminas B1, B2 e C. 140kcal (com água)',
+      rating: 4.2
+    },
+    {
+      id: 78,
+      name: 'Compal',
+      description: 'Sumo de fruta natural engarrafado',
+      price: 1.60,
+      image: 'compal',
+      flavorOptions: [
+        'Frutos Vermelhos',
+        'Maracujá',
+        'Manga',
+        'Maçã',
+        'Pêra',
+        'Pêssego',
+        'Manga Laranja',
+        'Goiaba',
+        'Ananás'
+      ],
+      rating: 4.0,
+      veg: true
+    }
+  ],
+  'refrigerantes-aguas': [
+    { 
+      id: 79,
+      name: 'Refrigerante Lata', 
+      description: 'Refrigerantes em lata 330ml', 
+      price: 1.60, 
+      image: 'refrigerantes', 
+      flavorOptions: [
+        'Coca-Cola',
+        'Coca-Cola Zero',
+        'Fanta Laranja',
+        'Pepsi',
+        'Guaraná do Brasil',
+        'Sprite'
+      ],
+      rating: 4.1,
+      veg: true
+    },
+    { 
+      id: 80,
+      name: 'Água 1.5L', 
+      description: 'Água mineral natural 1.5 litros', 
+      price: 1.50, 
+      image: 'agua', 
+      rating: 4.0,
+      veg: true
+    },
+    { 
+      id: 81,
+      name: 'Água 0.5L', 
+      description: 'Água mineral natural 500ml', 
+      price: 1.00, 
+      image: 'agua', 
+      rating: 4.0,
+      veg: true
+    },
+    { 
+      id: 82,
+      name: 'Água 0.33L', 
+      description: 'Água mineral natural 330ml', 
+      price: 0.60, 
+      image: 'agua', 
+      rating: 4.0,
+      veg: true
+    },
+    { 
+      id: 83,
+      name: 'Água Castelo', 
+      description: 'Água mineral gaseificada 1L', 
+      price: 1.40, 
+      image: 'Castelo', 
+      rating: 4.2,
+      veg: true
+    },
+    { 
+      id: 84,
+      name: 'Água das Pedras', 
+      description: 'Água mineral gaseificada', 
+      price: 1.50, 
+      image: 'pedras', 
+      rating: 4.3,
+      veg: true
+    },
+    { 
+      id: 85,
+      name: 'Água das Pedras C/ Sabor', 
+      description: 'Água mineral gaseificada com sabor', 
+      price: 1.80, 
+      image: 'pedrassabor', 
+      rating: 4.3,
+      veg: true
+    }
+  ],
+  salgados: [
+    { 
+      id: 86, 
+      name: 'Pão de Queijo', 
+      description: 'Pão de queijo tradicional mineiro', 
+      price: 1.60, 
+      image: 'paodequeijo', 
+      rating: 4.5,
+      veg: true
+    },
+    { 
+      id: 87, 
+      name: 'Pastel de Nata', 
+      description: 'Pastel de nata tradicional português', 
+      price: 1.30, 
+      image: 'pasteldenata', 
+      rating: 4.7,
+      veg: true
+    },
+    { 
+      id: 88, 
+      name: 'Empada de Frango', 
+      description: 'Empada recheada com frango', 
+      price: 2.00, 
+      image: 'empadafrango', 
+      rating: 4.4,
+      veg: false
+    },
+    { 
+      id: 89, 
+      name: 'Kibe', 
+      description: 'Kibe frito tradicional', 
+      price: 2.20, 
+      image: 'kibe', 
+      rating: 4.3,
+      veg: false
+    },
+    { 
+      id: 90, 
+      name: 'Enroladinho de Salsicha e Queijo', 
+      description: 'Massa crocante recheada com salsicha e queijo', 
+      price: 2.20, 
+      image: 'fiambre', 
+      rating: 4.2,
+      veg: false
+    },
+    { 
+      id: 91, 
+      name: 'Fiambre e Queijo', 
+      description: 'Sanduíche de fiambre e queijo', 
+      price: 2.20, 
+      image: 'fiambreequeijo', 
+      rating: 4.2,
+      veg: false
+    },
+    { 
+      id: 92, 
+      name: 'Bauru', 
+      description: 'Sanduíche de rosbife, queijo e tomate', 
+      price: 2.20, 
+      image: 'bauru', 
+      rating: 4.1,
+      veg: false
+    },
+    { 
+      id: 93, 
+      name: 'Bola de Queijo', 
+      description: 'Bolinho de queijo frito', 
+      price: 2.20, 
+      image: 'bolaqueijo', 
+      rating: 4.3,
+      veg: true
+    },
+    { 
+      id: 94, 
+      name: 'Coxinha de Frango', 
+      description: 'Coxinha de frango com catupiry', 
+      price: 2.20, 
+      image: 'Coxinha', 
+      rating: 4.6,
+      veg: false
+    },
+    { 
+      id: 95, 
+      name: 'Coxinha com Catupiry', 
+      description: 'Coxinha de frango com recheio extra de catupiry', 
+      price: 3.00, 
+      image: 'Coxinha', 
+      rating: 4.8,
+      veg: false
+    },
+    { 
+      id: 96, 
+      name: 'Hamburgão', 
+      description: 'Hambúrguer artesanal no pão', 
+      price: 3.50, 
+      image: 'hamburgao', 
+      rating: 4.7,
+      veg: false
+    }
+  ],
+  sobremesas: [
+    { 
+      id: 97, 
+      name: 'Bolo no Pote - Prestígio', 
+      description: 'Bolo de chocolate com coco em pote individual', 
+      price: 4.00, 
+      image: 'Prestígio', 
+      rating: 4.8,
+      veg: true
+    },
+    { 
+      id: 98, 
+      name: 'Bolo no Pote - Chocolate', 
+      description: 'Bolo de chocolate em pote individual', 
+      price: 4.00, 
+      image: 'doces', 
+      rating: 4.9,
+      veg: true
+    },
+    { 
+      id: 99, 
+      name: 'Bolo no Pote - Ananás', 
+      description: 'Bolo de creme de ninho com pedaços de ananás em pote individual', 
+      price: 4.00, 
+      image: 'bolopoteananas', 
+      rating: 4.7,
+      veg: true
+    },
+    { 
+      id: 100, 
+      name: 'Bolo no Pote - Choco Misto', 
+      description: 'Bolo de chocolate preto com ninho em pote individual', 
+      price: 4.00, 
+      image: 'doces', 
+      rating: 4.8,
+      veg: true
+    },
+    { 
+      id: 101, 
+      name: 'Cheesecake - Goiabada', 
+      description: 'Fatia de cheesecake com cobertura de goiabada', 
+      price: 3.50, 
+      image: 'Cheesecake', 
+      rating: 4.7,
+      veg: true
+    },
+    { 
+      id: 102, 
+      name: 'Cheesecake - Frutos Vermelhos', 
+      description: 'Fatia de cheesecake com cobertura de frutos vermelhos', 
+      price: 3.50, 
+      image: 'frutosvermelhos', 
+      rating: 4.8,
+      veg: true
+    },
+    { 
+      id: 103, 
+      name: 'Brigadeiro Tradicional', 
+      description: 'Brigadeiro tradicional brasileiro', 
+      price: 1.50, 
+      image: 'doces', 
+      rating: 4.6,
+      veg: true
+    },
+    { 
+      id: 104, 
+      name: 'Brigadeiro Beijinho', 
+      description: 'Brigadeiro de coco ralado', 
+      price: 1.50, 
+      image: 'doces', 
+      rating: 4.5,
+      veg: true
+    },
+    { 
+      id: 105, 
+      name: 'Brigadeiro Ninjo', 
+      description: 'Brigadeiro feito com leite ninho', 
+      price: 2.00, 
+      image: 'doces', 
+      rating: 4.8,
+      veg: true
+    },
+    { 
+      id: 106, 
+      name: 'Brigadeiro Paçoca', 
+      description: 'Brigadeiro com paçoca', 
+      price: 2.00, 
+      image: 'doces', 
+      rating: 4.7,
+      veg: true
+    },
+    { 
+      id: 107, 
+      name: 'Brigadeiro Morango', 
+      description: 'Brigadeiro sabor morango', 
+      price: 2.00, 
+      image: 'doces', 
+      rating: 4.8,
+      veg: true
+    },
+    { 
+      id: 108, 
+      name: 'Brigadeiro Churros', 
+      description: 'Brigadeiro sabor churros', 
+      price: 2.00, 
+      image: 'doces', 
+      rating: 4.9,
+      veg: true
+    },
+    { 
+      id: 109, 
+      name: 'Tarte de Toblerone', 
+      description: 'Fatia de tarte com chocolate Toblerone', 
+      price: 2.20, 
+      image: 'toblerone', 
+      rating: 4.7,
+      veg: true
+    },
+    { 
+      id: 110, 
+      name: 'Bolo de Brigadeiro (fatia)', 
+      description: 'Fatia de bolo de brigadeiro', 
+      price: 2.20, 
+      image: 'doces', 
+      rating: 4.8,
+      veg: true
+    }
+  ]
+};
   // Obter nome do dia da semana
   const getDayName = () => {
     const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -1981,11 +2698,37 @@ const menu = {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                   {filteredMenu(activeCategory).map((item) => {
                     const addToCartWithAnimation = () => {
-                      setIsAdding(true);
-                      addToCart(item);
-                      setTimeout(() => setIsAdding(false), 1000);
-                    };
+  setIsAdding(true);
+  
+  // Lógica APENAS para energéticos (itens com options)
+  if (item.options) {
+    const selectedOption = item.options.find(opt => 
+      opt.name === selectedEnergyDrinks[item.id]
+    );
+    
+    if (!selectedOption) {
+      alert('Por favor, selecione uma marca de energético');
+      setIsAdding(false);
+      return;
+    }
 
+    addToCart({
+      ...item,
+      name: `${item.name} (${selectedOption.name})`,
+      price: selectedOption.price,
+      notes: itemNotes[item.id] || undefined
+    });
+  } 
+  // Lógica padrão para todos os outros itens
+  else {
+    addToCart({
+      ...item,
+      notes: itemNotes[item.id] || undefined
+    });
+  }
+
+  setTimeout(() => setIsAdding(false), 1000);
+};
                     return (
                       <motion.div
                         key={item.id}
@@ -2025,7 +2768,7 @@ const menu = {
                             />
                           </motion.button>
                         </div>
-
+                        
                         {/* Product Info */}
                         <div className="p-5 flex-grow flex flex-col">
                           <div className="flex justify-between items-start mb-3">
@@ -2044,6 +2787,34 @@ const menu = {
                           {item.description && (
                             <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
                           )}
+                          {/* Select para marcas de energético */}
+{item.options && (
+  <div className="mb-4">
+    <label htmlFor={`energy-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+      Escolha a marca:
+    </label>
+    <select
+      id={`energy-${item.id}`}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+      value={selectedEnergyDrinks[item.id] || ''}
+      onChange={(e) => {
+        const selectedOption = item.options.find(opt => opt.name === e.target.value);
+        setSelectedEnergyDrinks(prev => ({
+          ...prev,
+          [item.id]: e.target.value
+        }));
+      }}
+    >
+      <option value="">Selecione...</option>
+      {item.options.map(option => (
+        <option key={option.name} value={option.name}>
+          {option.name} ({formatPrice(option.price)})
+        </option>
+      ))}
+    </select>
+  </div>
+)}   
+ 
                           
                           {/* Notes input */}
                           <div className="mb-4">
