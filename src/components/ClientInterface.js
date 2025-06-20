@@ -1335,7 +1335,7 @@ const menu = {
       baseOptions: { agua: 4.00, leite: 4.50 },
       image: 'abacaxi',
       veg: true,
-      nutritionalInfo: 'rico em vitamina C. 120kcal (com água)',
+      nutritionalInfo: 'Diurético natural e rico em vitamina C. 120kcal (com água)',
       rating: 4.5
     },
     {
