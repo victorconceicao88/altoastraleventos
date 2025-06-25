@@ -2179,26 +2179,12 @@ const menu = {
               </div>
 
               <button
-              onClick={() => checkAvailability(item.id) && addToCartWithAnimation()}
-              disabled={!checkAvailability(item.id)}
-              className={`mt-auto w-full ${
-                checkAvailability(item.id)
-                  ? 'bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6]'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              } font-bold py-3 rounded-lg transition-colors duration-200`}
-            >
-              {checkAvailability(item.id) ? (
-                <span className="flex items-center justify-center">
-                  <FiPlus className="mr-2" />
+                  onClick={addToCartWithAnimation}
+                  className="mt-auto w-full bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6] font-bold py-3 rounded-lg"
+                >
                   Adicionar
-                </span>
-              ) : (
-                <span className="flex items-center justify-center">
-                  <FaClock className="mr-2" />
-                  Indisponível
-                </span>
-              )}
-            </button>
+                </button>
+
             </div>
           </motion.div>
         );
@@ -2599,15 +2585,25 @@ const menu = {
               </div>
 
               <button
-                onClick={addToCartWithAnimation}
+                onClick={() => checkAvailability(item.id) && addToCartWithAnimation()}
                 disabled={!checkAvailability(item.id)}
                 className={`mt-auto w-full ${
                   checkAvailability(item.id)
                     ? 'bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6]'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                } font-bold py-3 rounded-lg`}
+                } font-bold py-3 rounded-lg transition-colors duration-200`}
               >
-                {checkAvailability(item.id) ? 'Adicionar' : 'Indisponível'}
+                {checkAvailability(item.id) ? (
+                  <span className="flex items-center justify-center">
+                    <FiPlus className="mr-2" />
+                    Adicionar
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    <FaClock className="mr-2" />
+                    Indisponível
+                  </span>
+                )}
               </button>
             </div>
           </motion.div>
