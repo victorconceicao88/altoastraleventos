@@ -155,6 +155,9 @@ const ClientInterface = ({ tableNumber }) => {
   const [localSelectedBase, setLocalSelectedBase] = useState('agua');
   const [addingItemId, setAddingItemId] = useState(null);
   
+
+  
+  
   const events = [
     {
       id: 1,
@@ -222,6 +225,10 @@ const ClientInterface = ({ tableNumber }) => {
       return () => clearInterval(interval);
     }
   }, [isHovering, events.length]);
+
+  const checkAvailability = (itemId) => {
+  return itemId === 6 || itemId === dailySpecialId;
+};
 
   // Adicionar ao carrinho
 const addToCart = (item, base = null) => {
@@ -314,14 +321,17 @@ if (item.options) {
     const day = now.getDay(); // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
     const hours = now.getHours();
     
-    // Pastéis disponíveis:
-    // - Segunda a Sexta: a partir das 15h
-    // - Sábado: o dia todo
-    // - Domingo: não disponíveis
+
     if (day === 0) return false; // Domingo
     if (day === 6) return true; // Sábado
     return hours >= 15; // Segunda a Sexta após 15h
   };
+
+  // Adicione isto com as outras funções utilitárias
+const isItemAvailable = (itemId) => {
+  // 6 é o ID do item vegetariano que sempre deve estar disponível
+  return itemId === 6 || itemId === dailySpecialId;
+};
   // Remover do Firebase
   const removeItemFromOrder = async (itemId) => {
     if (!currentOrderId) return;
@@ -1706,6 +1716,7 @@ const menu = {
     }
   ]
 };
+
   // Obter nome do dia da semana
   const getDayName = () => {
     const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -1867,6 +1878,7 @@ const menu = {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredMenu(activeCategory).map((item) => {
               const pastelAvailable = isPastelAvailable();
+              const available = isItemAvailable(item.id);
               const addToCartWithAnimation = () => {
                 if (!pastelAvailable) return;
                 setIsAdding(true);
@@ -1928,9 +1940,6 @@ const menu = {
                   <div className="p-5 flex-grow flex flex-col">
                     <div className="flex justify-between items-start mb-3">
                       <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
-                      <div className="text-xl font-bold text-black">
-                        {formatPrice(item.price)}
-                      </div>
                     </div>
                     
                     {item.description && (
@@ -2170,11 +2179,26 @@ const menu = {
               </div>
 
               <button
-                onClick={addToCartWithAnimation}
-                className="mt-auto w-full py-3 rounded-lg font-bold bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6]"
-              >
-                Adicionar
-              </button>
+              onClick={() => checkAvailability(item.id) && addToCartWithAnimation()}
+              disabled={!checkAvailability(item.id)}
+              className={`mt-auto w-full ${
+                checkAvailability(item.id)
+                  ? 'bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6]'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              } font-bold py-3 rounded-lg transition-colors duration-200`}
+            >
+              {checkAvailability(item.id) ? (
+                <span className="flex items-center justify-center">
+                  <FiPlus className="mr-2" />
+                  Adicionar
+                </span>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <FaClock className="mr-2" />
+                  Indisponível
+                </span>
+              )}
+            </button>
             </div>
           </motion.div>
         );
@@ -2444,219 +2468,154 @@ const menu = {
     </div>
   </div>
             ) : activeCategory === 'semana' ? (
-              <div className="space-y-12">
-                {/* Hero Section for Menu */}
-                <motion.div
+  <div className="space-y-12">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="text-center"
+    >
+      <motion.div
+        animate={{ rotate: [0, 15, -15, 0] }}
+        transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
+        className="inline-block mb-6"
+      >
+        <GiMeal className="text-5xl text-[#e6be44]" />
+      </motion.div>
+      <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+        <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
+          Cardápio do Dia
+        </span>
+      </h1>
+      <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        Pratos deliciosos preparados com ingredientes frescos e selecionados
+      </p>
+      
+      {dailySpecialId && (
+        <motion.div 
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 500 }}
+          className="mt-6 inline-block bg-gradient-to-r from-[#e6be44] to-[#d5c8b6] p-1 rounded-full shadow-lg"
+        >
+          <div className="bg-white px-6 py-2 rounded-full">
+            <div className="flex items-center justify-center space-x-2">
+              <FaBirthdayCake className="text-[#e6be44] text-xl" />
+              <span className="font-bold text-gray-800">
+                {getDayName()}: <span className="text-[#e6be44]">{getDailySpecialName()}</span>
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {filteredMenu(activeCategory).map((item) => {
+        const addToCartWithAnimation = () => {
+          if (!checkAvailability(item.id)) return;
+          setIsAdding(true);
+          addToCart(item);
+          setTimeout(() => setIsAdding(false), 1000);
+        };
+
+        return (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ y: checkAvailability(item.id) ? -5 : 0 }}
+            className={`bg-white rounded-2xl shadow-xl overflow-hidden border ${
+              checkAvailability(item.id) ? 'border-[#e6be44]' : 'border-gray-200 opacity-70'
+            } flex flex-col relative`}
+          >
+            <div className="relative h-64 w-full overflow-hidden">
+              <LazyLoadImage
+                src={foodImages[item.image]}
+                alt={item.name}
+                className="absolute top-0 left-0 w-full h-full object-cover"
+                effect="blur"
+                width="100%"
+                height="100%"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              
+              {item.veg && (
+                <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="text-center"
+                  transition={{ delay: 0.4 }}
+                  className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg"
                 >
-                  <motion.div
-                    animate={{ rotate: [0, 15, -15, 0] }}
-                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 4 }}
-                    className="inline-block mb-6"
-                  >
-                    <GiMeal className="text-5xl text-[#e6be44]" />
-                  </motion.div>
-                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#e6be44] to-[#b0aca6]">
-                      Cardápio do Dia
-                    </span>
-                  </h1>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Pratos deliciosos preparados com ingredientes frescos e selecionados
-                  </p>
-                  
-                  {/* Daily Special Highlight */}
-                  {dailySpecialId && (
-                    <motion.div 
-                      initial={{ scale: 0.9 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 500 }}
-                      className="mt-6 inline-block bg-gradient-to-r from-[#e6be44] to-[#d5c8b6] p-1 rounded-full shadow-lg"
-                    >
-                      <div className="bg-white px-6 py-2 rounded-full">
-                        <div className="flex items-center justify-center space-x-2">
-                          <FaBirthdayCake className="text-[#e6be44] text-xl" />
-                          <span className="font-bold text-gray-800">
-                            {getDayName()}: <span className="text-[#e6be44]">{getDailySpecialName()}</span>
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+                  VEGETARIANO
                 </motion.div>
+              )}
+              
+              <motion.button
+                onClick={() => toggleFavorite(item.id)}
+                className="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-sm"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <FaHeart 
+                  className={`w-5 h-5 transition-colors ${
+                    favorites.includes(item.id) 
+                      ? 'text-red-500 fill-red-500' 
+                      : 'text-gray-400'
+                  }`}
+                />
+              </motion.button>
+            </div>
 
-                {/* Product Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredMenu(activeCategory).map((item) => {
-                    if (!item.available && !item.veg) return null;
-
-                      const addToCartWithAnimation = () => {
-                      setIsAdding(true);
-                      const flavor = selectedFlavors[item.id] ? `Sabor: ${selectedFlavors[item.id]}` : '';
-                      const notes = [
-                        flavor,
-                        itemNotes[item.id] || ''
-                      ].filter(Boolean).join(' | ');
-                      
-                      addToCart({
-                        ...item,
-                        notes: notes || undefined
-                      });
-                      
-                      setTimeout(() => setIsAdding(false), 1000);
-                    };
-
-                    return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        whileHover={{ y: -5 }}
-                        onHoverStart={() => setIsHovered(true)}
-                        onHoverEnd={() => setIsHovered(false)}
-                        className={`bg-white rounded-2xl shadow-xl overflow-hidden border ${
-                          item.available ? 'border-[#e6be44]' : 'border-[#d5c8b6]/30'
-                        } flex flex-col`}
-                      >
-                        {/* Image with elegant overlay */}
-                        <div className="relative h-64 w-full overflow-hidden">
-                          <LazyLoadImage
-                            src={foodImages[item.image]}
-                            alt={item.name}
-                            className="absolute top-0 left-0 w-full h-full object-cover"
-                            effect="blur"
-                            width="100%"
-                            height="100%"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                          
-                          {/* Daily Special Badge */}
-                          {item.available && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.3 }}
-                              className="absolute top-4 left-4 bg-[#e6be44] text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg"
-                            >
-                              PRATO DO DIA
-                            </motion.div>
-                          )}
-                          
-                          {/* Vegetarian Badge */}
-                          {item.veg && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.4 }}
-                              className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg"
-                            >
-                              VEGETARIANO
-                            </motion.div>
-                          )}
-                          
-                          {/* Favorite button with animation */}
-                          <motion.button
-                            onClick={() => toggleFavorite(item.id)}
-                            className="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-sm"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <FaHeart 
-                              className={`w-5 h-5 transition-colors ${
-                                favorites.includes(item.id) 
-                                  ? 'text-red-500 fill-red-500' 
-                                  : 'text-gray-400'
-                              }`}
-                            />
-                          </motion.button>
-                        </div>
-
-                        {/* Product Info */}
-                        <div className="p-5 flex-grow flex flex-col">
-                          <div className="flex justify-between items-start mb-3">
-                            <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
-                            <motion.div
-                              animate={{ 
-                                scale: isHovered ? 1.1 : 1,
-                                color: isHovered ? '#e6be44' : '#000'
-                              }}
-                              className="text-xl font-bold"
-                            >
-                              {formatPrice(item.price)}
-                            </motion.div>
-                          </div>
-                          
-                          {item.description && (
-                            <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
-                          )}
-                          
-                          {/* Notes input */}
-                          <div className="mb-4">
-                            <label htmlFor={`notes-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
-                              Observações (opcional)
-                            </label>
-                            <input
-                              id={`notes-${item.id}`}
-                              type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="Ex: sem cebola, bem passado, etc."
-                              value={itemNotes[item.id] || ''}
-                              onChange={(e) => updateItemNotes(item.id, e.target.value)}
-                            />
-                          </div>
-
-                          {/* Add to Cart Button */}
-                          <motion.button
-                            onClick={addToCartWithAnimation}
-                            className={`mt-auto w-full bg-[#918e89] text-[#e6be44] font-bold py-3 rounded-lg flex items-center justify-center relative overflow-hidden`}
-                            whileHover={{ 
-                              y: -2,
-                              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            {isAdding ? (
-                              <motion.span
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="flex items-center"
-                              >
-                                <FiCheck className="mr-2" />
-                                Adicionado!
-                              </motion.span>
-                            ) : (
-                              <motion.span
-                                initial={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 20 }}
-                                className="flex items-center"
-                              >
-                                <FiPlus className="mr-2" />
-                                Adicionar
-                              </motion.span>
-                            )}
-                            
-                            {/* Animated background effect */}
-                            {isAdding && (
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: '100%' }}
-                                transition={{ duration: 1 }}
-                                className="absolute bottom-0 left-0 h-1 bg-[#e6be44]"
-                              />
-                            )}
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+            <div className="p-5 flex-grow flex flex-col">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {item.name}
+             
+                </h3>
+                <div className="text-xl font-bold text-black">
+                  {formatPrice(item.price)}
                 </div>
               </div>
-            ) : (
+              
+              {item.description && (
+                <p className="text-gray-600 mb-4 flex-grow">{item.description}</p>
+              )}
+              
+              <div className="mb-4">
+                <label htmlFor={`notes-${item.id}`} className="block text-sm font-medium text-gray-500 mb-1">
+                  Observações (opcional)
+                </label>
+                <input
+                  id={`notes-${item.id}`}
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Ex: sem cebola, bem passado, etc."
+                  value={itemNotes[item.id] || ''}
+                  onChange={(e) => updateItemNotes(item.id, e.target.value)}
+                  disabled={!checkAvailability(item.id)}
+                />
+              </div>
+
+              <button
+                onClick={addToCartWithAnimation}
+                disabled={!checkAvailability(item.id)}
+                className={`mt-auto w-full ${
+                  checkAvailability(item.id)
+                    ? 'bg-[#918e89] text-[#e6be44] hover:bg-[#b0aca6]'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                } font-bold py-3 rounded-lg`}
+              >
+                {checkAvailability(item.id) ? 'Adicionar' : 'Indisponível'}
+              </button>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  </div>
+) : (
               <div className="space-y-12">
                 {/* Hero Section for other categories */}
                 <motion.div
