@@ -23,7 +23,8 @@ import {
   FaIceCream,
   FaHeart,
   FaSnowflake,
-  FaClock
+  FaClock,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { GiMeal, GiCupcake, GiHamburger, GiFruitBowl, GiWaterBottle } from 'react-icons/gi';
 import { BiDrink } from 'react-icons/bi';
@@ -402,7 +403,7 @@ const sendOrder = async () => {
         return acc;
       }, {})
     };
-
+    
     // Referência do pedido no Firebase
     const orderRef = currentOrderId 
       ? ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`)
@@ -440,7 +441,7 @@ const sendOrder = async () => {
 
     // Limpa o carrinho após sucesso
     setCart([]);
-    setOrderStatus('Pedido enviado');
+    setOrderStatus('Pedido Recebido com Sucesso!'); 
     setShowConfirmation(false);
     setOrderNotes('');
     setIsSendingOrder(false);
@@ -1735,6 +1736,32 @@ const menu = {
       default: return null;
     }
   };
+const timerRef = useRef(null);
+
+useEffect(() => {
+  if (orderStatus === 'Pedido Recebido com Sucesso!') {
+    // Evita múltiplos timers
+    if (!timerRef.current) {
+      timerRef.current = setTimeout(() => {
+        setOrderStatus('');
+        timerRef.current = null;
+      }, 5000); // 10 segundos
+    }
+  } else {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  return () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+}, [orderStatus]);
+
 
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col">
@@ -1775,16 +1802,116 @@ const menu = {
               </button>
             </div>
           </div>
-
-          {orderStatus && (
-            <div className="pb-3">
-              <div className={`text-sm p-2 rounded font-medium text-center ${
-                orderStatus.includes('Erro') ? 'bg-red-500' : 'bg-[#e6be44]'
-              }`}>
-                {orderStatus}
-              </div>
-            </div>
+{orderStatus && (
+  <motion.div
+    initial={{ opacity: 0, y: -50 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -50 }}
+    transition={{ type: 'spring', damping: 20, stiffness: 150 }}
+    className="fixed top-6 inset-x-0 mx-auto max-w-md z-50 px-4"
+  >
+    <div
+      className={`relative rounded-2xl shadow-2xl overflow-hidden border-2
+        transition-colors duration-300
+        ${
+          orderStatus.includes('Erro')
+            ? 'bg-red-700 border-red-500'
+            : orderStatus === 'Pedido Recebido com Sucesso!'
+            ? 'bg-green-700 border-green-500'
+            : 'bg-yellow-500 border-yellow-400'
+        }
+      `}
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="p-5 flex items-start space-x-4">
+        <div className="flex-shrink-0 mt-1">
+          {orderStatus.includes('Erro') ? (
+            <svg
+              className="h-7 w-7 text-white animate-pulse"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="h-7 w-7 text-white animate-bounce"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
           )}
+        </div>
+
+        <div className="flex-1">
+          <p className="text-white text-lg font-semibold leading-tight">
+            {orderStatus}
+          </p>
+          {orderStatus === 'Pedido Recebido com Sucesso!' && (
+            <p className="mt-1 text-white/90 text-sm select-none">
+              Agora é só aguardar, estamos preparando seu pedido com carinho.
+            </p>
+          )}
+        </div>
+
+        <div className="ml-4 flex-shrink-0 flex items-start">
+          <button
+            onClick={() => setOrderStatus('')}
+            className="inline-flex p-1 rounded-md text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1 transition"
+            aria-label="Fechar notificação"
+          >
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar - só para sucesso */}
+      {orderStatus === 'Pedido Recebido com Sucesso!' && (
+    <motion.div
+      initial={{ width: 0 }}
+      animate={{ width: '100%' }}
+      transition={{ duration: 10, ease: 'linear' }}
+      className="h-1 bg-white/30"
+    >
+      <motion.div
+        className="h-1 bg-gradient-to-r from-green-300 to-green-100"
+        initial={{ width: 0 }}
+        animate={{ width: '100%' }}
+        transition={{ duration: 10, ease: 'linear' }}
+      />
+    </motion.div>
+      )}
+    </div>
+  </motion.div>
+)}
+
 
           {showItemAdded && (
             <motion.div 
