@@ -362,67 +362,72 @@ const sendOrder = async () => {
     return;
   }
 
-  const cleanTableNumber = String(tableNumber).replace(/[^a-zA-Z0-9]/g, "");
-  if (!cleanTableNumber) {
-    setOrderStatus("Número da mesa inválido");
-    setTimeout(() => setOrderStatus(""), 2000);
-    return;
-  }
-
   setIsSendingOrder(true);
   setOrderStatus("Enviando...");
 
   try {
-    const userCredential = await signInAnonymously(auth);
+    // 1. Autenticação anônima
+    await signInAnonymously(auth);
 
-    // Itens do pedido com garantias e compatibilidade
+    // 2. Preparar itens do pedido
     const orderItems = cart.map(item => ({
       id: item.id || Date.now().toString(),
       name: item.name,
-      description: item.description || "",
-      price: parseFloat(item.price), // garante número
-      quantity: parseInt(item.quantity) || 1, // garante número
+      price: Number(item.price),
+      quantity: Number(item.quantity) || 1,
       notes: item.notes || "",
       image: item.image || "",
-      timestamp: Date.now(),
-      printed: false // campo que o admin espera
+      printed: false, // Fundamental para o admin
+      addedAt: Date.now() // Novo campo para identificar cada item
     }));
 
-    // Cálculo correto do total
-    const total = orderItems.reduce((sum, item) => {
-      return sum + (item.price * item.quantity);
-    }, 0);
+    // 3. Calcular total CORRETAMENTE
+    const total = orderItems.reduce((acc, item) => 
+      acc + (item.price * item.quantity), 0);
 
-    // Estrutura padronizada para o admin
-    const orderData = {
-      items: orderItems,
-      status: "open", // padronizado
-      tableId: cleanTableNumber, // compatível com admin
-      total: parseFloat(total.toFixed(2)),
-      notes: orderNotes || "",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      deliveryAddress: "", // compatibilidade
-      paymentMethod: "pending", // compatibilidade
-      userId: userCredential.user.uid
-    };
+    // 4. Obter referência do pedido atual da mesa
+    const orderRef = ref(database, `tables/${tableNumber}/currentOrder`);
+    const snapshot = await get(orderRef);
 
-    // Salva dentro da mesa -> currentOrder
-    const currentOrderRef = ref(database, `tables/${cleanTableNumber}/currentOrder`);
-    const newOrderRef = push(currentOrderRef);
+    let orderData;
+    if (snapshot.exists()) {
+      // Se já existe pedido, ADICIONA aos itens existentes
+      const existingOrder = snapshot.val();
+      const orderId = Object.keys(existingOrder)[0];
+      const existingItems = existingOrder[orderId].items || [];
+      
+      orderData = {
+        ...existingOrder[orderId],
+        items: [...existingItems, ...orderItems], // Junta os itens
+        total: existingOrder[orderId].total + total, // Soma os totais
+        updatedAt: Date.now()
+      };
 
-    await set(newOrderRef, {
-      ...orderData,
-      id: newOrderRef.key
-    });
+      await update(ref(database, `tables/${tableNumber}/currentOrder/${orderId}`), 
+        orderData);
+    } else {
+      // Se não existe pedido, CRIA novo
+      orderData = {
+        items: orderItems,
+        status: "open",
+        tableId: tableNumber.toString(),
+        total: total,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        deliveryAddress: "",
+        paymentMethod: "pending"
+      };
 
-    // Atualiza status da mesa
-    const tableRef = ref(database, `tables/${cleanTableNumber}`);
-    await update(tableRef, {
-      status: "occupied"
-    });
+      const newOrderRef = push(orderRef);
+      await set(newOrderRef, { ...orderData, id: newOrderRef.key });
 
-    // Limpa carrinho e feedback
+      // Atualiza status da mesa
+      await update(ref(database, `tables/${tableNumber}`), {
+        status: "occupied"
+      });
+    }
+
+    // 5. Limpar e confirmar
     setCart([]);
     setOrderStatus("✅ Pedido enviado!");
     setShowConfirmation(false);
@@ -430,7 +435,7 @@ const sendOrder = async () => {
 
   } catch (error) {
     console.error("Erro ao enviar pedido:", error);
-    setOrderStatus("❌ Falha ao enviar. Tente novamente.");
+    setOrderStatus("❌ Falha ao enviar");
   } finally {
     setIsSendingOrder(false);
   }

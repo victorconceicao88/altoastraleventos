@@ -1643,15 +1643,26 @@ const filteredHistory = useCallback(() => {
   // Função para calcular total do pedido
 const calculateOrderTotal = useCallback((order) => {
   if (!order?.items) return 0;
-  
-  return order.items.reduce((sum, item) => {
-    // Garante que price e quantity são números
+
+  // Agrupa itens iguais pelo id
+  const groupedItems = order.items.reduce((acc, item) => {
+    const key = item.id;
+    if (!acc[key]) {
+      acc[key] = { ...item }; // Clona o item
+    } else {
+      acc[key].quantity += typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1;
+    }
+    return acc;
+  }, {});
+
+  // Calcula o total somando price * quantity de cada item agrupado
+  return Object.values(groupedItems).reduce((sum, item) => {
     const price = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
     const quantity = typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1;
-    
-    return sum + (price * quantity);
+    return sum + price * quantity;
   }, 0);
 }, []);
+
 
   // Função para selecionar mesa
 const handleTableSelect = useCallback(async (tableId) => {
