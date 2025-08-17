@@ -358,104 +358,72 @@ const sendOrder = async () => {
   if (cart.length === 0) return;
   setIsSendingOrder(true);
   setOrderStatus('Enviando...');
-  
+
   try {
-    // Sanitiza todos os itens do carrinho antes de enviar
+    // Sanitização segura para mobile
     const orderItems = cart.map(item => ({
-      id: item.id?.toString() || '', // Garante que seja string
-      name: item.name?.toString() || 'Item sem nome',
-      price: Number(item.price) || 0, // Garante que seja número
-      description: item.description?.toString() || '',
-      quantity: Number(item.quantity) || 1,
-      notes: item.notes?.toString() || '',
+      id: String(item.id || ''),
+      name: String(item.name || 'Item sem nome'),
+      price: parseFloat(item.price) || 0,
+      quantity: parseInt(item.quantity) || 1,
+      notes: String(item.notes || ''),
       addedAt: Date.now(),
-      // Campos opcionais com fallback
-      image: item.image?.toString() || '',
-      veg: Boolean(item.veg),
-      rating: Number(item.rating) || 0,
-      // Mantém o flavor se existir (para energéticos/sumos)
-      ...(item.flavor && { flavor: item.flavor.toString() }),
-      // Mantém o originalName se existir
-      ...(item.originalName && { originalName: item.originalName.toString() })
+      ...(item.description && { description: String(item.description) }),
+      ...(item.image && { image: String(item.image) }),
+      ...(item.veg && { veg: Boolean(item.veg) }),
+      ...(item.flavor && { flavor: String(item.flavor) }),
+      ...(item.originalName && { originalName: String(item.originalName) })
     }));
 
-    // Calcula o total garantindo valores numéricos
     const orderTotal = orderItems.reduce(
-      (sum, item) => sum + (Number(item.price) * Number(item.quantity)),
+      (sum, item) => sum + (parseFloat(item.price) * parseInt(item.quantity)),
       0
     );
 
-    // Prepara os dados principais do pedido
     const orderData = {
       items: orderItems,
       status: 'Recebido',
       createdAt: Date.now(),
-      tableNumber: Number(tableNumber) || 0,
+      tableNumber: parseInt(tableNumber) || 0,
       source: 'client',
-      total: Number(orderTotal.toFixed(2)), // Garante 2 casas decimais
-      notes: orderNotes?.toString() || '',
-      clientNotes: orderNotes?.toString() || '',
-      updatedAt: Date.now(),
-      itemNotes: orderItems.reduce((acc, item) => {
-        if (item.notes) {
-          acc[item.id] = item.notes.toString();
-        }
-        return acc;
-      }, {})
+      total: parseFloat(orderTotal.toFixed(2)),
+      notes: String(orderNotes || ''),
+      clientNotes: String(orderNotes || ''),
+      updatedAt: Date.now()
     };
+
+    // Lógica de envio universal para mobile/desktop
+    const ordersRef = ref(database, `tables/${tableNumber}/currentOrder`);
     
-    // Referência do pedido no Firebase
-      const ordersRef = ref(database, `tables/${tableNumber}/currentOrder`);
-      const orderRef = currentOrderId 
-        ? child(ordersRef, currentOrderId)
-        : push(ordersRef);
-          if (currentOrderId) {
-      // Atualiza pedido existente
-      const updates = {
-        items: [...(activeOrder?.items || []), ...orderItems].map(item => ({
-          ...item,
-          // Garante que todos os campos obrigatórios existam
-          id: item.id?.toString() || '',
-          name: item.name?.toString() || '',
-          price: Number(item.price) || 0,
-          quantity: Number(item.quantity) || 1
-        })),
+    if (currentOrderId && activeOrder?.items) {
+      // Atualização otimizada para mobile
+      await update(ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`), {
+        items: [...activeOrder.items, ...orderItems],
+        total: (parseFloat(activeOrder.total) || 0) + orderTotal,
         updatedAt: Date.now(),
-        status: 'Recebido',
-        total: (Number(activeOrder?.total) || 0) + Number(orderTotal),
-        notes: orderNotes?.toString() || '',
-        clientNotes: orderNotes?.toString() || '',
-        itemNotes: {
-          ...(activeOrder?.itemNotes || {}),
-          ...orderData.itemNotes
-        }
-      };
-      
-      await update(orderRef, updates);
+        status: 'Recebido'
+      });
     } else {
-      // Cria novo pedido
-      const newOrderRef = await push(orderRef);
+      // Novo pedido com fallback seguro
+      const newOrderRef = push(ordersRef);
       await set(newOrderRef, orderData);
       setCurrentOrderId(newOrderRef.key);
     }
 
-    // Limpa o carrinho após sucesso
+    // Reset seguro do estado
     setCart([]);
-    setOrderStatus('Pedido Recebido com Sucesso!'); 
+    setOrderStatus('Pedido Recebido!');
     setShowConfirmation(false);
     setOrderNotes('');
-    setIsSendingOrder(false);
     
-    setTimeout(() => {
-      if (isMobile) setShowCart(false);
-      setOrderStatus('');
-    }, 3000);
-
   } catch (error) {
-    console.error("Erro ao enviar pedido:", error);
-    setOrderStatus('Erro ao enviar');
+    console.error("Mobile Error:", error);
+    setOrderStatus('Erro: Toque para tentar novamente');
+    // Tentativa automática após 5 segundos
+    setTimeout(() => cart.length > 0 && sendOrder(), 5000);
+  } finally {
     setIsSendingOrder(false);
-    setTimeout(() => setOrderStatus(''), 2000);
+    if (isMobile) setTimeout(() => setShowCart(false), 2000);
   }
 };
 
