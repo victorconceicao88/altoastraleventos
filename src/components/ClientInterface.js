@@ -357,9 +357,11 @@ const isItemAvailable = (itemId) => {
 const sendOrder = async () => {
   if (cart.length === 0) return;
 
-  // Validação da mesa
-  if (!tableNumber || isNaN(parseInt(tableNumber))) {
+  // Validação robusta da mesa
+  const tableNum = parseInt(tableNumber);
+  if (!tableNumber || isNaN(tableNum)) {
     setOrderStatus('Erro: Número da mesa inválido');
+    setTimeout(() => setOrderStatus(''), 3000);
     return;
   }
 
@@ -367,31 +369,43 @@ const sendOrder = async () => {
   setOrderStatus('Enviando...');
 
   try {
-    // Preparar itens do pedido
-    const orderItems = cart.map(item => ({
-      id: String(item.id || ''),
-      name: String(item.name || 'Item sem nome'),
-      price: parseFloat(item.price) || 0,
-      quantity: parseInt(item.quantity) || 1,
-      notes: String(item.notes || ''),
-      addedAt: Date.now(),
-      ...(item.description && { description: String(item.description) }),
-      ...(item.image && { image: String(item.image) }),
-      ...(item.veg && { veg: Boolean(item.veg) }),
-      ...(item.flavor && { flavor: String(item.flavor) }),
-      ...(item.originalName && { originalName: String(item.originalName) })
-    }));
+    // Preparar itens do pedido com validação
+    const orderItems = cart.map(item => {
+      // Validação de cada campo do item
+      const validatedItem = {
+        id: String(item.id || ''),
+        name: String(item.name || 'Item sem nome'),
+        price: parseFloat(item.price) || 0,
+        quantity: parseInt(item.quantity) || 1,
+        addedAt: Date.now()
+      };
 
+      // Campos opcionais
+      if (item.notes) validatedItem.notes = String(item.notes);
+      if (item.description) validatedItem.description = String(item.description);
+      if (item.image) validatedItem.image = String(item.image);
+      if (item.veg !== undefined) validatedItem.veg = Boolean(item.veg);
+      if (item.flavor) validatedItem.flavor = String(item.flavor);
+      if (item.originalName) validatedItem.originalName = String(item.originalName);
+
+      return validatedItem;
+    });
+
+    // Cálculo do total com validação
     const orderTotal = orderItems.reduce(
-      (sum, item) => sum + (parseFloat(item.price) * parseInt(item.quantity)),
+      (sum, item) => {
+        const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+        return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+      },
       0
     );
 
+    // Dados do pedido com validação
     const orderData = {
       items: orderItems,
       status: 'Recebido',
       createdAt: Date.now(),
-      tableNumber: parseInt(tableNumber),
+      tableNumber: tableNum,
       source: 'client',
       total: parseFloat(orderTotal.toFixed(2)),
       notes: String(orderNotes || ''),
@@ -399,13 +413,16 @@ const sendOrder = async () => {
       updatedAt: Date.now()
     };
 
-    const ordersRef = ref(database, `tables/${tableNumber}/currentOrder`);
+    const ordersRef = ref(database, `tables/${tableNum}/currentOrder`);
 
     if (currentOrderId && activeOrder?.items) {
-      // Atualiza pedido existente
-      await update(ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`), {
-        items: [...activeOrder.items, ...orderItems],
-        total: (parseFloat(activeOrder.total) || 0) + orderTotal,
+      // Atualiza pedido existente com validação
+      const existingItems = Array.isArray(activeOrder.items) ? activeOrder.items : [];
+      const existingTotal = parseFloat(activeOrder.total) || 0;
+      
+      await update(ref(database, `tables/${tableNum}/currentOrder/${currentOrderId}`), {
+        items: [...existingItems, ...orderItems],
+        total: existingTotal + orderTotal,
         updatedAt: Date.now(),
         status: 'Recebido'
       });
@@ -416,7 +433,7 @@ const sendOrder = async () => {
       setCurrentOrderId(newOrderRef.key);
     }
 
-    // Reset do carrinho e estado
+    // Reset do estado
     setCart([]);
     setOrderStatus('Pedido Recebido!');
     setShowConfirmation(false);
@@ -425,11 +442,23 @@ const sendOrder = async () => {
   } catch (error) {
     console.error("Erro ao enviar pedido:", error);
     setOrderStatus('Erro: Toque para tentar novamente');
-    // Tentativa automática após 5 segundos
-    setTimeout(() => cart.length > 0 && sendOrder(), 5000);
+    
+    // Tentativa automática apenas se for um erro de rede
+    if (error.code === 'NETWORK_ERROR') {
+      setTimeout(() => {
+        if (cart.length > 0 && tableNumber) {
+          sendOrder();
+        }
+      }, 5000);
+    }
   } finally {
     setIsSendingOrder(false);
-    if (isMobile) setTimeout(() => setShowCart(false), 2000);
+    if (isMobile) {
+      setTimeout(() => {
+        setShowCart(false);
+        setOrderStatus('');
+      }, 2000);
+    }
   }
 };
 
