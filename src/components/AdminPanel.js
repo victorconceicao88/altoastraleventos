@@ -1641,10 +1641,17 @@ const filteredHistory = useCallback(() => {
 }, [orderHistory, historyFilter, historySearchTerm, historyDateRange]);
 
   // Função para calcular total do pedido
-  const calculateOrderTotal = useCallback((order) => {
-    if (!order?.items) return 0;
-    return order.items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
-  }, []);
+const calculateOrderTotal = useCallback((order) => {
+  if (!order?.items) return 0;
+  
+  return order.items.reduce((sum, item) => {
+    // Garante que price e quantity são números
+    const price = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
+    const quantity = typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1;
+    
+    return sum + (price * quantity);
+  }, 0);
+}, []);
 
   // Função para selecionar mesa
 const handleTableSelect = useCallback(async (tableId) => {

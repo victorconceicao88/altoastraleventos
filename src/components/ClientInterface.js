@@ -357,78 +357,85 @@ const isItemAvailable = (itemId) => {
   // Enviar pedido
 const sendOrder = async () => {
   if (cart.length === 0) {
-    setOrderStatus('Carrinho vazio');
-    setTimeout(() => setOrderStatus(''), 2000);
+    setOrderStatus("Carrinho vazio");
+    setTimeout(() => setOrderStatus(""), 2000);
     return;
   }
 
-  // Verificação reforçada para mobile
-  const tableNum = parseInt(tableNumber);
-  if (isNaN(tableNum)) {
-    setOrderStatus('Mesa inválida');
-    setTimeout(() => setOrderStatus(''), 2000);
+  const cleanTableNumber = String(tableNumber).replace(/[^a-zA-Z0-9]/g, "");
+  if (!cleanTableNumber) {
+    setOrderStatus("Número da mesa inválido");
+    setTimeout(() => setOrderStatus(""), 2000);
     return;
   }
 
   setIsSendingOrder(true);
-  setOrderStatus('Enviando...');
+  setOrderStatus("Enviando...");
 
   try {
-    // Garante autenticação antes de enviar
-    await signInAnonymously(auth);
+    const userCredential = await signInAnonymously(auth);
 
+    // Itens do pedido com garantias e compatibilidade
     const orderItems = cart.map(item => ({
-      id: String(item.id || Math.random().toString(36).substr(2, 9)),
-      name: String(item.name || 'Item'),
-      price: parseFloat(item.price) || 0,
-      quantity: parseInt(item.quantity) || 1,
-      notes: String(item.notes || ''),
-      ...(item.image && { image: String(item.image) }),
-      ...(item.description && { description: String(item.description) }),
-      timestamp: Date.now()
+      id: item.id || Date.now().toString(),
+      name: item.name,
+      description: item.description || "",
+      price: parseFloat(item.price), // garante número
+      quantity: parseInt(item.quantity) || 1, // garante número
+      notes: item.notes || "",
+      image: item.image || "",
+      timestamp: Date.now(),
+      printed: false // campo que o admin espera
     }));
 
-    const orderTotal = orderItems.reduce((sum, item) => {
-      return sum + (parseFloat(item.price) * parseInt(item.quantity));
+    // Cálculo correto do total
+    const total = orderItems.reduce((sum, item) => {
+      return sum + (item.price * item.quantity);
     }, 0);
 
+    // Estrutura padronizada para o admin
     const orderData = {
       items: orderItems,
-      status: 'Recebido',
+      status: "open", // padronizado
+      tableId: cleanTableNumber, // compatível com admin
+      total: parseFloat(total.toFixed(2)),
+      notes: orderNotes || "",
       createdAt: Date.now(),
-      tableNumber: tableNum,
-      source: 'mobile',
-      total: orderTotal,
-      notes: String(orderNotes || ''),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      deliveryAddress: "", // compatibilidade
+      paymentMethod: "pending", // compatibilidade
+      userId: userCredential.user.uid
     };
 
-    const orderRef = ref(database, `tables/table_${tableNum}/currentOrder`);
-    const newOrderRef = push(orderRef);
-    await set(newOrderRef, orderData);
+    // Salva dentro da mesa -> currentOrder
+    const currentOrderRef = ref(database, `tables/${cleanTableNumber}/currentOrder`);
+    const newOrderRef = push(currentOrderRef);
 
+    await set(newOrderRef, {
+      ...orderData,
+      id: newOrderRef.key
+    });
+
+    // Atualiza status da mesa
+    const tableRef = ref(database, `tables/${cleanTableNumber}`);
+    await update(tableRef, {
+      status: "occupied"
+    });
+
+    // Limpa carrinho e feedback
     setCart([]);
-    setOrderStatus('Pedido enviado!');
+    setOrderStatus("✅ Pedido enviado!");
     setShowConfirmation(false);
-    setOrderNotes('');
-
-    if (isMobile) {
-      setTimeout(() => setShowCart(false), 2000);
-    }
+    setOrderNotes("");
 
   } catch (error) {
-    console.error("Erro no envio:", error);
-    setOrderStatus('Erro. Toque para tentar novamente');
-    
-    if (error.code === 'PERMISSION_DENIED') {
-      // Tenta reautenticar se for erro de permissão
-      await signInAnonymously(auth);
-      setTimeout(sendOrder, 2000);
-    }
+    console.error("Erro ao enviar pedido:", error);
+    setOrderStatus("❌ Falha ao enviar. Tente novamente.");
   } finally {
     setIsSendingOrder(false);
   }
 };
+
 
   // Calcular total
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
