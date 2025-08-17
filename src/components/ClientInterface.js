@@ -356,11 +356,18 @@ const isItemAvailable = (itemId) => {
   // Enviar pedido
 const sendOrder = async () => {
   if (cart.length === 0) return;
+
+  // Validação da mesa
+  if (!tableNumber || isNaN(parseInt(tableNumber))) {
+    setOrderStatus('Erro: Número da mesa inválido');
+    return;
+  }
+
   setIsSendingOrder(true);
   setOrderStatus('Enviando...');
 
   try {
-    // Sanitização segura para mobile
+    // Preparar itens do pedido
     const orderItems = cart.map(item => ({
       id: String(item.id || ''),
       name: String(item.name || 'Item sem nome'),
@@ -384,7 +391,7 @@ const sendOrder = async () => {
       items: orderItems,
       status: 'Recebido',
       createdAt: Date.now(),
-      tableNumber: parseInt(tableNumber) || 0,
+      tableNumber: parseInt(tableNumber),
       source: 'client',
       total: parseFloat(orderTotal.toFixed(2)),
       notes: String(orderNotes || ''),
@@ -392,11 +399,10 @@ const sendOrder = async () => {
       updatedAt: Date.now()
     };
 
-    // Lógica de envio universal para mobile/desktop
     const ordersRef = ref(database, `tables/${tableNumber}/currentOrder`);
-    
+
     if (currentOrderId && activeOrder?.items) {
-      // Atualização otimizada para mobile
+      // Atualiza pedido existente
       await update(ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`), {
         items: [...activeOrder.items, ...orderItems],
         total: (parseFloat(activeOrder.total) || 0) + orderTotal,
@@ -404,20 +410,20 @@ const sendOrder = async () => {
         status: 'Recebido'
       });
     } else {
-      // Novo pedido com fallback seguro
+      // Cria novo pedido
       const newOrderRef = push(ordersRef);
       await set(newOrderRef, orderData);
       setCurrentOrderId(newOrderRef.key);
     }
 
-    // Reset seguro do estado
+    // Reset do carrinho e estado
     setCart([]);
     setOrderStatus('Pedido Recebido!');
     setShowConfirmation(false);
     setOrderNotes('');
-    
+
   } catch (error) {
-    console.error("Mobile Error:", error);
+    console.error("Erro ao enviar pedido:", error);
     setOrderStatus('Erro: Toque para tentar novamente');
     // Tentativa automática após 5 segundos
     setTimeout(() => cart.length > 0 && sendOrder(), 5000);
@@ -426,6 +432,7 @@ const sendOrder = async () => {
     if (isMobile) setTimeout(() => setShowCart(false), 2000);
   }
 };
+
 
   // Calcular total
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
