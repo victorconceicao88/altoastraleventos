@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { onValue, push, update, ref, set, get, remove } from 'firebase/database';
+import { onValue, push, update, ref, set, get, remove,child } from 'firebase/database';
 import { database } from '../firebase';
 import { useWindowSize } from 'usehooks-ts';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -405,11 +405,11 @@ const sendOrder = async () => {
     };
     
     // Referência do pedido no Firebase
-    const orderRef = currentOrderId 
-      ? ref(database, `tables/${tableNumber}/currentOrder/${currentOrderId}`)
-      : ref(database, `tables/${tableNumber}/currentOrder`);
-
-    if (currentOrderId) {
+      const ordersRef = ref(database, `tables/${tableNumber}/currentOrder`);
+      const orderRef = currentOrderId 
+        ? child(ordersRef, currentOrderId)
+        : push(ordersRef);
+          if (currentOrderId) {
       // Atualiza pedido existente
       const updates = {
         items: [...(activeOrder?.items || []), ...orderItems].map(item => ({
