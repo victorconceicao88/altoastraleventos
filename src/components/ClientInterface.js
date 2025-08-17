@@ -429,7 +429,7 @@ const sendOrder = async () => {
 
     // 5. Limpar e confirmar
     setCart([]);
-    setOrderStatus("✅ Pedido enviado!");
+    setOrderStatus("✅ Pedido enviado! A equipa irá verificar o seu pedido na mesa.");
     setShowConfirmation(false);
     setOrderNotes("");
 
